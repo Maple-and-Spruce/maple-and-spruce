@@ -1964,8 +1964,17 @@ A separate booking type would be cleaner internally, but it would copy the whole
 Webflow sync, the registration widget, Square checkout with tax, confirmation and reminder emails,
 refunds, the roster and attribution. It would also give Katie a second place to look.
 
+### Booking an hour
+A registration for a private-hours class carries `slotStart` (one of the sessions) and `groupSize`,
+with `quantity` 1. The reservation transaction refuses an hour any active registration already
+holds, using the same class query as seats, so no new index is needed. `getBookableCapacity` is the
+number of hours, so "spots remaining" means open hours everywhere that compares against it. Each
+hour closes when it starts. Receipts, the confirmation email, the widget confirmation and the
+reminder all name the booked hour, and an edit that removes a booked hour is refused.
+
 ### Consequences
-- Anything that counts seats has to learn the hour rule. Until it does (PR 2 of #272),
-  `isClassRegistrationOpen` is false for private hours, and `syncClassToSquare` treats them like an
-  unpublished class (no POS item), so neither path can sell one as a seat.
-- A private-hours class should stay a draft until hour booking ships.
+- Anything that counts seats has to learn the hour rule. Places that still read headcount for a
+  private-hours class (roster totals, dashboard fill, instructor payout proration, the per-hour
+  waitlist) are later PRs of #272.
+- `syncClassToSquare` gives a private-hours class no POS item, so the register can't book an hour.
+  Hours are booked online through the class page.

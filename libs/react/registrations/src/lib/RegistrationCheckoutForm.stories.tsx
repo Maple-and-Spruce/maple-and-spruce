@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, within } from 'storybook/test';
 import type { PublicClass } from '@maple/ts/domain';
 import type { CalculateRegistrationCostResponse } from '@maple/ts/firebase/api-types';
 import { RegistrationCheckoutForm } from './RegistrationCheckoutForm';
@@ -185,5 +185,59 @@ export const AttendeeEmailInvalid: Story = {
       name: /register & pay/i,
     });
     await userEvent.click(submitButton);
+  },
+};
+
+const privateHoursClass: PublicClass = {
+  ...mockPublicClass,
+  id: 'class-hours',
+  name: 'Holiday Ornament Party',
+  slug: 'holiday-ornament-party',
+  format: 'privateHours',
+  durationMinutes: 60,
+  capacity: 12,
+  priceCents: 6000,
+  spotsRemaining: 9,
+  // Three Saturdays, 10:00, 11:30, 1:00 and 2:30 ET; three hours taken.
+  sessions: ['2030-12-07', '2030-12-14', '2030-12-21'].flatMap((day) =>
+    ['15:00', '16:30', '18:00', '19:30'].map((t) => ({
+      dateTime: `${day}T${t}:00.000Z`,
+    }))
+  ),
+  bookedSlotStarts: [
+    '2030-12-07T15:00:00.000Z',
+    '2030-12-07T18:00:00.000Z',
+    '2030-12-14T16:30:00.000Z',
+  ],
+};
+
+/**
+ * A private-hours class: pick a day and an hour, give a rough group size.
+ * Taken hours show as booked and can't be picked.
+ */
+export const PrivateHours: Story = {
+  args: {
+    publicClass: privateHoursClass,
+    onCalculateCost: fn(async () => ({
+      ...mockCostResponse,
+      pricePerItemCents: 6000,
+      originalCostCents: 6000,
+      finalCostCents: 6000,
+      taxAmountCents: 360,
+      totalCents: 6360,
+    })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('button', { name: /Sat, Dec 7/ })).toHaveTextContent('2 open');
+    await expect(canvas.getByRole('button', { name: /10:00–11:00 AM/ })).toBeDisabled();
+
+    await userEvent.click(canvas.getByRole('button', { name: /Sat, Dec 14/ }));
+    const hour = canvas.getByRole('button', { name: /1:00–2:00 PM/ });
+    await userEvent.click(hour);
+    await expect(hour).toHaveAttribute('aria-pressed', 'true');
+
+    await userEvent.type(canvas.getByLabelText(/People, up to 12/), '8');
+    await expect(canvas.queryByText(/Anyone else coming/)).toBeNull();
   },
 };

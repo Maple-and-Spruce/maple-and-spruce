@@ -52,6 +52,7 @@ export async function getRegistrationStatus(
       customerEmail: registration.customerEmail,
       quantity: registration.quantity,
       pricePaidCents: registration.pricePaidCents,
+      slotStart: registration.slotStart?.toISOString(),
     },
   };
 }

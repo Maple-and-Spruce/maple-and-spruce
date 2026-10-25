@@ -18,7 +18,13 @@
 import { WebflowClient } from 'webflow-api';
 import type { CollectionItem } from 'webflow-api/api';
 import type { PublishableClass } from '@maple/ts/domain';
-import { getFirstSession, formatSessions } from '@maple/ts/domain';
+import {
+  getBookableCapacity,
+  getFirstSession,
+  formatSessions,
+  isPrivateHoursClass,
+  oneSessionPerDay,
+} from '@maple/ts/domain';
 
 /**
  * Generate a URL-safe slug from a name.
@@ -143,18 +149,25 @@ export function mapClassToFieldData(
   classEntity: PublishableClass,
   options: MapClassOptions
 ): ClassWebflowFieldData {
+  // A private-hours class sells hours, not seats: one group per session.
+  const privateHours = isPrivateHoursClass(classEntity);
+  const bookable = getBookableCapacity(classEntity);
   const spotsRemaining =
     options.registrationCount !== undefined
-      ? classEntity.capacity - options.registrationCount
-      : classEntity.capacity;
+      ? bookable - options.registrationCount
+      : bookable;
 
   // Format display values
   const priceDollars = classEntity.priceCents / 100;
-  const priceDisplay = priceDollars === 0
+  const basePriceDisplay = priceDollars === 0
     ? 'Free'
     : Number.isInteger(priceDollars)
       ? `$${priceDollars}`
       : `$${priceDollars.toFixed(2)}`;
+  const priceDisplay =
+    privateHours && priceDollars > 0
+      ? `${basePriceDisplay} per group`
+      : basePriceDisplay;
 
   const baseDuration = classEntity.durationMinutes >= 60
     ? classEntity.durationMinutes % 60 === 0
@@ -162,19 +175,25 @@ export function mapClassToFieldData(
       : `${(classEntity.durationMinutes / 60).toFixed(1)} hours`
     : `${classEntity.durationMinutes} min`;
   // Multi-session classes: clarify duration is per session, not summed across sessions
-  const durationDisplay = classEntity.sessions.length > 1
+  // Multi-session classes: clarify duration is per session, not summed
+  // across sessions. A private hour is one session per group.
+  const durationDisplay = classEntity.sessions.length > 1 && !privateHours
     ? `${baseDuration} each`
     : baseDuration;
 
+  const unit = privateHours ? 'hour' : 'spot';
   const spotsDisplay = spotsRemaining <= 0
     ? 'Waitlist Available'
-    : `${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} remaining`;
+    : `${spotsRemaining} ${unit}${spotsRemaining === 1 ? '' : 's'} ${privateHours ? 'open' : 'remaining'}`;
 
-  // Format date and time display values from sessions
-  const { dateDisplay, timeDisplay } = formatSessions(
-    classEntity.sessions,
+  // Format date and time display values from sessions. A private-hours class
+  // lists each day once; the hours are picked on the class page.
+  const formatted = formatSessions(
+    privateHours ? oneSessionPerDay(classEntity.sessions) : classEntity.sessions,
     'America/New_York'
   );
+  const dateDisplay = formatted.dateDisplay;
+  const timeDisplay = privateHours ? 'Choose your hour' : formatted.timeDisplay;
 
   // The `date-time` Webflow field is a native DateTime — use the first
   // session so Webflow can sort classes chronologically.
@@ -195,7 +214,8 @@ export function mapClassToFieldData(
     // tell single-session "Try It" classes (1) from multi-session series such
     // as the Studio Series (> 1). Always written, so a class that drops to one
     // session stops reading as a series.
-    'session-count': classEntity.sessions.length,
+    // A private-hours class is one visit, not a series, whatever its hours.
+    'session-count': privateHours ? 1 : classEntity.sessions.length,
     'price-cents': classEntity.priceCents,
     capacity: classEntity.capacity,
     'spots-remaining': spotsRemaining,

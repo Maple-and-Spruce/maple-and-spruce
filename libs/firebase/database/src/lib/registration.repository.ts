@@ -43,6 +43,9 @@ function docToRegistration(
     customerPhone: data.customerPhone,
     quantity: data.quantity,
     additionalAttendees: parseAdditionalAttendees(data.additionalAttendees),
+    // Private hours only; written as null for seat registrations.
+    slotStart: data.slotStart ? toDate(data.slotStart) : undefined,
+    groupSize: typeof data.groupSize === 'number' ? data.groupSize : undefined,
     pricePaidCents: data.pricePaidCents,
     subtotalCents: data.subtotalCents,
     taxAmountCents: data.taxAmountCents,
@@ -206,6 +209,23 @@ export const RegistrationRepository = {
     return snapshot.docs.reduce((sum, doc) => {
       return sum + ((doc.data().quantity as number) || 1);
     }, 0);
+  },
+
+  /**
+   * Private-hours classes: the starts of hours held by an active (pending or
+   * confirmed) registration. Same query as `countByClassId`, so no new index.
+   */
+  async findHeldSlotStarts(classId: string): Promise<Date[]> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('classId', '==', classId)
+      .where('status', 'in', ['pending', 'confirmed'])
+      .get();
+
+    return snapshot.docs
+      .map((doc) => doc.data().slotStart)
+      .filter((v) => !!v)
+      .map((v) => toDate(v));
   },
 
   /**

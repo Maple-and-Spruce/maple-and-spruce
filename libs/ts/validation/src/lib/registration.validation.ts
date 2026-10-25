@@ -20,6 +20,10 @@ export interface RegistrationValidationInput {
   quantity?: number;
   notes?: string;
   additionalAttendees?: Array<{ name?: string; email?: string }>;
+  /** Private-hours classes: start of the hour being booked (ISO or Date). */
+  slotStart?: string | Date;
+  /** Private-hours classes: roughly how many people are coming. */
+  groupSize?: number;
 }
 
 /**
@@ -87,6 +91,20 @@ export const registrationValidation = staticSuite(
     test('quantity', 'Quantity cannot exceed 10', () => {
       if (data.quantity !== undefined) {
         enforce(data.quantity).lessThanOrEquals(10);
+      }
+    });
+
+    // Private hours (optional here; the server checks the class needs them).
+    test('slotStart', 'Pick a time', () => {
+      if (data.slotStart !== undefined) {
+        enforce(Number.isNaN(new Date(data.slotStart).getTime())).isFalsy();
+      }
+    });
+
+    test('groupSize', 'Group size must be a whole number of at least 1', () => {
+      if (data.groupSize !== undefined) {
+        enforce(Number.isInteger(data.groupSize)).isTruthy();
+        enforce(data.groupSize).greaterThanOrEquals(1);
       }
     });
 

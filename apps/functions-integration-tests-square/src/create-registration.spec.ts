@@ -943,4 +943,97 @@ describe('createRegistration', () => {
       expect(friendOfFriend.status).not.toBe(200);
     });
   });
+
+  describe('Private group hours', () => {
+    const HOURS_CLASS_ID = 'test-reg-private-hours';
+    // Two hours, a week out: one group each.
+    const base = new Date();
+    base.setUTCDate(base.getUTCDate() + 7);
+    base.setUTCHours(15, 0, 0, 0);
+    const hourA = base.toISOString();
+    const hourB = new Date(base.getTime() + 90 * 60_000).toISOString();
+
+    beforeAll(async () => {
+      await setFirestoreDoc('classes', HOURS_CLASS_ID, {
+        ...TEST_CLASS,
+        name: 'Ornament Party Test',
+        format: 'privateHours',
+        sessions: [{ dateTime: hourA }, { dateTime: hourB }],
+        durationMinutes: 60,
+        capacity: 12,
+        priceCents: 6000,
+      });
+    });
+
+    const book = (overrides: Partial<CreateRegistrationRequest>) =>
+      callFunction<CreateRegistrationRequest, CreateRegistrationResponse>({
+        functionName: 'createRegistration',
+        data: {
+          classId: HOURS_CLASS_ID,
+          customerEmail: 'host-a@test.com',
+          customerName: 'Host A',
+          quantity: 1,
+          slotStart: hourA,
+          groupSize: 8,
+          paymentNonce: 'cnon:card-nonce-ok',
+          ...overrides,
+        },
+      });
+
+    it('books one hour for the whole group at the group price', async () => {
+      const result = await book({});
+
+      expect(result.status).toBe(200);
+      const reg = result.data?.registration;
+      expect(reg?.quantity).toBe(1);
+      expect(reg?.subtotalCents).toBe(6000);
+      expect(reg?.groupSize).toBe(8);
+
+      const persisted = await getFirestoreDoc('registrations', reg?.id as string);
+      expect(new Date(persisted?.['slotStart'] as string).toISOString()).toBe(hourA);
+      expect(persisted?.['groupSize']).toBe(8);
+      expect(persisted?.['status']).toBe('confirmed');
+    });
+
+    it('refuses a second group for an hour that is taken', async () => {
+      const result = await book({
+        customerEmail: 'host-b@test.com',
+        customerName: 'Host B',
+      });
+
+      expect(result.status).not.toBe(200);
+      expect(JSON.stringify(result.error)).toMatch(/just booked/i);
+    });
+
+    it('lets another group book a different hour', async () => {
+      const result = await book({
+        customerEmail: 'host-c@test.com',
+        customerName: 'Host C',
+        slotStart: hourB,
+        groupSize: 5,
+      });
+      expect(result.status).toBe(200);
+    });
+
+    it('refuses an hour the class does not offer', async () => {
+      const result = await book({
+        customerEmail: 'host-d@test.com',
+        slotStart: new Date(base.getTime() + 30 * 60_000).toISOString(),
+      });
+      expect(result.status).not.toBe(200);
+      expect(JSON.stringify(result.error)).toMatch(/no longer available/i);
+    });
+
+    it('refuses a booking with no hour, or a group over the largest size', async () => {
+      const noHour = await book({ customerEmail: 'host-e@test.com', slotStart: undefined });
+      expect(noHour.status).not.toBe(200);
+
+      const tooBig = await book({
+        customerEmail: 'host-f@test.com',
+        slotStart: hourB,
+        groupSize: 13,
+      });
+      expect(tooBig.status).not.toBe(200);
+    });
+  });
 });

@@ -318,9 +318,12 @@ function buildConfirmedState(
     pricePaidCents: number;
     quantity: number;
     agreementsSigned?: boolean;
+    /** Private hours: the hour booked, which is what the buyer attends. */
+    slotStart?: string;
   }
 ): ConfirmedState {
-  const firstSessionIso = pc.sessions?.[0]?.dateTime ?? '';
+  const firstSessionIso =
+    details.slotStart ?? pc.sessions?.[0]?.dateTime ?? '';
   const startDate = new Date(firstSessionIso);
   const endDate = new Date(startDate.getTime() + pc.durationMinutes * 60 * 1000);
   return {
@@ -398,6 +401,7 @@ export function RegistrationWidget({
               customerEmail: res.confirmation.customerEmail,
               pricePaidCents: res.confirmation.pricePaidCents,
               quantity: res.confirmation.quantity,
+              slotStart: res.confirmation.slotStart,
             })
           );
           return true;
@@ -514,6 +518,8 @@ export function RegistrationWidget({
       notes?: string;
       paymentNonce: string;
       agreements?: InlineAgreementSigningData[];
+      slotStart?: string;
+      groupSize?: number;
     }): Promise<CreateRegistrationResponse> => {
       const createRegistration = httpsCallable<
         CreateRegistrationRequest,
@@ -566,6 +572,8 @@ export function RegistrationWidget({
       discountCode?: string;
       notes?: string;
       agreements?: InlineAgreementSigningData[];
+      slotStart?: string;
+      groupSize?: number;
     }): Promise<{ checkoutUrl: string }> => {
       const createLink = httpsCallable<
         CreateRegistrationCheckoutLinkRequest,
@@ -611,6 +619,7 @@ export function RegistrationWidget({
       pricePaidCents: number;
       quantity: number;
       agreementsSigned?: boolean;
+      slotStart?: string;
     }) => {
       if (state.status !== 'ready') return;
 

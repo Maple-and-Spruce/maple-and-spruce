@@ -60,6 +60,18 @@ export interface Registration {
    * Attendees with an `email` receive a class-details-only confirmation.
    */
   additionalAttendees?: Attendee[];
+  /**
+   * Private-hours classes only: the start of the hour this group booked. It
+   * equals one of the class's session `dateTime`s. One active registration
+   * holds an hour; `quantity` is always 1. Absent for seat classes.
+   */
+  slotStart?: Date;
+  /**
+   * Private-hours classes only: roughly how many people are coming, as the
+   * host told us. Bounded by the class's `capacity` (largest group). Not
+   * priced: the group pays one price for the hour.
+   */
+  groupSize?: number;
   /** Total amount paid in cents (includes tax) */
   pricePaidCents: number;
   /** Post-discount, pre-tax amount in cents */

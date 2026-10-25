@@ -42,6 +42,8 @@ import type {
   InlineAgreementSigningData,
 } from '@maple/ts/firebase/api-types';
 import { registrationValidation } from '@maple/ts/validation';
+import { groupPrivateHoursByDay } from '@maple/ts/domain';
+import { PrivateHourPicker } from './PrivateHourPicker';
 import { formatPhoneNumber } from './formatPhoneNumber';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -133,6 +135,8 @@ interface RegistrationCheckoutFormProps {
     customerPhone?: string;
     quantity: number;
     additionalAttendees?: Attendee[];
+    slotStart?: string;
+    groupSize?: number;
     discountCode?: string;
     notes?: string;
     paymentNonce: string;
@@ -151,6 +155,8 @@ interface RegistrationCheckoutFormProps {
     customerPhone?: string;
     quantity: number;
     additionalAttendees?: Attendee[];
+    slotStart?: string;
+    groupSize?: number;
     discountCode?: string;
     notes?: string;
     agreements?: InlineAgreementSigningData[];
@@ -162,6 +168,8 @@ interface RegistrationCheckoutFormProps {
     pricePaidCents: number;
     quantity: number;
     agreementsSigned?: boolean;
+    /** Private hours: ISO start of the hour booked. */
+    slotStart?: string;
   }) => void;
 }
 
@@ -186,6 +194,24 @@ export function RegistrationCheckoutForm({
   const additionalAttendees = useSignal<AttendeeRow[]>([]);
   const discountCode = useSignal('');
   const notes = useSignal('');
+  // Private-hours classes: the day, the hour, and the group's rough size.
+  const isPrivateHours = publicClass.format === 'privateHours';
+  const hourDays = useMemo(
+    () =>
+      isPrivateHours
+        ? groupPrivateHoursByDay(
+            publicClass.sessions,
+            publicClass.durationMinutes,
+            publicClass.bookedSlotStarts ?? []
+          )
+        : [],
+    [isPrivateHours, publicClass]
+  );
+  const selectedDay = useSignal<string | null>(
+    hourDays.find((d) => d.openCount > 0)?.key ?? hourDays[0]?.key ?? null
+  );
+  const selectedSlot = useSignal<string | null>(null);
+  const groupSize = useSignal<number | null>(null);
 
   // Quantity is derived: registrant + extras. Kept as a computed so all the
   // existing pricing/capacity code that reads `quantity.value` still works.
@@ -271,15 +297,42 @@ export function RegistrationCheckoutForm({
       quantity: quantity.value,
       notes: notes.value || undefined,
       additionalAttendees: additionalAttendeesPayload.value,
+      slotStart: isPrivateHours ? selectedSlot.value ?? undefined : undefined,
+      groupSize: isPrivateHours ? groupSize.value ?? undefined : undefined,
     })
   );
+
+  // The suite only checks the hour and group size when given, so require
+  // them here for a private-hours class.
+  const hourError = useComputed(() =>
+    isPrivateHours && showValidationErrors.value && !selectedSlot.value
+      ? 'Choose an hour for your group'
+      : null
+  );
+  const groupSizeError = useComputed(() => {
+    if (!isPrivateHours || !showValidationErrors.value) return null;
+    const n = groupSize.value;
+    if (!n || n < 1) return 'Tell us roughly how many are coming';
+    if (n > publicClass.capacity) {
+      return `Groups are up to ${publicClass.capacity} people`;
+    }
+    return null;
+  });
 
   const errors = useComputed<Record<string, string[]>>(() => {
     if (!showValidationErrors.value) return {};
     return validation.value.getErrors();
   });
 
-  const isValid = useComputed(() => validation.value.isValid());
+  const isValid = useComputed(
+    () =>
+      validation.value.isValid() &&
+      (!isPrivateHours ||
+        (!!selectedSlot.value &&
+          !!groupSize.value &&
+          groupSize.value >= 1 &&
+          groupSize.value <= publicClass.capacity))
+  );
 
   const getFieldError = (field: string): string | null => {
     const fieldErrors = errors.value[field];
@@ -389,6 +442,12 @@ export function RegistrationCheckoutForm({
           additionalAttendeesPayload.value.length > 0
             ? additionalAttendeesPayload.value
             : undefined,
+        ...(isPrivateHours
+          ? {
+              slotStart: selectedSlot.value ?? undefined,
+              groupSize: groupSize.value ?? undefined,
+            }
+          : {}),
         discountCode: discountCode.value.trim() || undefined,
         notes: notes.value.trim() || undefined,
         paymentNonce: nonce,
@@ -402,6 +461,7 @@ export function RegistrationCheckoutForm({
         pricePaidCents: result.registration.pricePaidCents,
         quantity: quantity.value,
         agreementsSigned: result.agreementsSigned,
+        slotStart: isPrivateHours ? selectedSlot.value ?? undefined : undefined,
       });
     },
     [
@@ -546,6 +606,12 @@ export function RegistrationCheckoutForm({
           additionalAttendeesPayload.value.length > 0
             ? additionalAttendeesPayload.value
             : undefined,
+        ...(isPrivateHours
+          ? {
+              slotStart: selectedSlot.value ?? undefined,
+              groupSize: groupSize.value ?? undefined,
+            }
+          : {}),
         discountCode: discountCode.value.trim() || undefined,
         notes: notes.value.trim() || undefined,
         agreements: agreementsData,
@@ -661,6 +727,19 @@ export function RegistrationCheckoutForm({
           This class is full. Registration is not available at this time.
         </Alert>
       )}
+      {isPrivateHours && (
+        <PrivateHourPicker
+          days={hourDays}
+          selectedDay={selectedDay.value}
+          selectedStart={selectedSlot.value}
+          onSelectDay={(key) => {
+            selectedDay.value = key;
+            selectedSlot.value = null;
+          }}
+          onSelectStart={(start) => (selectedSlot.value = start)}
+          error={hourError.value}
+        />
+      )}
       {/* Customer Info Section */}
       <Box>
         <Typography variant="h6" gutterBottom>
@@ -714,7 +793,29 @@ export function RegistrationCheckoutForm({
           />
         </Box>
       </Box>
+      {/* Private hours: one booking for the whole group */}
+      {isPrivateHours && (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            How many in your group?
+          </Typography>
+          <TextField
+            label={`People, up to ${publicClass.capacity}`}
+            type="number"
+            value={groupSize.value ?? ''}
+            onChange={(e) => {
+              const n = parseInt(e.target.value, 10);
+              groupSize.value = Number.isNaN(n) ? null : n;
+            }}
+            error={!!groupSizeError.value}
+            helperText={groupSizeError.value || 'A rough count is fine.'}
+            slotProps={{ htmlInput: { min: 1, max: publicClass.capacity, step: 1 } }}
+            sx={{ width: 200 }}
+          />
+        </Box>
+      )}
       {/* Additional Attendees Section */}
+      {!isPrivateHours && (
       <Box>
         <Typography variant="h6" gutterBottom>
           Anyone else coming with you?
@@ -845,6 +946,7 @@ export function RegistrationCheckoutForm({
           </Alert>
         )}
       </Box>
+      )}
       {/* Discount Code Section */}
       <Box>
         <Typography variant="h6" gutterBottom>

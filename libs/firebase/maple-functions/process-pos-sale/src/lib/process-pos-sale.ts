@@ -88,6 +88,11 @@ async function confirmHostedRegistration(
     wasCancelled: boolean;
     capacity: number;
     regQty: number;
+    /**
+     * Private hours: the hour this registration holds. A resold hour is
+     * overbooked if any other active registration holds the same start.
+     */
+    slotStartMs?: number;
     squarePaymentId: string;
     squareOrderId: string;
     squareReceiptUrl: string | null;
@@ -109,8 +114,18 @@ async function confirmHostedRegistration(
         .where('classId', '==', args.classId)
         .where('status', 'in', ['pending', 'confirmed'])
     );
-    overbooked =
-      sumRegistrationQuantities(countSnap.docs) + args.regQty > args.capacity;
+    if (args.slotStartMs !== undefined) {
+      overbooked = countSnap.docs.some((d) => {
+        const held = d.data().slotStart;
+        const heldDate: Date | undefined = held?.toDate?.() ?? held;
+        return heldDate
+          ? new Date(heldDate).getTime() === args.slotStartMs
+          : false;
+      });
+    } else {
+      overbooked =
+        sumRegistrationQuantities(countSnap.docs) + args.regQty > args.capacity;
+    }
   }
 
   txn.update(args.regRef, {
@@ -210,6 +225,7 @@ export const processPosSale = onDocumentWritten(
                 wasCancelled,
                 capacity,
                 regQty,
+                slotStartMs: webReg.slotStart?.getTime(),
                 squarePaymentId: paymentId,
                 squareOrderId: orderId,
                 squareReceiptUrl: payment.receiptUrl ?? null,

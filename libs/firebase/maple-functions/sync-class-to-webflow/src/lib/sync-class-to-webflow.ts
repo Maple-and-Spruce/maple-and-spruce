@@ -79,6 +79,8 @@ const WEBFLOW_RELEVANT_FIELDS: ReadonlyArray<keyof Class> = [
   'whatToBring',
   'minimumAge',
   'isFeatured',
+  // Private hours change the price, spots and date wording on the card.
+  'format',
 ];
 
 /**
