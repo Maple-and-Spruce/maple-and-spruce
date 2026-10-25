@@ -41,5 +41,32 @@ export default declareComponent(RegistrationWidget, {
       options: ['show', 'hide'],
       defaultValue: 'hide',
     }),
+    // First paint from CMS (no Cloud Function wait). `live` keeps the old
+    // behaviour; `cms` needs the three props below bound to the class's CMS
+    // fields on the template page, and falls back to `live` if they aren't.
+    dataSource: props.Variant({
+      name: 'Data Source',
+      options: ['live', 'cms'],
+      defaultValue: 'live',
+      group: 'First paint',
+    }),
+    cmsClassName: props.Text({
+      name: 'CMS Class Name',
+      defaultValue: '',
+      group: 'First paint',
+      tooltip: 'Bind to the class Name field.',
+    }),
+    cmsPriceCents: props.Number({
+      name: 'CMS Price (cents)',
+      defaultValue: -1,
+      group: 'First paint',
+      tooltip: 'Bind to Price Cents. -1 means unbound.',
+    }),
+    cmsSpotsRemaining: props.Number({
+      name: 'CMS Spots Remaining',
+      defaultValue: 0,
+      group: 'First paint',
+      tooltip: 'Bind to Spots Remaining.',
+    }),
   },
 });
