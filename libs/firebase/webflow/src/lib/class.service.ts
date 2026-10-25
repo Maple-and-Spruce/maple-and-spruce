@@ -18,7 +18,11 @@
 import { WebflowClient } from 'webflow-api';
 import type { CollectionItem } from 'webflow-api/api';
 import type { PublishableClass } from '@maple/ts/domain';
-import { getFirstSession, formatSessions } from '@maple/ts/domain';
+import {
+  getFirstSession,
+  formatSessions,
+  hasClassEnded,
+} from '@maple/ts/domain';
 
 /**
  * Generate a URL-safe slug from a name.
@@ -35,7 +39,10 @@ export function generateClassSlug(name: string): string {
  */
 export interface SyncClassInput {
   classEntity: PublishableClass;
-  /** If true, publish the item to the live site after sync */
+  /**
+   * If true, publish the item to the live site after sync. Ignored for a class
+   * that has already ended — see `syncClassSerialized`.
+   */
   publish?: boolean;
   /** Whether this sync is from a dev environment */
   isDev?: boolean;
@@ -370,18 +377,29 @@ export class ClassService {
       registrationCount,
     });
 
+    // A class that has ended stays a draft and is never published.
+    // `expirePastClassPages` unpublishes past class pages nightly, but most
+    // past classes keep `status: 'published'` in Firestore, so any later write
+    // (an admin edit, a late refund changing the registration count) lands
+    // here. Writing `isDraft: false` and publishing would put the page back on
+    // the live site and in the sitemap until the next sweep. A class
+    // rescheduled into the future is no longer ended, so it republishes on its
+    // next sync with the same slug, as before.
+    const ended = hasClassEnded(classEntity, new Date());
+    const isDraft = isDev || ended;
+
     if (existingItemId) {
-      webflowSlug = await this.updateItem(existingItemId, fieldData, isDev);
+      webflowSlug = await this.updateItem(existingItemId, fieldData, isDraft);
       webflowItemId = existingItemId;
       isNew = false;
     } else {
-      const newItem = await this.createItem(fieldData, isDev);
+      const newItem = await this.createItem(fieldData, isDraft);
       webflowItemId = newItem.id;
       webflowSlug = extractSlug(newItem);
       isNew = true;
     }
 
-    if (publish) {
+    if (publish && !ended) {
       await this.publishItem(webflowItemId);
     }
 
@@ -617,13 +635,14 @@ export class ClassService {
 
   private async createItem(
     fieldData: ClassWebflowFieldData,
-    isDev: boolean
+    isDraft: boolean
   ): Promise<WebflowItemWithId> {
-    // Dev-synced items are kept as drafts so a full-site publish can never make
-    // them live (mirrors the MT section/demo sync). Prod items are non-draft.
+    // Dev-synced items and ended classes are kept as drafts so a full-site
+    // publish can never make them live (mirrors the MT section/demo sync).
+    // Current prod classes are non-draft.
     const response = await this.client.collections.items.createItem(
       this.collectionId,
-      { isArchived: false, isDraft: isDev, fieldData }
+      { isArchived: false, isDraft, fieldData }
     );
 
     if (!response.id) {
@@ -641,7 +660,7 @@ export class ClassService {
   private async updateItem(
     itemId: string,
     fieldData: ClassWebflowFieldData,
-    isDev: boolean
+    isDraft: boolean
   ): Promise<string> {
     // Omit `slug` on update — Webflow auto-suffixes slug collisions on
     // create (e.g. `name-94fde` when `name` is taken), but on update it
@@ -653,7 +672,7 @@ export class ClassService {
       itemId,
       {
         isArchived: false,
-        isDraft: isDev,
+        isDraft,
         fieldData: fieldDataWithoutSlug,
       }
     );

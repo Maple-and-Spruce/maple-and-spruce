@@ -304,6 +304,23 @@ export function getRegistrationCutoff(classEntity: PublishableClass): Date {
 }
 
 /**
+ * Whether a class is over: its LAST session has finished (start + duration).
+ * A multi-week series stays current through its final meeting, and a class in
+ * progress is not over mid-lesson. A class with no sessions is never over.
+ *
+ * This is the rule `expirePastClassPages` uses to unpublish past class pages
+ * (`isClassPast` there is a barrel-free copy); the Webflow class sync uses it
+ * to keep those pages unpublished. Keep the two in agreement.
+ */
+export function hasClassEnded(classEntity: Class, now: Date): boolean {
+  if (classEntity.sessions.length === 0) return false;
+  const lastStart = Math.max(
+    ...classEntity.sessions.map((s) => ensureDate(s.dateTime).getTime())
+  );
+  return lastStart + classEntity.durationMinutes * 60 * 1000 < now.getTime();
+}
+
+/**
  * Convert a Class to PublicClass with enrichment data.
  *
  * @param classEntity The class to convert

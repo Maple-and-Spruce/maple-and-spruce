@@ -17,8 +17,9 @@
  *   1. Every `classCategories` doc without a `webflowItemId` is created in the
  *      Class Categories collection (or matched to an existing item by
  *      `firebase-id`), published, and the ID written back to Firestore.
- *   2. Every synced class is PATCHed with its category's item ID (when not
- *      already linked) and with `is-full`, then republished. `is-full` is what
+ *   2. Every live synced class is PATCHed with its category's item ID (when
+ *      not already linked) and with `is-full`, then republished. Drafts are
+ *      skipped so they stay unpublished; see `webflow-backfill-drafts.ts`. `is-full` is what
  *      the related-classes block binds its visibility to, and it only lands on
  *      an item when that class next syncs.
  *
@@ -42,6 +43,10 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { WebflowClient } from 'webflow-api';
+import {
+  splitOutDrafts,
+  updatePublishedItem,
+} from './webflow-backfill-drafts';
 
 const isProd = process.argv.includes('--prod');
 const isExecute = process.argv.includes('--execute');
@@ -89,8 +94,8 @@ interface ExistingItem {
   id: string;
   fieldData: Record<string, unknown>;
   /**
-   * Whether the item is currently unpublished. Captured so an update can put
-   * it back exactly as it found it — see `backfillClassReferences`.
+   * Whether the item is currently unpublished. Drafts are skipped so they stay
+   * that way; see `backfillClassReferences`.
    */
   isDraft: boolean;
 }
@@ -254,12 +259,12 @@ async function backfillCategories(): Promise<Map<string, string>> {
  * A class that filled up before this shipped would otherwise never show the
  * section, so it is backfilled here from the live spots count.
  *
- * **Draft state is preserved per item, never derived from `--prod`.** Most
- * items in the Classes collection are deliberately unpublished: past classes
- * that `expirePastClassPages` swept, dev-environment items, and old pilot/test
- * classes. Sending `isDraft: !isProd` here would republish every one of them —
- * putting expired class pages back on the live site and in the sitemap. Items
- * that are already drafts are updated in place and left unpublished.
+ * **Drafts are skipped, never derived from `--prod`.** Most items in the
+ * Classes collection are deliberately unpublished: past classes that
+ * `expirePastClassPages` swept, dev-environment items, and old pilot/test
+ * classes. Sending `isDraft: !isProd` here would republish every one of them,
+ * putting expired class pages back on the live site and in the sitemap. See
+ * `webflow-backfill-drafts.ts`, which every Webflow backfill shares.
  */
 async function backfillClassReferences(
   categoryItemIds: Map<string, string>
@@ -321,47 +326,29 @@ async function backfillClassReferences(
     }
   }
 
-  const publishedCount = toUpdate.filter((c) => !c.isDraft).length;
+  const { published, drafts } = splitOutDrafts(toUpdate);
   console.log(
-    `\nClasses: ${liveItems.size} items in Webflow, ${toUpdate.length} need an ` +
-      `update, ${missingCategory} blocked on a missing category.`
+    `\nClasses: ${liveItems.size} items in Webflow, ${published.length} ` +
+      `published item(s) need an update, ${drafts.length} draft(s) skipped, ` +
+      `${missingCategory} blocked on a missing category.`
   );
-  console.log(
-    `  ${publishedCount} are published (will be republished); ` +
-      `${toUpdate.length - publishedCount} are drafts (will stay unpublished).`
-  );
-  for (const c of toUpdate) {
-    console.log(
-      `  update${c.isDraft ? ' (draft)' : ''}: ${c.name} -> ${JSON.stringify(
-        c.fieldData
-      )}`
-    );
+  for (const c of published) {
+    console.log(`  update: ${c.name} -> ${JSON.stringify(c.fieldData)}`);
   }
 
   if (!isExecute) return;
 
   let written = 0;
-  for (const c of toUpdate) {
+  for (const c of published) {
     try {
-      await webflow.collections.items.updateItem(
+      await updatePublishedItem(
+        webflow.collections.items,
         classesCollectionId!,
         c.itemId,
-        {
-          isArchived: false,
-          // Put the item back exactly as we found it. Deriving this from the
-          // environment flag would republish every deliberately-unpublished
-          // class — see the note on this function.
-          isDraft: c.isDraft,
-          fieldData: c.fieldData,
-        }
+        c.fieldData,
+        // Dev and prod share one Webflow site: a dev run never publishes.
+        { publish: !isDev }
       );
-      // Only re-publish what was already live. Publishing a draft would undo
-      // the expirePastClassPages sweep.
-      if (!isDev && !c.isDraft) {
-        await webflow.collections.items.publishItem(classesCollectionId!, {
-          itemIds: [c.itemId],
-        });
-      }
       written++;
     } catch (error) {
       console.warn(
