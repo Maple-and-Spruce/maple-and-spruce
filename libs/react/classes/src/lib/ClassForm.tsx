@@ -27,6 +27,8 @@ import {
   InputAdornment,
   Switch,
   Typography,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { PickerDay, type PickerDayProps } from '@mui/x-date-pickers/PickerDay';
@@ -39,6 +41,7 @@ import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
 import type {
   Class,
   CreateClassInput,
+  ClassFormat,
   ClassSession,
   ClassStatus,
   ClassSkillLevel,
@@ -49,7 +52,10 @@ import type {
 } from '@maple/ts/domain';
 import {
   ROOMS,
+  buildPrivateHourSessions,
   describeMissingReadiness,
+  getClassFormat,
+  getSessionStartTimes,
   getRoomLabel,
   instructorReadiness,
 } from '@maple/ts/domain';
@@ -186,6 +192,12 @@ export function ClassForm({
   // FORM FIELD SIGNALS
   // ============================================================
   const name = useSignal('');
+  // Seats (people register one by one) or private hours (one group per hour).
+  const format = useSignal<ClassFormat>('seats');
+  // Private hours only: start times offered on every selected date. Stored
+  // as Dates whose hours/minutes are the time of day.
+  const startTimes = useSignal<Date[]>([]);
+  const pendingStartTime = useSignal<Date | null>(null);
   const description = useSignal('');
   const shortDescription = useSignal('');
   const instructorId = useSignal('');
@@ -239,6 +251,7 @@ export function ClassForm({
   const pendingImageFile = useSignal<File | null>(null);
 
   const isEdit = !!classItem;
+  const isPrivateHours = useComputed(() => format.value === 'privateHours');
 
   // ============================================================
   // COMPOSE SESSIONS from date+time signals
@@ -248,6 +261,16 @@ export function ClassForm({
       (a, b) => a.getTime() - b.getTime()
     );
     if (dates.length === 0) return [];
+
+    if (format.value === 'privateHours') {
+      return buildPrivateHourSessions(
+        dates,
+        startTimes.value.map((t) => ({
+          hours: t.getHours(),
+          minutes: t.getMinutes(),
+        }))
+      );
+    }
 
     return dates.map((d) => {
       let timeSource: Date | null;
@@ -278,10 +301,13 @@ export function ClassForm({
       shortDescription: shortDescription.value || undefined,
       instructorId: instructorId.value || undefined,
       sessions: composedSessions.value,
-      registrationClosesAt: registrationClosesAt.value ?? undefined,
+      format: format.value,
+      registrationClosesAt: isPrivateHours.value
+        ? undefined
+        : registrationClosesAt.value ?? undefined,
       durationMinutes: durationMinutes.value,
       capacity: capacity.value,
-      minimumEnrollment: minimumEnrollment.value,
+      minimumEnrollment: isPrivateHours.value ? null : minimumEnrollment.value,
       priceCents: priceCents.value,
       categoryId: categoryId.value || undefined,
       skillLevel: skillLevel.value,
@@ -320,6 +346,7 @@ export function ClassForm({
     shortDescription: 'Short Description',
     instructorId: 'Instructor',
     sessions: 'Class Dates',
+    format: 'How people book',
     registrationClosesAt: 'Registration Close',
     durationMinutes: 'Duration',
     capacity: 'Capacity',
@@ -346,9 +373,24 @@ export function ClassForm({
 
     if (classItem) {
       // Edit mode — populate from existing class
-      const dates = classItem.sessions.map((s) =>
+      const classFormat = getClassFormat(classItem);
+      const sessionDates = classItem.sessions.map((s) =>
         s.dateTime instanceof Date ? s.dateTime : new Date(s.dateTime)
       );
+      // A private-hours class has several sessions per day: the calendar
+      // holds each day once and the start times hold the hours.
+      const dates =
+        classFormat === 'privateHours'
+          ? sessionDates.filter(
+              (d, i) =>
+                sessionDates.findIndex((o) => isSameDay(o, d)) === i
+            )
+          : sessionDates;
+      const hourStarts = getSessionStartTimes(classItem.sessions).map((t) => {
+        const d = new Date();
+        d.setHours(t.hours, t.minutes, 0, 0);
+        return d;
+      });
 
       // Detect shared vs different times
       const times = dates.map((d) => `${d.getHours()}:${d.getMinutes()}`);
@@ -365,6 +407,9 @@ export function ClassForm({
 
       batch(() => {
         name.value = classItem.name;
+        format.value = classFormat;
+        startTimes.value = classFormat === 'privateHours' ? hourStarts : [];
+        pendingStartTime.value = null;
         description.value = classItem.description;
         shortDescription.value = classItem.shortDescription ?? '';
         instructorId.value = classItem.instructorId ?? '';
@@ -430,6 +475,9 @@ export function ClassForm({
 
       batch(() => {
         name.value = '';
+        format.value = 'seats';
+        startTimes.value = [];
+        pendingStartTime.value = null;
         description.value = '';
         shortDescription.value = '';
         instructorId.value = '';
@@ -497,6 +545,26 @@ export function ClassForm({
     const newMap = new Map(perDateTimes.value);
     newMap.delete(key);
     perDateTimes.value = newMap;
+  }, []);
+
+  const addStartTime = useCallback(() => {
+    const t = pendingStartTime.value;
+    if (!t || isNaN(t.getTime())) return;
+    const minute = t.getHours() * 60 + t.getMinutes();
+    const exists = startTimes.value.some(
+      (s) => s.getHours() * 60 + s.getMinutes() === minute
+    );
+    if (!exists) {
+      startTimes.value = [...startTimes.value, t];
+    }
+    pendingStartTime.value = null;
+  }, []);
+
+  const removeStartTime = useCallback((t: Date) => {
+    const minute = t.getHours() * 60 + t.getMinutes();
+    startTimes.value = startTimes.value.filter(
+      (s) => s.getHours() * 60 + s.getMinutes() !== minute
+    );
   }, []);
 
   // ============================================================
@@ -639,12 +707,21 @@ export function ClassForm({
         shortDescription: shortDescription.value || undefined,
         instructorId: instructorId.value || undefined,
         sessions: composedSessions.value,
-        registrationClosesAt: registrationClosesAt.value ?? undefined,
+        // Always sent, so switching back to seats is saved.
+        format: format.value,
+        // A private hour closes when it starts (per-hour cutoff), so the
+        // class-wide override does not apply.
+        registrationClosesAt: isPrivateHours.value
+          ? undefined
+          : registrationClosesAt.value ?? undefined,
         durationMinutes: durationMinutes.value,
         capacity: capacity.value,
         // null (not undefined) so clearing the field on edit removes the
-        // stored minimum instead of being dropped from the update.
-        minimumEnrollment: minimumEnrollment.value,
+        // stored minimum instead of being dropped from the update. A
+        // private-hours class has no minimum: each hour is one group.
+        minimumEnrollment: isPrivateHours.value
+          ? null
+          : minimumEnrollment.value,
         priceCents: priceCents.value,
         imageUrl: currentImageUrl || undefined,
         galleryImages:
@@ -691,6 +768,11 @@ export function ClassForm({
     () => [...selectedDates.value].sort((a, b) => a.getTime() - b.getTime()),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedDates.value]
+  );
+
+  const sortedStartTimes = [...startTimes.value].sort(
+    (a, b) =>
+      a.getHours() * 60 + a.getMinutes() - (b.getHours() * 60 + b.getMinutes())
   );
 
   // ============================================================
@@ -802,6 +884,31 @@ export function ClassForm({
               );
             })()}
 
+            {/* How people book: seats or private group hours */}
+            <Box>
+              <Typography variant="subtitle2" gutterBottom id="class-format-label">
+                How people book this class
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                value={format.value}
+                onChange={(_e, v: ClassFormat | null) => {
+                  if (v) format.value = v;
+                }}
+                aria-labelledby="class-format-label"
+                disabled={hasRegistrations}
+                size="small"
+              >
+                <ToggleButton value="seats">Seats</ToggleButton>
+                <ToggleButton value="privateHours">Private group hours</ToggleButton>
+              </ToggleButtonGroup>
+              <Typography variant="caption" color="textSecondary" component="p" sx={{ mt: 0.5 }}>
+                {isPrivateHours.value
+                  ? 'Each date is split into hours. One group books an hour and has the room to itself.'
+                  : 'People register one by one for the class dates.'}
+              </Typography>
+            </Box>
+
             {/* Row 1: Name and Status */}
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
@@ -886,7 +993,7 @@ export function ClassForm({
               }}
             >
               <Typography variant="subtitle2" gutterBottom>
-                Class Dates *
+                {isPrivateHours.value ? 'Dates and start times *' : 'Class Dates *'}
               </Typography>
 
               {/* Calendar */}
@@ -930,8 +1037,57 @@ export function ClassForm({
                 </FormHelperText>
               )}
 
+              {/* Private hours: start times shared by every date */}
+              {isPrivateHours.value && (
+                <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <TimePicker
+                      label="Start time"
+                      value={pendingStartTime.value}
+                      onChange={(v) => (pendingStartTime.value = v)}
+                      disabled={hasRegistrations}
+                      slotProps={{
+                        textField: { size: 'small', sx: { width: 180 } },
+                      }}
+                    />
+                    <Button
+                      variant="outlined"
+                      onClick={addStartTime}
+                      disabled={hasRegistrations || !pendingStartTime.value}
+                    >
+                      Add start time
+                    </Button>
+                  </Box>
+                  {sortedStartTimes.length > 0 && (
+                    <Box
+                      sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}
+                      data-testid="private-hour-start-times"
+                    >
+                      {sortedStartTimes.map((t) => (
+                        <Chip
+                          key={`${t.getHours()}:${t.getMinutes()}`}
+                          label={t.toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                          onDelete={
+                            hasRegistrations ? undefined : () => removeStartTime(t)
+                          }
+                          size="small"
+                        />
+                      ))}
+                    </Box>
+                  )}
+                  <Typography variant="caption" color="textSecondary">
+                    {composedSessions.value.length > 0
+                      ? `${composedSessions.value.length} bookable ${composedSessions.value.length === 1 ? 'hour' : 'hours'}: the same start times on every date. Each one holds the room for its group.`
+                      : 'Pick dates and add start times. Every start time is offered on every date.'}
+                  </Typography>
+                </Box>
+              )}
+
               {/* Time controls */}
-              {sortedDates.length > 0 && (
+              {!isPrivateHours.value && sortedDates.length > 0 && (
                 <Box sx={{ mt: 1 }}>
                   {sortedDates.length > 1 && (
                     <FormControlLabel
@@ -1018,7 +1174,9 @@ export function ClassForm({
               )}
             </Box>
 
-            {/* Registration Close (optional) */}
+            {/* Registration Close (optional). Seats only: a private hour
+                closes when it starts. */}
+            {!isPrivateHours.value && (
             <DateTimePicker
               label="Registration closes (optional)"
               value={registrationClosesAt.value}
@@ -1034,6 +1192,7 @@ export function ClassForm({
                 },
               }}
             />
+            )}
 
             {/* Row: Duration, Price */}
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
@@ -1093,7 +1252,7 @@ export function ClassForm({
                 />
               )}
               <TextField
-                label="Price"
+                label={isPrivateHours.value ? 'Price per group' : 'Price'}
                 value={priceDisplay.value}
                 onChange={(e) => {
                   const raw = e.target.value;
@@ -1110,7 +1269,7 @@ export function ClassForm({
                 error={!!getFieldError('priceCents')}
                 helperText={getFieldError('priceCents')}
                 disabled={hasRegistrations}
-                sx={{ width: 120 }}
+                sx={{ width: isPrivateHours.value ? 150 : 120 }}
                 required
                 slotProps={{
                   input: {
@@ -1123,15 +1282,19 @@ export function ClassForm({
             {/* Row: Capacity, Skill Level, Category */}
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
               <TextField
-                label="Capacity"
+                label={isPrivateHours.value ? 'Largest group' : 'Capacity'}
                 type="number"
                 value={capacity.value}
                 onChange={(e) => (capacity.value = parseInt(e.target.value) || 0)}
                 error={!!getFieldError('capacity')}
-                helperText={getFieldError('capacity') || 'Max participants'}
-                sx={{ width: 120 }}
+                helperText={
+                  getFieldError('capacity') ||
+                  (isPrivateHours.value ? 'Most people in one group' : 'Max participants')
+                }
+                sx={{ width: isPrivateHours.value ? 200 : 120 }}
                 required
               />
+              {!isPrivateHours.value && (
               <TextField
                 label="Minimum Enrollment"
                 type="number"
@@ -1148,6 +1311,7 @@ export function ClassForm({
                 slotProps={{ htmlInput: { min: 1, step: 1 } }}
                 sx={{ width: 220 }}
               />
+              )}
               <FormControl sx={{ minWidth: 140 }}>
                 <InputLabel id="skill-level-label">Skill Level</InputLabel>
                 <Select

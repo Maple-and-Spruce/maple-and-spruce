@@ -156,4 +156,19 @@ describe('duplicateClass', () => {
     const created = mocks.classCreate.mock.calls[0][0] as CreateClassInput;
     expect(created.galleryImages).toBeUndefined();
   });
+
+  it('keeps the booking format, so a copied private-hours class stays one', async () => {
+    mocks.classFindById.mockResolvedValue({ ...sourceClass, format: 'privateHours' });
+    mocks.classCreate.mockImplementation(async (input: CreateClassInput) => ({
+      ...input,
+      id: 'class-copy-id',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    await handler({ sourceClassId: 'class-source' });
+
+    const created = mocks.classCreate.mock.calls[0][0] as CreateClassInput;
+    expect(created.format).toBe('privateHours');
+  });
 });

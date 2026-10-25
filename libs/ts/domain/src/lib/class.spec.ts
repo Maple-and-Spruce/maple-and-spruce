@@ -10,6 +10,11 @@ import {
   getSortedSessions,
   getRegistrationCutoff,
   formatSessions,
+  getClassFormat,
+  isPrivateHoursClass,
+  buildPrivateHourSessions,
+  getSessionStartTimes,
+  sessionsOverlap,
   type Class,
   type ClassSession,
   type PublishableClass,
@@ -420,6 +425,95 @@ describe('Class domain helpers', () => {
       expect(result.sharedTime).toBe(true);
       expect(result.dateDisplay).toContain('Jun 15');
       expect(result.dateDisplay).toContain('Jun 22');
+    });
+  });
+
+  describe('class format', () => {
+    it('reads a missing format as seats', () => {
+      expect(getClassFormat({})).toBe('seats');
+      expect(isPrivateHoursClass({})).toBe(false);
+    });
+
+    it('recognises a private-hours class', () => {
+      expect(getClassFormat({ format: 'privateHours' })).toBe('privateHours');
+      expect(isPrivateHoursClass({ format: 'privateHours' })).toBe(true);
+    });
+
+    it('keeps a published private-hours class closed to the seat checkout', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-01-15T00:00:00Z'));
+      const privateHours: Class = {
+        ...baseClass,
+        format: 'privateHours',
+        status: 'published',
+        sessions: [{ dateTime: new Date('2025-06-15T14:00:00Z') }],
+      };
+      expect(isClassRegistrationOpen(privateHours)).toBe(false);
+      expect(isClassRegistrationOpen({ ...privateHours, format: 'seats' })).toBe(true);
+      vi.useRealTimers();
+    });
+  });
+
+  describe('buildPrivateHourSessions', () => {
+    const day1 = new Date(2030, 11, 5);
+    const day2 = new Date(2030, 11, 12);
+
+    it('makes one session per start time on every date, earliest first', () => {
+      const sessions = buildPrivateHourSessions(
+        [day2, day1],
+        [
+          { hours: 13, minutes: 0 },
+          { hours: 10, minutes: 0 },
+        ]
+      );
+      expect(sessions.map((s) => s.dateTime)).toEqual([
+        new Date(2030, 11, 5, 10, 0),
+        new Date(2030, 11, 5, 13, 0),
+        new Date(2030, 11, 12, 10, 0),
+        new Date(2030, 11, 12, 13, 0),
+      ]);
+    });
+
+    it('keeps a repeated start time once', () => {
+      const sessions = buildPrivateHourSessions(
+        [day1],
+        [
+          { hours: 10, minutes: 0 },
+          { hours: 10, minutes: 0 },
+        ]
+      );
+      expect(sessions).toHaveLength(1);
+    });
+
+    it('returns no sessions without dates or start times', () => {
+      expect(buildPrivateHourSessions([], [{ hours: 10, minutes: 0 }])).toEqual([]);
+      expect(buildPrivateHourSessions([day1], [])).toEqual([]);
+    });
+
+    it('round-trips through getSessionStartTimes', () => {
+      const times = [
+        { hours: 10, minutes: 0 },
+        { hours: 11, minutes: 30 },
+        { hours: 14, minutes: 30 },
+      ];
+      const sessions = buildPrivateHourSessions([day1, day2], times);
+      expect(getSessionStartTimes(sessions)).toEqual(times);
+    });
+  });
+
+  describe('sessionsOverlap', () => {
+    const at = (h: number, m = 0) => ({ dateTime: new Date(2030, 11, 5, h, m) });
+
+    it('is false when each session ends before the next starts', () => {
+      expect(sessionsOverlap([at(10), at(11, 30), at(13)], 60)).toBe(false);
+    });
+
+    it('allows back-to-back sessions', () => {
+      expect(sessionsOverlap([at(10), at(11)], 60)).toBe(false);
+    });
+
+    it('is true when a session starts before the previous one ends', () => {
+      expect(sessionsOverlap([at(13), at(10), at(10, 30)], 60)).toBe(true);
     });
   });
 });

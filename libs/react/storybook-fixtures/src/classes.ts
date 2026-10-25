@@ -72,6 +72,35 @@ export const mockClassFeatured: Class = {
   isFeatured: true,
 };
 
+/**
+ * A private-hours class: three Saturdays, two bookable hours each. Every
+ * session is one hour that a single group books.
+ */
+export const mockClassPrivateHours: Class = {
+  ...mockClass,
+  id: 'class-private-hours-001',
+  name: 'Holiday Ornament Party',
+  description:
+    'Reserve an hour in the studio for your group to decorate holiday ornaments together.',
+  shortDescription: 'A private hour for your group to decorate ornaments.',
+  format: 'privateHours',
+  sessions: [
+    { dateTime: new Date('2030-12-07T15:00:00Z') },
+    { dateTime: new Date('2030-12-07T18:00:00Z') },
+    { dateTime: new Date('2030-12-14T15:00:00Z') },
+    { dateTime: new Date('2030-12-14T18:00:00Z') },
+    { dateTime: new Date('2030-12-21T15:00:00Z') },
+    { dateTime: new Date('2030-12-21T18:00:00Z') },
+  ],
+  durationMinutes: 60,
+  capacity: 12,
+  priceCents: 6000,
+  skillLevel: 'all-levels',
+  status: 'draft',
+  room: 'spruce',
+  materialsIncluded: 'Ornaments are $10 each plus tax, paid at the studio.',
+};
+
 export const mockClassWithReferral: Class = {
   ...mockClass,
   id: 'class-005',

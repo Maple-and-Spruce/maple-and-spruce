@@ -77,6 +77,7 @@ function docToClass(
     shortDescription: data.shortDescription,
     instructorId: data.instructorId,
     sessions,
+    format: data.format === 'privateHours' ? 'privateHours' : undefined,
     durationMinutes: data.durationMinutes,
     registrationClosesAt: data.registrationClosesAt
       ? toDate(data.registrationClosesAt)

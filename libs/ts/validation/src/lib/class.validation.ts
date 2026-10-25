@@ -6,7 +6,14 @@
  */
 import { test, enforce, only } from 'vest';
 import { staticSuite } from './static-suite';
-import { GALLERY_IMAGE_MAX, ROOMS, type CreateClassInput } from '@maple/ts/domain';
+import {
+  CLASS_FORMATS,
+  GALLERY_IMAGE_MAX,
+  ROOMS,
+  sessionsOverlap,
+  type ClassFormat,
+  type CreateClassInput,
+} from '@maple/ts/domain';
 
 /**
  * Validate class form data
@@ -68,6 +75,25 @@ export const classValidation = staticSuite(
           return d.getTime() > now;
         });
         enforce(allFuture).isTruthy();
+      }
+    });
+
+    // Format (optional; missing = seats)
+    test('format', 'Format must be valid', () => {
+      if (data.format !== undefined) {
+        enforce(data.format).inside(CLASS_FORMATS as ClassFormat[]);
+      }
+    });
+
+    // Private hours each hold the room for one group, so two of them can't
+    // run at the same time.
+    test('sessions', 'Start times must be at least one session length apart', () => {
+      if (
+        data.format === 'privateHours' &&
+        Array.isArray(data.sessions) &&
+        typeof data.durationMinutes === 'number'
+      ) {
+        enforce(sessionsOverlap(data.sessions, data.durationMinutes)).isFalsy();
       }
     });
 

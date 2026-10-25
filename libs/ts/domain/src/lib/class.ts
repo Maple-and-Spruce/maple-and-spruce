@@ -28,6 +28,31 @@ export type ClassSkillLevel =
 export type ClassStatus = 'draft' | 'published' | 'cancelled' | 'completed';
 
 /**
+ * How people book a class.
+ *
+ * - `seats`: people register one by one for the class's sessions. Every
+ *   class before private hours works this way, so a missing `format` means
+ *   `seats`.
+ * - `privateHours`: each session is a separate bookable hour. One group books
+ *   one session and has the room to itself. `capacity` is the largest group,
+ *   and `priceCents` is the price per group, not per person.
+ */
+export type ClassFormat = 'seats' | 'privateHours';
+
+/** All valid class formats, for validation and pickers. */
+export const CLASS_FORMATS: readonly ClassFormat[] = ['seats', 'privateHours'];
+
+/** The format of a class, reading a missing `format` as `seats`. */
+export function getClassFormat(classEntity: Pick<Class, 'format'>): ClassFormat {
+  return classEntity.format ?? 'seats';
+}
+
+/** Whether each session of this class is a separate hour booked by one group. */
+export function isPrivateHoursClass(classEntity: Pick<Class, 'format'>): boolean {
+  return getClassFormat(classEntity) === 'privateHours';
+}
+
+/**
  * A single scheduled session of a class.
  *
  * Each session has its own start `dateTime`. Every session in a class
@@ -59,6 +84,11 @@ export interface Class {
    * when downstream code needs the non-empty guarantee at the type level.
    */
   sessions: ClassSession[];
+  /**
+   * How people book this class. `undefined` = `seats`. For `privateHours`,
+   * every session is one bookable hour; see `ClassFormat`.
+   */
+  format?: ClassFormat;
   /** Duration in minutes (applies to every session) */
   durationMinutes: number;
   /**
@@ -263,6 +293,70 @@ export function getSortedSessions(classEntity: Class): ClassSession[] {
   );
 }
 
+/** A start time within a day, in local hours and minutes. */
+export interface ClockTime {
+  hours: number;
+  minutes: number;
+}
+
+/**
+ * Build the sessions of a private-hours class: one session per start time on
+ * each date, sorted earliest-first. Start times that repeat are kept once.
+ * Times are applied in the runtime's local zone, as the class form does.
+ */
+export function buildPrivateHourSessions(
+  dates: Date[],
+  startTimes: ClockTime[]
+): ClassSession[] {
+  const seen = new Set<number>();
+  const sessions: ClassSession[] = [];
+  for (const day of dates) {
+    for (const t of startTimes) {
+      const dt = new Date(day);
+      dt.setHours(t.hours, t.minutes, 0, 0);
+      if (seen.has(dt.getTime())) continue;
+      seen.add(dt.getTime());
+      sessions.push({ dateTime: dt });
+    }
+  }
+  return sessions.sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+}
+
+/**
+ * The distinct start times used by a set of sessions, earliest in the day
+ * first. The inverse of `buildPrivateHourSessions` for loading the form.
+ */
+export function getSessionStartTimes(sessions: ClassSession[]): ClockTime[] {
+  const byMinute = new Map<number, ClockTime>();
+  for (const s of sessions) {
+    const d = ensureDate(s.dateTime);
+    byMinute.set(d.getHours() * 60 + d.getMinutes(), {
+      hours: d.getHours(),
+      minutes: d.getMinutes(),
+    });
+  }
+  return [...byMinute.entries()].sort((a, b) => a[0] - b[0]).map(([, t]) => t);
+}
+
+/**
+ * Whether any two sessions overlap, given every session lasts
+ * `durationMinutes`. A private hour that overlaps another would let two
+ * groups book the same room at once.
+ */
+export function sessionsOverlap(
+  sessions: ClassSession[],
+  durationMinutes: number
+): boolean {
+  const starts = sessions
+    .map((s) => ensureDate(s.dateTime).getTime())
+    .sort((a, b) => a - b);
+  const lengthMs = durationMinutes * 60_000;
+  for (let i = 1; i < starts.length; i++) {
+    if (starts[i] - starts[i - 1] < lengthMs) return true;
+  }
+  return false;
+}
+
 /**
  * A `Class` whose `sessions` is statically known to be non-empty.
  *
@@ -376,6 +470,10 @@ export function formatClassPrice(priceCents: number): string {
  */
 export function isClassRegistrationOpen(classEntity: Class): boolean {
   if (classEntity.status !== 'published') return false;
+  // Booking a private hour needs a slot-aware checkout, which hasn't shipped.
+  // Until then the seat checkout must not sell one: it would charge the group
+  // price per person and never claim an hour.
+  if (isPrivateHoursClass(classEntity)) return false;
   const publishable = asPublishable(classEntity);
   if (!publishable) return false;
   return getRegistrationCutoff(publishable) > new Date();
