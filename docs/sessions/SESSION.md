@@ -15,8 +15,10 @@
 - **PR 2 (stacked on #273):** customers book one hour: day and time picker plus group size in the
   registration widget; checkout allows one group per hour; receipts, confirmation, widget and
   reminders name the booked hour; Webflow shows "N hours open" and "$60 per group".
-- **Next:** PR 3, admin by hour (roster, registrations, dashboard, payouts); PR 4, waitlist per
-  hour. When an hour reopens, everyone waiting on it is emailed, the same as the class waitlist.
+- **PR 3 (stacked on #274):** admin by hour: roster grouped by day and hour, the hour and group
+  size on registrations, the class table and dashboard counting hours, payouts paying each group's
+  price for its own hour.
+- **Next:** PR 4, waitlist per hour. When an hour reopens, everyone waiting on it is emailed, the same as the class waitlist.
 
 ### MailerLite revenue attribution (2026-10-22, #262 Phase 0 + 2)
 

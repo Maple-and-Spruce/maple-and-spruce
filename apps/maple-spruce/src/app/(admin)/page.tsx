@@ -120,14 +120,16 @@ function StaffDashboard({ isAdmin, now }: { isAdmin: boolean; now: Date }) {
     const counts = todayCounts(
       lessonsState?.status === 'success' ? lessonsState.data : null,
       classesState.data,
-      now
+      now,
+      // Private hours count only when booked, so the summary needs bookings.
+      registrationsState.status === 'success' ? registrationsState.data : []
     );
     const inbox =
       isAdmin && inboxState.status === 'success'
         ? inboxSummarySuffix(inboxState.data.length)
         : '';
     return todaySummaryText(counts.lessons, counts.classes) + inbox;
-  }, [classesState, lessonsState, inboxState, isAdmin, now]);
+  }, [classesState, lessonsState, inboxState, isAdmin, now, registrationsState]);
 
   return (
     <>

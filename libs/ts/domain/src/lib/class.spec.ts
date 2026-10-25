@@ -22,6 +22,8 @@ import {
   lineItemName,
   oneSessionPerDay,
   countOpenPrivateHours,
+  buildPrivateHourRoster,
+  formatPrivateHourStart,
   type Class,
   type ClassSession,
   type PublishableClass,
@@ -602,6 +604,54 @@ describe('Class domain helpers', () => {
       expect(seats.format).toBeUndefined();
       expect(seats.bookedSlotStarts).toBeUndefined();
       expect(seats.spotsRemaining).toBe(11);
+    });
+  });
+
+  describe('private-hours roster', () => {
+    const hours = [
+      '2030-12-07T15:00:00.000Z',
+      '2030-12-07T16:30:00.000Z',
+      '2030-12-14T15:00:00.000Z',
+    ];
+    const cls = {
+      sessions: hours.map((d) => ({ dateTime: new Date(d) })),
+      durationMinutes: 60,
+    };
+    const reg = (slotStart: string, status: string, name: string) => ({
+      slotStart: new Date(slotStart),
+      status,
+      customerName: name,
+    });
+
+    it('lists every hour by day with the group holding it', () => {
+      const days = buildPrivateHourRoster(cls, [
+        reg(hours[1], 'confirmed', 'Robin Ashfield'),
+        reg(hours[2], 'pending', 'Olive Thompson'),
+      ]);
+      expect(days.map((d) => [d.label, d.bookedCount, d.hours.length])).toEqual([
+        ['Sat, Dec 7', 1, 2],
+        ['Sat, Dec 14', 1, 1],
+      ]);
+      expect(days[0].hours[0].registration).toBeUndefined();
+      expect(days[0].hours[1].registration?.customerName).toBe('Robin Ashfield');
+      expect(days[1].hours[0].registration?.customerName).toBe('Olive Thompson');
+    });
+
+    it('frees an hour whose booking was cancelled or refunded', () => {
+      const days = buildPrivateHourRoster(cls, [
+        reg(hours[0], 'cancelled', 'Robin Ashfield'),
+        reg(hours[1], 'refunded', 'Olive Thompson'),
+      ]);
+      expect(days[0].bookedCount).toBe(0);
+    });
+
+    it('keeps past hours on the roster', () => {
+      const past = { ...cls, sessions: [{ dateTime: new Date('2020-01-04T15:00:00Z') }] };
+      expect(buildPrivateHourRoster(past, [])[0].hours).toHaveLength(1);
+    });
+
+    it('names an hour by its start in studio time', () => {
+      expect(formatPrivateHourStart(hours[1])).toBe('Sat, Dec 7, 11:30 AM');
     });
   });
 });

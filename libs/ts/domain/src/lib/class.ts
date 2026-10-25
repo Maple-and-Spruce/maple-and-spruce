@@ -774,3 +774,75 @@ export function groupPrivateHoursByDay(
   }
   return [...days.values()];
 }
+
+/** One hour on a private-hours roster, with the group holding it if any. */
+export interface PrivateHourRosterHour<R> {
+  start: string;
+  label: string;
+  /** The active (pending or confirmed) registration holding this hour. */
+  registration?: R;
+}
+
+/** One day of a private-hours roster. */
+export interface PrivateHourRosterDay<R> {
+  key: string;
+  label: string;
+  hours: Array<PrivateHourRosterHour<R>>;
+  bookedCount: number;
+}
+
+/**
+ * Every hour of a private-hours class by studio day, past ones included,
+ * each with the active registration that holds it. Cancelled and refunded
+ * registrations free their hour and are left off.
+ */
+export function buildPrivateHourRoster<
+  R extends { slotStart?: Date | string; status: string },
+>(
+  classEntity: Pick<Class, 'sessions' | 'durationMinutes'>,
+  registrations: ReadonlyArray<R>,
+  timeZone = 'America/New_York'
+): Array<PrivateHourRosterDay<R>> {
+  const byStart = new Map<number, R>();
+  for (const r of registrations) {
+    if (!r.slotStart || (r.status !== 'pending' && r.status !== 'confirmed')) continue;
+    byStart.set(ensureDate(r.slotStart).getTime(), r);
+  }
+  return groupPrivateHoursByDay(
+    classEntity.sessions,
+    classEntity.durationMinutes,
+    [],
+    new Date(0),
+    timeZone
+  ).map((day) => {
+    const hours = day.hours.map((h) => ({
+      start: h.start,
+      label: h.label,
+      registration: byStart.get(new Date(h.start).getTime()),
+    }));
+    return {
+      key: day.key,
+      label: day.label,
+      hours,
+      bookedCount: hours.filter((h) => h.registration).length,
+    };
+  });
+}
+
+/**
+ * When a private hour starts, in the studio's time zone, for admin lists that
+ * don't have the class at hand: "Sat, Dec 7, 1:00 PM".
+ */
+export function formatPrivateHourStart(
+  slotStart: Date | string,
+  timeZone = 'America/New_York'
+): string {
+  return ensureDate(slotStart).toLocaleString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone,
+  });
+}

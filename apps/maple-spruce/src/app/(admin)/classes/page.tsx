@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Box, Typography, Button, Alert, Snackbar } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import type { Class, CreateClassInput } from '@maple/ts/domain';
+import { getBookableCapacity } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import {
   ClassTable,
@@ -99,7 +100,8 @@ export default function ClassesPage() {
       ...classesState,
       data: classesState.data.filter((c) => {
         const filled = registrationCounts.get(c.id) ?? 0;
-        return c.capacity === 0 || filled < c.capacity;
+        const capacity = getBookableCapacity(c);
+        return capacity === 0 || filled < capacity;
       }),
     };
   }, [classesState, filters.hideFull, registrationCounts]);

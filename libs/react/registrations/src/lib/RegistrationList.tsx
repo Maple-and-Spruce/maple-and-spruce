@@ -22,6 +22,7 @@ import type {
   RequestState,
   Class,
 } from '@maple/ts/domain';
+import { formatPrivateHourStart } from '@maple/ts/domain';
 
 interface RegistrationListProps {
   registrationsState: RequestState<Registration[]>;
@@ -137,8 +138,17 @@ export function RegistrationList({
               </TableCell>
               <TableCell>
                 {classMap.get(registration.classId) || registration.classId}
+                {registration.slotStart && (
+                  <Typography variant="caption" color="textSecondary" component="div">
+                    {formatPrivateHourStart(registration.slotStart)}
+                  </Typography>
+                )}
               </TableCell>
-              <TableCell>{registration.quantity}</TableCell>
+              <TableCell>
+                {registration.slotStart
+                  ? `Group of ~${registration.groupSize ?? '?'}`
+                  : registration.quantity}
+              </TableCell>
               <TableCell>{formatCents(registration.pricePaidCents)}</TableCell>
               <TableCell>
                 <Chip

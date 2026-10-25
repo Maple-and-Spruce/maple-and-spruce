@@ -11,6 +11,7 @@ import type {
   Registration,
   RequestState,
 } from '@maple/ts/domain';
+import { getBookableCapacity, isPrivateHoursClass } from '@maple/ts/domain';
 import type { StudioDayLesson } from '@maple/ts/firebase/api-types';
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -140,7 +141,8 @@ export function combinedStatus(
 // ---------------------------------------------------------------------------
 
 /** What a seat count needs from a registration. */
-type SeatRegistration = Pick<Registration, 'classId' | 'status' | 'quantity'>;
+type SeatRegistration = Pick<Registration, 'classId' | 'status' | 'quantity'> &
+  Partial<Pick<Registration, 'slotStart' | 'groupSize' | 'customerName'>>;
 
 function holdsASeat(reg: Pick<Registration, 'status'>): boolean {
   return reg.status === 'confirmed' || reg.status === 'pending';
@@ -231,18 +233,50 @@ function lessonItem(entry: StudioDayLesson, now: Date): AgendaItem {
   };
 }
 
+/** Active bookings of private hours, keyed by class id and hour start. */
+function heldHours(
+  registrations: ReadonlyArray<SeatRegistration>,
+): Map<string, SeatRegistration> {
+  const map = new Map<string, SeatRegistration>();
+  for (const reg of registrations) {
+    if (!holdsASeat(reg) || !reg.slotStart) continue;
+    map.set(`${reg.classId}|${toDate(reg.slotStart).getTime()}`, reg);
+  }
+  return map;
+}
+
 function classItems(
   classes: ReadonlyArray<Class>,
   counts: Map<string, number>,
   now: Date,
+  registrations: ReadonlyArray<SeatRegistration> = [],
 ): AgendaItem[] {
   const items: AgendaItem[] = [];
+  const held = heldHours(registrations);
   for (const c of classes) {
     if (c.status !== 'published') continue;
     const filled = counts.get(c.id) ?? 0;
+    const privateHours = isPrivateHoursClass(c);
     (c.sessions ?? []).forEach((session, i) => {
       const start = toDate(session.dateTime);
       if (!sameLocalDay(start, now)) return;
+      if (privateHours) {
+        // An open private hour is not on the day's agenda; a booked one is,
+        // under the group's name.
+        const reg = held.get(`${c.id}|${start.getTime()}`);
+        if (!reg) return;
+        items.push({
+          id: `class-${c.id}-${i}`,
+          kind: 'class',
+          start,
+          end: new Date(start.getTime() + (c.durationMinutes ?? 0) * 60000),
+          title: reg.customerName ? `${c.name} · ${reg.customerName}` : c.name,
+          detail: reg.groupSize ? `Private hour · about ${reg.groupSize}` : 'Private hour',
+          chip: { label: 'Booked', tone: 'class' },
+          href: `/classes/${c.id}/roster`,
+        });
+        return;
+      }
       items.push({
         id: `class-${c.id}-${i}`,
         kind: 'class',
@@ -275,7 +309,7 @@ export function buildAgenda(
     ...(lessons ?? [])
       .filter((l) => l.lesson.status !== 'cancelled')
       .map((l) => lessonItem(l, now)),
-    ...classItems(classes, counts, now),
+    ...classItems(classes, counts, now, registrations),
   ].sort((a, b) => a.start.getTime() - b.start.getTime());
 
   const remaining = all.filter((item) => item.end.getTime() > now.getTime());
@@ -319,6 +353,7 @@ export function todayCounts(
   lessons: ReadonlyArray<StudioDayLesson> | null,
   classes: ReadonlyArray<Class>,
   now: Date,
+  registrations: ReadonlyArray<SeatRegistration> = [],
 ): { lessons: number | null; classes: number } {
   return {
     lessons: lessons
@@ -328,7 +363,7 @@ export function todayCounts(
             sameLocalDay(toDate(l.lesson.scheduledAt), now),
         ).length
       : null,
-    classes: classItems(classes, new Map(), now).length,
+    classes: classItems(classes, new Map(), now, registrations).length,
   };
 }
 
@@ -407,6 +442,8 @@ export function buildRecentRegistrations(
 export interface WeekClassRow {
   id: string;
   name: string;
+  /** Fill counts hours (one group each) rather than seats. */
+  privateHours: boolean;
   filled: number;
   capacity: number;
   /** 0..1, clamped. */
@@ -448,12 +485,15 @@ export function buildClassesThisWeek(
 
   const rows = upcoming.map(({ c, session }) => {
     const filled = counts.get(c.id) ?? 0;
-    const ratio = c.capacity > 0 ? Math.min(filled / c.capacity, 1) : 0;
+    // Hours for a private-hours class (one group each), seats otherwise.
+    const capacity = getBookableCapacity(c);
+    const ratio = capacity > 0 ? Math.min(filled / capacity, 1) : 0;
     return {
       id: c.id,
       name: c.name,
+      privateHours: isPrivateHoursClass(c),
       filled,
-      capacity: c.capacity,
+      capacity,
       fillRatio: ratio,
       low: ratio < LOW_FILL_RATIO,
       detail: `${relativeDayLabel(session, now)} · ${formatClock(session)} · ${formatMoney(c.priceCents)}`,
@@ -461,6 +501,9 @@ export function buildClassesThisWeek(
   });
   return {
     rows,
-    openSeats: rows.reduce((sum, r) => sum + Math.max(r.capacity - r.filled, 0), 0),
+    // Open hours aren't seats, so private-hours classes stay out of this sum.
+    openSeats: rows
+      .filter((r) => !r.privateHours)
+      .reduce((sum, r) => sum + Math.max(r.capacity - r.filled, 0), 0),
   };
 }
