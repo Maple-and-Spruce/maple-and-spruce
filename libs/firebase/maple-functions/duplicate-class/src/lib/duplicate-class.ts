@@ -8,7 +8,7 @@
  * Behaviour:
  * - Cloned: description, instructorId, durationMinutes, capacity, priceCents,
  *   imageUrl, galleryImages, categoryId, skillLevel, location,
- *   materialsIncluded, whatToBring, minimumAge, minimumEnrollment.
+ *   materialsIncluded, whatToBring, minimumAge, minimumEnrollment, format.
  * - `underMinimumAlertSentAt` is not copied: the duplicate is a new run of
  *   the class and gets its own under-minimum alert.
  * - `isFeatured` is not copied: featuring a class on /upcoming-classes is a
@@ -57,6 +57,7 @@ export const duplicateClass = createAdminFunction<
     shortDescription: source.shortDescription,
     instructorId: source.instructorId,
     sessions: [],
+    format: source.format,
     durationMinutes: source.durationMinutes,
     capacity: source.capacity,
     priceCents: source.priceCents,

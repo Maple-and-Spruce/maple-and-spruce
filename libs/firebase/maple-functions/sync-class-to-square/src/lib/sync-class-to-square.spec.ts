@@ -323,3 +323,36 @@ describe('syncClassToSquare — unpublish & delete', () => {
     expect(mocks.clearSquareSyncIds).not.toHaveBeenCalled();
   });
 });
+
+describe('syncClassToSquare — private hours', () => {
+  it('never creates a register item for a published private-hours class', async () => {
+    const before = makeSnapshot(false);
+    const after = makeSnapshot(
+      true,
+      makeClassData({ format: 'privateHours', capacity: 12, priceCents: 6000 })
+    );
+
+    await handler(makeEvent(before, after));
+
+    expect(mocks.createClassCatalogItem).not.toHaveBeenCalled();
+    expect(mocks.deleteItem).not.toHaveBeenCalled();
+  });
+
+  it('removes the register item when a seats class switches to private hours', async () => {
+    const mirrored = {
+      squareCatalogItemId: 'SQ-ITEM-1',
+      squareVariationId: 'SQ-VAR-1',
+    };
+    const before = makeSnapshot(true, makeClassData(mirrored));
+    const after = makeSnapshot(
+      true,
+      makeClassData({ ...mirrored, format: 'privateHours' })
+    );
+
+    await handler(makeEvent(before, after));
+
+    expect(mocks.deleteItem).toHaveBeenCalledWith('SQ-ITEM-1');
+    expect(mocks.clearSquareSyncIds).toHaveBeenCalledWith('class-001');
+    expect(mocks.createClassCatalogItem).not.toHaveBeenCalled();
+  });
+});

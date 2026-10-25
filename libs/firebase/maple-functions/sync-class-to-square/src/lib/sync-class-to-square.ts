@@ -26,6 +26,7 @@ import {
 } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import type { Class } from '@maple/ts/domain';
+import { isPrivateHoursClass } from '@maple/ts/domain';
 import {
   Square,
   SQUARE_SECRET_NAMES,
@@ -93,6 +94,7 @@ const SQUARE_RELEVANT_FIELDS: ReadonlyArray<keyof Class> = [
   'priceCents',
   'capacity',
   'status',
+  'format',
 ];
 
 function isSquareRelevantChange(
@@ -149,8 +151,11 @@ export const syncClassToSquare = onDocumentWritten(
       const becameUnpublished =
         before?.status === 'published' && after.status !== 'published';
 
-      // Case 2: class is no longer published — tear down the Square mirror
-      if (becameUnpublished || after.status !== 'published') {
+      // Case 2: class is no longer published — tear down the Square mirror.
+      // A private-hours class is never sold at the register: a POS sale books
+      // a seat, not an hour, so it is treated like an unpublished class.
+      const privateHours = isPrivateHoursClass(after);
+      if (becameUnpublished || after.status !== 'published' || privateHours) {
         if (after.squareCatalogItemId) {
           console.log(
             'Class unpublished/non-publishable, removing Square catalog item',
@@ -158,6 +163,7 @@ export const syncClassToSquare = onDocumentWritten(
               classId: after.id,
               squareItemId: after.squareCatalogItemId,
               status: after.status,
+              privateHours,
             }
           );
           await square.catalogService.deleteItem(after.squareCatalogItemId);

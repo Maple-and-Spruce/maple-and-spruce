@@ -806,4 +806,57 @@ describe('classValidation', () => {
       expect(result.hasErrors('capacity')).toBe(false);
     });
   });
+
+  describe('format field', () => {
+    it('accepts seats, private hours, or no format', () => {
+      expect(classValidation({ ...validClass, format: 'seats' }).hasErrors('format')).toBe(false);
+      expect(classValidation({ ...validClass, format: 'privateHours' }).hasErrors('format')).toBe(false);
+      expect(classValidation({ ...validClass }).hasErrors('format')).toBe(false);
+    });
+
+    it('rejects an unknown format', () => {
+      const result = classValidation({
+        ...validClass,
+        format: 'drop-in' as unknown as CreateClassInput['format'],
+      });
+      expect(result.hasErrors('format')).toBe(true);
+    });
+  });
+
+  describe('private hours sessions', () => {
+    const hour = (h: number, m = 0) => ({
+      dateTime: new Date(Date.UTC(2030, 11, 5, h, m)),
+    });
+
+    it('accepts hours that do not overlap', () => {
+      const result = classValidation({
+        ...validClass,
+        format: 'privateHours',
+        durationMinutes: 60,
+        sessions: [hour(15), hour(16, 30), hour(18)],
+      });
+      expect(result.hasErrors('sessions')).toBe(false);
+    });
+
+    it('rejects start times closer together than one session', () => {
+      const result = classValidation({
+        ...validClass,
+        format: 'privateHours',
+        durationMinutes: 60,
+        sessions: [hour(15), hour(15, 30)],
+      });
+      expect(result.getErrors('sessions')).toContain(
+        'Start times must be at least one session length apart'
+      );
+    });
+
+    it('leaves overlapping seat sessions alone', () => {
+      const result = classValidation({
+        ...validClass,
+        durationMinutes: 60,
+        sessions: [hour(15), hour(15, 30)],
+      });
+      expect(result.hasErrors('sessions')).toBe(false);
+    });
+  });
 });

@@ -1927,3 +1927,45 @@ while its project's widget site key is empty. To roll back, set `.env.prod` back
   `gcloud firestore fields ttls update`); without it, spent windows accumulate but are harmless.
 - The enforce PR must keep `.env.dev` at `monitor` (or supply a debug token), because the
   post-merge E2E against dev runs the widgets without reCAPTCHA.
+
+---
+
+## ADR-038: Private Group Hours Are a Class Format, With Each Hour a Session
+
+**Status:** Accepted
+**Date:** 2026-10-25
+
+### Context
+Holiday ornament parties sell a private hour in the Spruce Room to one group, for a flat fee per
+group, on one to three dates. Staff ring up whatever the group makes at the register afterwards.
+This is not a seat sale: the host picks the hour, the whole room is theirs, and the group size
+only bounds the booking.
+
+Katie should set these up and manage them on the same class pages she already uses (#272).
+
+### Decision
+`Class.format` is `'seats'` (the default, and what a missing field means) or `'privateHours'`. For
+private hours:
+
+- **Every session is one bookable hour.** The form builds sessions as dates × start times
+  (`buildPrivateHourSessions`). Validation refuses hours that overlap (`sessionsOverlap`).
+- `capacity` is the largest group and `priceCents` is the price per group.
+- There is no minimum enrollment and no class-wide registration cutoff. Each hour closes when it
+  starts.
+- Ornaments are a plain Square POS item and are never tied to the booking.
+
+### Why sessions, not a new slot list
+Sessions already drive the room calendar (so each hour blocks the Spruce Room on its own), the
+room conflict check in the form, the calendar feeds and the Webflow date fields. A separate
+`slots[]` would have to be threaded through all of them.
+
+### Why a format, not a new entity
+A separate booking type would be cleaner internally, but it would copy the whole class pipeline:
+Webflow sync, the registration widget, Square checkout with tax, confirmation and reminder emails,
+refunds, the roster and attribution. It would also give Katie a second place to look.
+
+### Consequences
+- Anything that counts seats has to learn the hour rule. Until it does (PR 2 of #272),
+  `isClassRegistrationOpen` is false for private hours, and `syncClassToSquare` treats them like an
+  unpublished class (no POS item), so neither path can sell one as a seat.
+- A private-hours class should stay a draft until hour booking ships.

@@ -531,4 +531,91 @@ describe('ClassForm', { timeout: 30_000 }, () => {
       ).not.toBeDisabled();
     });
   });
+
+  describe('private group hours', () => {
+    const hours = [
+      new Date('2099-12-05T10:00:00'),
+      new Date('2099-12-05T13:00:00'),
+      new Date('2099-12-12T10:00:00'),
+      new Date('2099-12-12T13:00:00'),
+    ];
+    const privateHoursClass = {
+      id: 'class-ph',
+      name: 'Holiday Ornament Party',
+      description: 'A private hour for your group to decorate ornaments.',
+      format: 'privateHours',
+      sessions: hours.map((dateTime) => ({ dateTime })),
+      durationMinutes: 60,
+      capacity: 12,
+      priceCents: 6000,
+      skillLevel: 'all-levels',
+      status: 'draft',
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+    } as Class;
+
+    it('loads a private-hours class as dates plus shared start times', () => {
+      render(<ClassForm {...defaultProps} classItem={privateHoursClass} />);
+
+      expect(
+        screen.getByRole('button', { name: 'Private group hours' })
+      ).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('spinbutton', { name: /Largest group/ })).toHaveValue(12);
+      expect(screen.getByRole('textbox', { name: /Price per group/ })).toHaveValue('60.00');
+      expect(screen.queryByRole('spinbutton', { name: /Minimum Enrollment/ })).toBeNull();
+      expect(screen.queryByLabelText(/Registration closes/)).toBeNull();
+
+      const times = screen.getByTestId('private-hour-start-times');
+      expect(times).toHaveTextContent('10:00 AM');
+      expect(times).toHaveTextContent('1:00 PM');
+      expect(screen.getByText(/4 bookable hours/)).toBeInTheDocument();
+    });
+
+    it('saves the format and every hour as its own session', async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <ClassForm {...defaultProps} onSubmit={onSubmit} classItem={privateHoursClass} />
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Update' }));
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+      const input = onSubmit.mock.calls[0][0];
+      expect(input.format).toBe('privateHours');
+      expect(input.sessions.map((s: { dateTime: Date }) => s.dateTime)).toEqual(hours);
+      expect(input.minimumEnrollment).toBeNull();
+      expect(input.registrationClosesAt).toBeUndefined();
+    });
+
+    it('relabels price and capacity when switched to private hours', async () => {
+      const user = userEvent.setup();
+      const seatsClass = {
+        ...privateHoursClass,
+        format: undefined,
+        sessions: [{ dateTime: futureDate }],
+        minimumEnrollment: 4,
+      } as Class;
+      render(<ClassForm {...defaultProps} classItem={seatsClass} />);
+
+      expect(screen.getByRole('spinbutton', { name: /Capacity/ })).toBeInTheDocument();
+      expect(screen.getByRole('spinbutton', { name: /Minimum Enrollment/ })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Private group hours' }));
+
+      expect(screen.getByRole('spinbutton', { name: /Largest group/ })).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: /Price per group/ })).toBeInTheDocument();
+      expect(screen.queryByRole('spinbutton', { name: /Minimum Enrollment/ })).toBeNull();
+      expect(
+        screen.getByText(/Pick dates and add start times/)
+      ).toBeInTheDocument();
+    });
+
+    it('locks the format once a class has registrations', () => {
+      render(
+        <ClassForm {...defaultProps} classItem={privateHoursClass} registrationCount={1} />
+      );
+      expect(screen.getByRole('button', { name: 'Seats' })).toBeDisabled();
+    });
+  });
 });

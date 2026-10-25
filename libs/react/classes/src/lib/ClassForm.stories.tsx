@@ -11,6 +11,7 @@ import {
   mockClassWithMinimum,
   mockClassFeatured,
   mockClassCategoriesWithPool,
+  mockClassPrivateHours,
 } from '@maple/react/storybook-fixtures';
 import {
   mockActiveInstructors,
@@ -820,5 +821,69 @@ export const InstructorsLoadingShowsNoWarning: Story = {
     const canvas = await waitForDialog();
     await expect(canvas.queryByTestId('instructor-not-ready-alert')).not.toBeInTheDocument();
     await expect(canvas.queryByText(/isn't cleared to teach/i)).not.toBeInTheDocument();
+  },
+};
+
+// ============================================================
+// PRIVATE GROUP HOURS
+// ============================================================
+
+/**
+ * A private-hours class loads as its dates plus the shared start times, and
+ * saves every hour back as its own session.
+ */
+export const EditPrivateHours: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: mockClassPrivateHours,
+    onSubmit: fn(),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    expect(
+      canvas.getByRole('button', { name: 'Private group hours' })
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(canvas.getByLabelText(/largest group/i)).toHaveValue(12);
+    expect(canvas.getByLabelText(/price per group/i)).toHaveValue('60.00');
+    expect(canvas.queryByLabelText(/minimum enrollment/i)).toBeNull();
+    expect(canvas.getByText(/6 bookable hours/i)).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: 'privateHours',
+          minimumEnrollment: null,
+          sessions: mockClassPrivateHours.sessions,
+        })
+      );
+    });
+  },
+};
+
+/**
+ * Choosing "Private group hours" on a new class swaps the seat fields for
+ * the group ones and asks for start times.
+ */
+export const SwitchToPrivateHours: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+    expect(canvas.getByLabelText(/^capacity/i)).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Private group hours' }));
+
+    await waitFor(() => {
+      expect(canvas.getByLabelText(/largest group/i)).toBeInTheDocument();
+    });
+    expect(canvas.getByLabelText(/price per group/i)).toBeInTheDocument();
+    expect(canvas.queryByLabelText(/minimum enrollment/i)).toBeNull();
+    expect(canvas.getByRole('button', { name: /add start time/i })).toBeDisabled();
+    expect(canvas.getByText(/pick dates and add start times/i)).toBeInTheDocument();
   },
 };

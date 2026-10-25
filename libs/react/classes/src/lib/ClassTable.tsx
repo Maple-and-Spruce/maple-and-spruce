@@ -28,7 +28,11 @@ import type {
   Instructor,
   RequestState,
 } from '@maple/ts/domain';
-import { formatClassPrice, formatWeekdayTimeBlock } from '@maple/ts/domain';
+import {
+  formatClassPrice,
+  formatWeekdayTimeBlock,
+  isPrivateHoursClass,
+} from '@maple/ts/domain';
 import { surfaces, borders, radii, shadows } from '@maple/react/theme';
 
 interface ClassTableProps {
@@ -63,6 +67,7 @@ interface ClassRow {
   imageUrl?: string;
   /** Staff pick for the large card on /upcoming-classes. */
   isFeatured: boolean;
+  isPrivateHours: boolean;
   /** Weekly-planning schedule summary — day(s) of week + time block, dates secondary. */
   dayDisplay: string;
   timeBlockDisplay: string;
@@ -113,6 +118,7 @@ export function ClassTable({
         name: classItem.name,
         imageUrl: classItem.imageUrl,
         isFeatured: classItem.isFeatured === true,
+        isPrivateHours: isPrivateHoursClass(classItem),
         dayDisplay: schedule.dayDisplay,
         timeBlockDisplay: schedule.timeBlockDisplay,
         dateRangeDisplay: schedule.dateRangeDisplay,
@@ -163,6 +169,9 @@ export function ClassTable({
             </Typography>
             {params.row.isFeatured && (
               <Chip label="Featured" size="small" color="primary" variant="outlined" />
+            )}
+            {params.row.isPrivateHours && (
+              <Chip label="Private hours" size="small" variant="outlined" />
             )}
           </Stack>
         ),

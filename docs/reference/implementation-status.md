@@ -157,6 +157,16 @@ Phased rollout of customer-facing interactions on the Webflow site.
 | Test page | **Complete** | `mapleandsprucefolkarts.com/test-class-enrollment` |
 | CMS-bound class pages | Not Started | Needs #139-145, legacy #202 |
 
+### Private group hours (#272, In Progress)
+
+A class can be booked as private hours: one group per hour, a flat price per group (ADR-038).
+
+| PR | Status | Scope |
+|----|--------|-------|
+| 1. Format, hours and the admin form | **In Review** | `Class.format`, hours as sessions, class form, duplicate, list chip; off sale until PR 2 |
+| 2. Booking an hour | Not Started | Day and time pickers in the widget, `slotId`/`groupSize`, slot-aware checkout, roster by hour |
+| 3. Waitlist by hour | Not Started | Waitlist per hour or any hour, email when an hour reopens |
+
 ### Image2Pages Widget (PR pending)
 
 | Feature | Status | Location |
