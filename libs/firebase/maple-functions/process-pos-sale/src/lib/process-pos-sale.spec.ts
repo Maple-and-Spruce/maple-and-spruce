@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 /**
  * Tests for processPosSale — the Firestore-triggered worker that turns a
@@ -353,6 +353,123 @@ describe('processPosSale — dedup', () => {
       })
     );
     expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  describe('a late payment on a reaper-cancelled private hour', () => {
+    const HOUR_10 = new Date('2030-06-15T14:00:00.000Z');
+    const HOUR_11 = new Date('2030-06-15T15:00:00.000Z');
+
+    function cancelledHourHold() {
+      mocks.getOrder.mockResolvedValue({
+        orderId: 'ORDER-1',
+        referenceId: 'reg-hour-1',
+        lineItems: [{ catalogObjectId: 'VAR_PH', quantity: 1 }],
+      });
+      mocks.findById.mockResolvedValue({
+        id: 'reg-hour-1',
+        source: 'web',
+        status: 'cancelled',
+        classId: 'class-ph',
+        quantity: 1,
+        slotStart: HOUR_10,
+        groupSize: 6,
+      });
+      mocks.freshReg = { status: 'cancelled' };
+      // `capacity` is the largest group, not a count of bookings.
+      mocks.classFindById.mockResolvedValue({ id: 'class-ph', capacity: 8 });
+    }
+
+    const outcomeLogged = (outcome: string) =>
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`registration reg-hour-1 (was cancelled) → ${outcome}`)
+      );
+
+    let logSpy: ReturnType<typeof vi.spyOn>;
+    beforeEach(() => {
+      logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    });
+    afterEach(() => {
+      logSpy.mockRestore();
+    });
+
+    it('is overbooked when another active registration holds the same hour (Timestamp)', async () => {
+      cancelledHourHold();
+      mocks.countDocs = [
+        { data: () => ({ quantity: 1, slotStart: { toDate: () => new Date(HOUR_10) } }) },
+      ];
+
+      await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+      expect(mocks.txnUpdate).toHaveBeenCalledWith(
+        { id: 'reg-hour-1' },
+        expect.objectContaining({ status: 'confirmed' })
+      );
+      outcomeLogged('overbooked');
+      expect(mocks.mailAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.objectContaining({
+            subject: expect.stringMatching(/overbooked/i),
+          }),
+        })
+      );
+    });
+
+    it('is overbooked when the same hour is held as a plain Date', async () => {
+      cancelledHourHold();
+      mocks.countDocs = [{ data: () => ({ quantity: 1, slotStart: new Date(HOUR_10) }) }];
+
+      await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+      outcomeLogged('overbooked');
+      expect(mocks.mailAdd).toHaveBeenCalled();
+    });
+
+    it('is confirmed when the hour is free, however many other hours are booked', async () => {
+      cancelledHourHold();
+      // More active bookings than `capacity`: a seat count would call this
+      // overbooked, but each one holds a different hour.
+      mocks.countDocs = Array.from({ length: 10 }, (_, i) => ({
+        data: () => ({
+          quantity: 1,
+          slotStart: { toDate: () => new Date(HOUR_11.getTime() + i * 3_600_000) },
+        }),
+      }));
+
+      await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+      expect(mocks.txnUpdate).toHaveBeenCalledWith(
+        { id: 'reg-hour-1' },
+        expect.objectContaining({ status: 'confirmed' })
+      );
+      outcomeLogged('confirmed');
+      expect(mocks.mailAdd).not.toHaveBeenCalled();
+    });
+  });
+
+  it('confirms a cancelled seat hold without alerting when seats remain', async () => {
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      referenceId: 'reg-hosted-4',
+      lineItems: [{ catalogObjectId: 'VAR_A', quantity: 2 }],
+    });
+    mocks.findById.mockResolvedValue({
+      id: 'reg-hosted-4',
+      source: 'web',
+      status: 'cancelled',
+      classId: 'class-1',
+      quantity: 2,
+    });
+    mocks.freshReg = { status: 'cancelled' };
+    mocks.classFindById.mockResolvedValue({ id: 'class-1', capacity: 3 });
+    mocks.countDocs = [{ data: () => ({ quantity: 1 }) }];
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.txnUpdate).toHaveBeenCalledWith(
+      { id: 'reg-hosted-4' },
+      expect.objectContaining({ status: 'confirmed' })
+    );
+    expect(mocks.mailAdd).not.toHaveBeenCalled();
   });
 
   it('skips an order already turned into a registration (squareOrderId idempotency)', async () => {

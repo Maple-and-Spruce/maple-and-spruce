@@ -15,6 +15,13 @@ import {
   buildPrivateHourSessions,
   getSessionStartTimes,
   sessionsOverlap,
+  getBookableCapacity,
+  isPrivateHourBookable,
+  groupPrivateHoursByDay,
+  formatPrivateHour,
+  lineItemName,
+  oneSessionPerDay,
+  countOpenPrivateHours,
   type Class,
   type ClassSession,
   type PublishableClass,
@@ -439,17 +446,21 @@ describe('Class domain helpers', () => {
       expect(isPrivateHoursClass({ format: 'privateHours' })).toBe(true);
     });
 
-    it('keeps a published private-hours class closed to the seat checkout', () => {
+    it('stays open while any hour is still ahead, even after the first has passed', () => {
       vi.useFakeTimers();
-      vi.setSystemTime(new Date('2025-01-15T00:00:00Z'));
+      vi.setSystemTime(new Date('2025-06-15T15:30:00Z'));
       const privateHours: Class = {
         ...baseClass,
         format: 'privateHours',
         status: 'published',
-        sessions: [{ dateTime: new Date('2025-06-15T14:00:00Z') }],
+        sessions: [
+          { dateTime: new Date('2025-06-15T15:00:00Z') },
+          { dateTime: new Date('2025-06-15T17:00:00Z') },
+        ],
       };
+      expect(isClassRegistrationOpen(privateHours)).toBe(true);
+      vi.setSystemTime(new Date('2025-06-15T17:30:00Z'));
       expect(isClassRegistrationOpen(privateHours)).toBe(false);
-      expect(isClassRegistrationOpen({ ...privateHours, format: 'seats' })).toBe(true);
       vi.useRealTimers();
     });
   });
@@ -514,6 +525,83 @@ describe('Class domain helpers', () => {
 
     it('is true when a session starts before the previous one ends', () => {
       expect(sessionsOverlap([at(13), at(10), at(10, 30)], 60)).toBe(true);
+    });
+  });
+
+  describe('booking private hours', () => {
+    // Sat Dec 7 2030: 10:00, 11:30 and 1:00 ET (EST is UTC-5).
+    const ten = '2030-12-07T15:00:00.000Z';
+    const eleven30 = '2030-12-07T16:30:00.000Z';
+    const one = '2030-12-07T18:00:00.000Z';
+    const nextSat = '2030-12-14T15:00:00.000Z';
+    const hoursClass: Class = {
+      ...baseClass,
+      format: 'privateHours',
+      durationMinutes: 60,
+      capacity: 12,
+      priceCents: 6000,
+      sessions: [ten, eleven30, one, nextSat].map((d) => ({ dateTime: new Date(d) })),
+    };
+    const before = new Date('2030-12-01T00:00:00Z');
+
+    it('sells hours, not seats', () => {
+      expect(getBookableCapacity(hoursClass)).toBe(4);
+      expect(getBookableCapacity({ ...hoursClass, format: 'seats' })).toBe(12);
+    });
+
+    it('books only a real, future hour of a private-hours class', () => {
+      expect(isPrivateHourBookable(hoursClass, new Date(one), before)).toBe(true);
+      expect(isPrivateHourBookable(hoursClass, new Date('2030-12-07T19:00:00Z'), before)).toBe(false);
+      expect(isPrivateHourBookable(hoursClass, new Date(ten), new Date(ten))).toBe(false);
+      expect(isPrivateHourBookable({ ...hoursClass, format: 'seats' }, new Date(one), before)).toBe(false);
+    });
+
+    it('groups future hours by studio day and marks the booked ones', () => {
+      const days = groupPrivateHoursByDay(hoursClass.sessions, 60, [new Date(one)], before);
+      expect(days.map((d) => [d.key, d.label, d.openCount])).toEqual([
+        ['2030-12-07', 'Sat, Dec 7', 2],
+        ['2030-12-14', 'Sat, Dec 14', 1],
+      ]);
+      expect(days[0].hours).toEqual([
+        { start: ten, label: '10:00–11:00 AM', booked: false },
+        { start: eleven30, label: '11:30 AM–12:30 PM', booked: false },
+        { start: one, label: '1:00–2:00 PM', booked: true },
+      ]);
+    });
+
+    it('leaves out hours that have already started', () => {
+      const days = groupPrivateHoursByDay(hoursClass.sessions, 60, [], new Date(eleven30));
+      expect(days[0].hours.map((h) => h.start)).toEqual([one]);
+    });
+
+    it('names the hour on receipts and emails', () => {
+      expect(formatPrivateHour(eleven30, 60)).toBe('Sat, Dec 7, 11:30 AM–12:30 PM');
+      expect(lineItemName(hoursClass, one)).toBe(`${baseClass.name}, Sat, Dec 7, 1:00–2:00 PM`);
+      expect(lineItemName({ ...hoursClass, format: 'seats' }, one)).toBe(baseClass.name);
+      expect(lineItemName(hoursClass)).toBe(baseClass.name);
+    });
+
+    it('lists each day once', () => {
+      expect(oneSessionPerDay(hoursClass.sessions).map((s) => s.dateTime.toISOString())).toEqual([
+        ten,
+        nextSat,
+      ]);
+    });
+
+    it('counts only hours still ahead as open', () => {
+      expect(countOpenPrivateHours(hoursClass, [new Date(one)], new Date(eleven30))).toBe(1);
+      expect(countOpenPrivateHours(hoursClass, [], before)).toBe(4);
+    });
+
+    it('tells the public which hours are taken and how many are open', () => {
+      const pc = toPublicClass(hoursClass, undefined, undefined, 1, [new Date(one)]);
+      expect(pc.format).toBe('privateHours');
+      expect(pc.bookedSlotStarts).toEqual([one]);
+      expect(pc.spotsRemaining).toBe(3);
+      const seats = toPublicClass({ ...hoursClass, format: undefined }, undefined, undefined, 1);
+      expect(seats.format).toBeUndefined();
+      expect(seats.bookedSlotStarts).toBeUndefined();
+      expect(seats.spotsRemaining).toBe(11);
     });
   });
 });

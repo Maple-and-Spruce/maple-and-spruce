@@ -11,7 +11,7 @@ import {
   ClassCategoryRepository,
   RegistrationRepository,
 } from '@maple/firebase/database';
-import { toPublicClass } from '@maple/ts/domain';
+import { isPrivateHoursClass, toPublicClass } from '@maple/ts/domain';
 import type {
   GetPublicClassRequest,
   GetPublicClassResponse,
@@ -34,21 +34,27 @@ export async function getPublicClass(
   }
 
   // Fetch enrichment data in parallel
-  const [instructor, category, registrationCount] = await Promise.all([
-    classEntity.instructorId
-      ? InstructorRepository.findById(classEntity.instructorId)
-      : Promise.resolve(undefined),
-    classEntity.categoryId
-      ? ClassCategoryRepository.findById(classEntity.categoryId)
-      : Promise.resolve(undefined),
-    RegistrationRepository.countByClassId(classEntity.id),
-  ]);
+  const [instructor, category, registrationCount, heldSlotStarts] =
+    await Promise.all([
+      classEntity.instructorId
+        ? InstructorRepository.findById(classEntity.instructorId)
+        : Promise.resolve(undefined),
+      classEntity.categoryId
+        ? ClassCategoryRepository.findById(classEntity.categoryId)
+        : Promise.resolve(undefined),
+      RegistrationRepository.countByClassId(classEntity.id),
+      // Private hours: which hours are taken, so the widget can mark them.
+      isPrivateHoursClass(classEntity)
+        ? RegistrationRepository.findHeldSlotStarts(classEntity.id)
+        : Promise.resolve([]),
+    ]);
 
   const publicClass = toPublicClass(
     classEntity,
     instructor?.name,
     category?.name,
     registrationCount,
+    heldSlotStarts,
   );
 
   return { class: publicClass };

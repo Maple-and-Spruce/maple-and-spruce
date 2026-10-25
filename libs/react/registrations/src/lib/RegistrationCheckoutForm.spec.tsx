@@ -858,3 +858,122 @@ describe('RegistrationCheckoutForm — Apple Pay availability', () => {
     expect(screen.queryByText(/Pay with Apple Pay/)).not.toBeInTheDocument();
   });
 });
+
+describe('RegistrationCheckoutForm — private group hours', () => {
+  // Sat Dec 5 2099 at 10:00, 11:30 and 1:00 ET; the 11:30 hour is taken.
+  const hoursClass = {
+    ...mockPublicClass,
+    id: 'class-hours',
+    name: 'Holiday Ornament Party',
+    format: 'privateHours',
+    capacity: 12,
+    priceCents: 6000,
+    spotsRemaining: 2,
+    sessions: [
+      { dateTime: '2099-12-05T15:00:00.000Z' },
+      { dateTime: '2099-12-05T16:30:00.000Z' },
+      { dateTime: '2099-12-05T18:00:00.000Z' },
+    ],
+    bookedSlotStarts: ['2099-12-05T16:30:00.000Z'],
+  } as unknown as PublicClass;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockTokenizeImpl = () => Promise.resolve({ nonce: 'test-nonce' });
+  });
+  afterEach(() => cleanup());
+
+  function renderForm(onSubmit = vi.fn().mockResolvedValue(mockRegistrationResponse)) {
+    const onSuccess = vi.fn();
+    render(
+      <RegistrationCheckoutForm
+        publicClass={hoursClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={vi.fn().mockResolvedValue(makeCostResponse(1, 6000))}
+        onSubmit={onSubmit}
+        onSuccess={onSuccess}
+      />
+    );
+    return { onSubmit, onSuccess };
+  }
+
+  it('asks for a day and an hour, and a group size instead of extra people', async () => {
+    renderForm();
+
+    expect(screen.getByRole('heading', { name: 'Pick a day' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sat, Dec 5/ })).toHaveTextContent('2 open');
+    expect(screen.getByRole('button', { name: /10:00–11:00 AM/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /11:30 AM–12:30 PM/ })).toBeDisabled();
+    expect(screen.getByRole('heading', { name: 'How many in your group?' })).toBeInTheDocument();
+    expect(screen.queryByText(/Anyone else coming/)).toBeNull();
+  });
+
+  it('will not submit without an hour and a group size', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderForm();
+    fireEvent.change(screen.getByLabelText(/Full Name/), { target: { value: 'Robin Ashfield' } });
+    fireEvent.change(screen.getByLabelText(/Email Address/), {
+      target: { value: 'robin@example.com' },
+    });
+
+    const pay = await screen.findByRole('button', { name: /Register & Pay/ });
+    await waitFor(() => expect(pay).toBeEnabled());
+    await user.click(pay);
+
+    await waitFor(() => {
+      expect(screen.getByText('Choose an hour for your group')).toBeInTheDocument();
+      expect(screen.getByText(/roughly how many are coming/)).toBeInTheDocument();
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('books the chosen hour once for the whole group', async () => {
+    const user = userEvent.setup();
+    const { onSubmit, onSuccess } = renderForm();
+
+    await user.click(screen.getByRole('button', { name: /1:00–2:00 PM/ }));
+    fireEvent.change(screen.getByLabelText(/People, up to 12/), { target: { value: '8' } });
+    fireEvent.change(screen.getByLabelText(/Full Name/), { target: { value: 'Robin Ashfield' } });
+    fireEvent.change(screen.getByLabelText(/Email Address/), {
+      target: { value: 'robin@example.com' },
+    });
+
+    const pay = await screen.findByRole('button', { name: /Register & Pay/ });
+    await waitFor(() => expect(pay).toBeEnabled());
+    await user.click(pay);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({
+      classId: 'class-hours',
+      quantity: 1,
+      slotStart: '2099-12-05T18:00:00.000Z',
+      groupSize: 8,
+    });
+    expect(onSubmit.mock.calls[0][0].additionalAttendees).toBeUndefined();
+    await waitFor(() =>
+      expect(onSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({ slotStart: '2099-12-05T18:00:00.000Z' })
+      )
+    );
+  });
+
+  it('refuses a group bigger than the largest group', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderForm();
+    await user.click(screen.getByRole('button', { name: /10:00–11:00 AM/ }));
+    fireEvent.change(screen.getByLabelText(/People, up to 12/), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText(/Full Name/), { target: { value: 'Robin Ashfield' } });
+    fireEvent.change(screen.getByLabelText(/Email Address/), {
+      target: { value: 'robin@example.com' },
+    });
+    const pay = await screen.findByRole('button', { name: /Register & Pay/ });
+    await waitFor(() => expect(pay).toBeEnabled());
+    await user.click(pay);
+
+    await waitFor(() =>
+      expect(screen.getByText('Groups are up to 12 people')).toBeInTheDocument()
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});

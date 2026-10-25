@@ -22,6 +22,7 @@ import {
   processInlineAgreements,
 } from '@maple/firebase/functions';
 import { RegistrationRepository } from '@maple/firebase/database';
+import { lineItemName } from '@maple/ts/domain';
 import {
   Square,
   SQUARE_SECRET_NAMES,
@@ -207,7 +208,7 @@ export const createRegistrationCheckoutLink = Functions.endpoint
         referenceId: registrationId,
         lineItems: [
           {
-            name: classEntity.name,
+            name: lineItemName(classEntity, data.slotStart),
             quantity: data.quantity.toString(),
             basePriceCents: classEntity.priceCents,
           },

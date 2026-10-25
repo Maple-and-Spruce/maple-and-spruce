@@ -372,6 +372,101 @@ describe('mapClassToFieldData', () => {
   });
 });
 
+describe('mapClassToFieldData: private hours', () => {
+  // Five hours over two Eastern days. The 10 PM hour on Jun 15 is already
+  // Jun 16 in UTC, so a UTC day split would list three dates, not two.
+  const hours: [ClassSession, ...ClassSession[]] = [
+    { dateTime: new Date('2030-06-15T14:00:00.000Z') }, // Jun 15, 10 AM ET
+    { dateTime: new Date('2030-06-15T15:00:00.000Z') }, // Jun 15, 11 AM ET
+    { dateTime: new Date('2030-06-15T16:00:00.000Z') }, // Jun 15, 12 PM ET
+    { dateTime: new Date('2030-06-16T02:00:00.000Z') }, // Jun 15, 10 PM ET
+    { dateTime: new Date('2030-06-16T14:00:00.000Z') }, // Jun 16, 10 AM ET
+  ];
+
+  const privateClass: PublishableClass = {
+    id: 'class-ph',
+    name: 'Private Pottery Hour',
+    description: 'Your group, our studio.',
+    sessions: hours,
+    format: 'privateHours',
+    durationMinutes: 60,
+    capacity: 8,
+    priceCents: 6000,
+    skillLevel: 'all-levels',
+    status: 'published',
+    createdAt: new Date('2030-01-01'),
+    updatedAt: new Date('2030-01-01'),
+  };
+
+  const map = (registrationCount?: number, overrides: Partial<PublishableClass> = {}) =>
+    mapClassToFieldData(
+      { ...privateClass, ...overrides },
+      { isDev: false, registrationCount }
+    );
+
+  it('counts open hours, not seats', () => {
+    const result = map(2);
+    expect(result['spots-remaining']).toBe(3);
+    expect(result['spots-display']).toBe('3 hours open');
+    expect(result['is-full']).toBe(false);
+  });
+
+  it('treats every hour as open when there are no registrations', () => {
+    expect(map()['spots-remaining']).toBe(5);
+    expect(map()['spots-display']).toBe('5 hours open');
+  });
+
+  it('says "1 hour open" for the last hour', () => {
+    expect(map(4)['spots-display']).toBe('1 hour open');
+  });
+
+  it('is full with a waitlist when every hour is taken', () => {
+    const result = map(5);
+    expect(result['spots-remaining']).toBe(0);
+    expect(result['spots-display']).toBe('Waitlist Available');
+    expect(result['is-full']).toBe(true);
+  });
+
+  it('prices per group', () => {
+    expect(map()['price-display']).toBe('$60 per group');
+  });
+
+  it('shows a free private hour as "Free"', () => {
+    expect(map(0, { priceCents: 0 })['price-display']).toBe('Free');
+  });
+
+  it('shows the duration without " each"', () => {
+    expect(map()['duration-display']).toBe('1 hour');
+  });
+
+  it('is one visit, not a series', () => {
+    expect(map()['session-count']).toBe(1);
+  });
+
+  it('lists each Eastern day once', () => {
+    expect(map()['date-display']).toMatch(/^Jun\s15, Jun\s16$/);
+  });
+
+  it('asks the visitor to choose an hour', () => {
+    expect(map()['time-display']).toBe('Choose your hour');
+  });
+
+  it('leaves a seats class with the same sessions unchanged', () => {
+    const result = mapClassToFieldData(
+      { ...privateClass, format: 'seats' },
+      { isDev: false, registrationCount: 2 }
+    );
+    expect(result['spots-remaining']).toBe(6);
+    expect(result['spots-display']).toBe('6 spots remaining');
+    expect(result['price-display']).toBe('$60');
+    expect(result['duration-display']).toBe('1 hour each');
+    expect(result['session-count']).toBe(5);
+    const expected = formatSessions(hours, 'America/New_York');
+    expect(result['date-display']).toBe(expected.dateDisplay);
+    expect(result['time-display']).toBe(expected.timeDisplay);
+  });
+});
+
 // ── ClassService tests ──────────────────────────────────────────────────
 
 describe('ClassService', () => {

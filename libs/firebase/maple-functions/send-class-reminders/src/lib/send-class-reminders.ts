@@ -50,6 +50,7 @@ import {
   getDb,
 } from '@maple/firebase/database';
 import type { Class, ClassSession, Registration } from '@maple/ts/domain';
+import { isPrivateHoursClass } from '@maple/ts/domain';
 import { TIMEZONE, getEtDayWindow } from './et-day-window';
 import {
   runUnderMinimumAlerts,
@@ -233,7 +234,7 @@ export async function runSendClassReminders(
       ? (await InstructorRepository.findById(classEntity.instructorId))?.name
       : undefined;
 
-    const sessionIso = session.dateTime.toISOString();
+    const privateHours = isPrivateHoursClass(classEntity);
 
     const registrations = await RegistrationRepository.findByClassId(
       classEntity.id
@@ -244,6 +245,13 @@ export async function runSendClassReminders(
         skippedNotPaid += 1;
         continue;
       }
+      // A private-hours group is reminded about its own hour, and only on the
+      // day of that hour. A seat registration gets today's class session.
+      const sessionStart = privateHours ? reg.slotStart : session.dateTime;
+      if (!sessionStart || sessionStart < start || sessionStart > end) {
+        continue;
+      }
+      const sessionIso = sessionStart.toISOString();
       if (hasReminderForSession(reg, sessionIso)) {
         skippedAlreadySent += 1;
         continue;
@@ -263,8 +271,8 @@ export async function runSendClassReminders(
       const data: Record<string, string> = {
         customerName: reg.customerName,
         className: classEntity.name,
-        classDate: formatClassDate(session.dateTime),
-        classStartTime: formatClassTime(session.dateTime),
+        classDate: formatClassDate(sessionStart),
+        classStartTime: formatClassTime(sessionStart),
         classLocation: classEntity.location || DEFAULT_CLASS_LOCATION,
         googleReviewUrl: reviewUrl,
       };

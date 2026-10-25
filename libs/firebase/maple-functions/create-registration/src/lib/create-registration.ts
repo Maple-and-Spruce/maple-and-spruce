@@ -39,7 +39,12 @@ import {
   SQUARE_STRING_NAMES,
   PaymentError,
 } from '@maple/firebase/square';
-import { formatSessions } from '@maple/ts/domain';
+import {
+  formatPrivateHour,
+  formatSessions,
+  isPrivateHoursClass,
+  lineItemName,
+} from '@maple/ts/domain';
 import type {
   CreateRegistrationRequest,
   CreateRegistrationResponse,
@@ -124,7 +129,7 @@ export const createRegistration = Functions.endpoint
             referenceId: registrationDocRef.id,
             lineItems: [
               {
-                name: classEntity.name,
+                name: lineItemName(classEntity, data.slotStart),
                 quantity: data.quantity.toString(),
                 basePriceCents: classEntity.priceCents,
               },
@@ -336,6 +341,10 @@ export const createRegistration = Functions.endpoint
           `$${(cents / 100).toFixed(2)}`;
 
         const classDate = (() => {
+          // A private hour: the one hour this group booked, not every hour.
+          if (data.slotStart && isPrivateHoursClass(classEntity)) {
+            return formatPrivateHour(data.slotStart, classEntity.durationMinutes);
+          }
           const { dateDisplay, timeDisplay } = formatSessions(
             classEntity.sessions,
             'America/New_York'

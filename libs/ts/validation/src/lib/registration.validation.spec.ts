@@ -307,4 +307,32 @@ describe('registrationValidation', () => {
       expect(result.hasErrors('customerEmail')).toBe(false);
     });
   });
+
+  describe('private hours fields', () => {
+    const base = {
+      classId: 'class-1',
+      customerName: 'Robin Ashfield',
+      customerEmail: 'robin@example.com',
+      quantity: 1,
+    };
+
+    it('accepts an ISO hour and a whole group size', () => {
+      const result = registrationValidation({
+        ...base,
+        slotStart: '2030-12-07T15:00:00.000Z',
+        groupSize: 8,
+      });
+      expect(result.hasErrors('slotStart')).toBe(false);
+      expect(result.hasErrors('groupSize')).toBe(false);
+    });
+
+    it('rejects an unreadable hour', () => {
+      expect(registrationValidation({ ...base, slotStart: 'soon' }).hasErrors('slotStart')).toBe(true);
+    });
+
+    it('rejects a group size below one or a fraction', () => {
+      expect(registrationValidation({ ...base, groupSize: 0 }).hasErrors('groupSize')).toBe(true);
+      expect(registrationValidation({ ...base, groupSize: 2.5 }).hasErrors('groupSize')).toBe(true);
+    });
+  });
 });

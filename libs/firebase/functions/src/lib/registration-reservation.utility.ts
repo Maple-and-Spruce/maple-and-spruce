@@ -35,6 +35,8 @@ import {
 } from '@maple/firebase/database';
 import {
   isClassRegistrationOpen,
+  isPrivateHoursClass,
+  isPrivateHourBookable,
   applyDiscount,
   isDiscountValid,
   isDiscountForProgram,
@@ -204,6 +206,32 @@ export async function reserveClassRegistration(
     throw new Error('This class is not currently open for registration');
   }
 
+  // 2b. A private-hours class sells one hour to one group. The request names
+  // the hour; it must be one of the class's sessions and still ahead.
+  const privateHours = isPrivateHoursClass(classEntity);
+  let slotStart: Date | undefined;
+  let groupSize: number | undefined;
+  if (privateHours) {
+    if (!data.slotStart) {
+      throw new Error('Pick a time for your group');
+    }
+    slotStart = new Date(data.slotStart);
+    if (!isPrivateHourBookable(classEntity, slotStart)) {
+      throw new Error('That time is no longer available. Please pick another.');
+    }
+    if (data.quantity !== 1 || additionalAttendees.length > 0) {
+      throw new Error('A private hour is booked once for the whole group');
+    }
+    groupSize = data.groupSize;
+    if (!groupSize || groupSize < 1 || groupSize > classEntity.capacity) {
+      throw new Error(
+        `Group size must be between 1 and ${classEntity.capacity}`
+      );
+    }
+  } else if (data.slotStart !== undefined || data.groupSize !== undefined) {
+    throw new Error('This class is booked by the seat, not by the hour');
+  }
+
   // 3. Required agreements must be signed before checkout (inline or hosted)
   const requiredTemplates = classEntity.categoryId
     ? await AgreementTemplateRepository.findRequiredForCategory(
@@ -278,12 +306,26 @@ export async function reserveClassRegistration(
       : undefined;
 
     // === Validation ===
+    if (slotStart) {
+      // One active registration per hour. Same query as seats (no new index):
+      // the hour is matched here rather than in a where clause.
+      const slotMs = slotStart.getTime();
+      const taken = existingSnapshot.docs.some((doc) => {
+        const held = doc.data().slotStart;
+        const heldDate: Date | undefined = held?.toDate?.() ?? held;
+        return heldDate ? new Date(heldDate).getTime() === slotMs : false;
+      });
+      if (taken) {
+        throw new Error('That time was just booked. Please pick another.');
+      }
+    }
+
     const currentSpotsTaken = existingSnapshot.docs.reduce(
       (sum, doc) => sum + (doc.data().quantity || 1),
       0
     );
     const spotsNeeded = data.quantity;
-    if (currentSpotsTaken + spotsNeeded > classEntity.capacity) {
+    if (!slotStart && currentSpotsTaken + spotsNeeded > classEntity.capacity) {
       const spotsRemaining = classEntity.capacity - currentSpotsTaken;
       throw new Error(
         spotsRemaining <= 0
@@ -327,6 +369,9 @@ export async function reserveClassRegistration(
       quantity: data.quantity,
       additionalAttendees:
         persistedAttendees.length > 0 ? persistedAttendees : null,
+      // Private hours: the hour held, and the host's rough headcount.
+      slotStart: slotStart ?? null,
+      groupSize: groupSize ?? null,
       pricePaidCents,
       subtotalCents,
       taxAmountCents,

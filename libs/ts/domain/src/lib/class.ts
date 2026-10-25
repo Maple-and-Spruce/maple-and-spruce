@@ -264,8 +264,18 @@ export interface PublicClass {
   registrationClosesAt?: string;
   durationMinutes: number;
   capacity: number;
-  /** Calculated: capacity - registrationCount */
+  /**
+   * Calculated: bookable capacity minus active registrations. For a
+   * private-hours class this is the number of open hours.
+   */
   spotsRemaining: number;
+  /** How people book. Omitted for seat classes. */
+  format?: ClassFormat;
+  /**
+   * Private-hours classes only: ISO starts of the hours already held or
+   * booked. Every other session is open.
+   */
+  bookedSlotStarts?: string[];
   priceCents: number;
   imageUrl?: string;
   galleryImages?: GalleryImage[];
@@ -358,6 +368,47 @@ export function sessionsOverlap(
 }
 
 /**
+ * How many units a class sells: seats for a seats class, hours for a
+ * private-hours class (one group per hour). Registration counts are compared
+ * against this, so "spots remaining" means open hours for private hours.
+ */
+export function getBookableCapacity(
+  classEntity: Pick<Class, 'format' | 'capacity' | 'sessions'>
+): number {
+  return isPrivateHoursClass(classEntity)
+    ? classEntity.sessions.length
+    : classEntity.capacity;
+}
+
+/** Hours of a private-hours class still ahead of `now` that nobody holds. */
+export function countOpenPrivateHours(
+  classEntity: Pick<Class, 'sessions'>,
+  heldStarts: Array<Date | string>,
+  now: Date = new Date()
+): number {
+  const held = new Set(heldStarts.map((d) => ensureDate(d).getTime()));
+  return classEntity.sessions.filter((s) => {
+    const t = ensureDate(s.dateTime).getTime();
+    return t > now.getTime() && !held.has(t);
+  }).length;
+}
+
+/**
+ * Whether `slotStart` is one of this private-hours class's hours and is still
+ * ahead of `now`. The hour's own start is its registration cutoff.
+ */
+export function isPrivateHourBookable(
+  classEntity: Pick<Class, 'format' | 'sessions'>,
+  slotStart: Date,
+  now: Date = new Date()
+): boolean {
+  if (!isPrivateHoursClass(classEntity)) return false;
+  const t = slotStart.getTime();
+  if (Number.isNaN(t) || t <= now.getTime()) return false;
+  return classEntity.sessions.some((s) => ensureDate(s.dateTime).getTime() === t);
+}
+
+/**
  * A `Class` whose `sessions` is statically known to be non-empty.
  *
  * Use this when downstream code (Webflow CMS mapping, registration cutoff,
@@ -421,7 +472,9 @@ export function toPublicClass(
   classEntity: Class,
   instructorName?: string,
   categoryName?: string,
-  registrationCount = 0
+  registrationCount = 0,
+  /** Private-hours classes: starts of hours held by an active registration. */
+  bookedSlotStarts: Array<Date | string> = []
 ): PublicClass {
   return {
     id: classEntity.id,
@@ -437,7 +490,17 @@ export function toPublicClass(
     registrationClosesAt: classEntity.registrationClosesAt?.toISOString(),
     durationMinutes: classEntity.durationMinutes,
     capacity: classEntity.capacity,
-    spotsRemaining: Math.max(0, classEntity.capacity - registrationCount),
+    // A private hour is open if it is still ahead and nobody holds it; past
+    // hours never count, booked or not.
+    spotsRemaining: isPrivateHoursClass(classEntity)
+      ? countOpenPrivateHours(classEntity, bookedSlotStarts)
+      : Math.max(0, getBookableCapacity(classEntity) - registrationCount),
+    ...(isPrivateHoursClass(classEntity)
+      ? {
+          format: 'privateHours' as const,
+          bookedSlotStarts: bookedSlotStarts.map((d) => ensureDate(d).toISOString()),
+        }
+      : {}),
     priceCents: classEntity.priceCents,
     imageUrl: classEntity.imageUrl,
     galleryImages: classEntity.galleryImages,
@@ -470,10 +533,12 @@ export function formatClassPrice(priceCents: number): string {
  */
 export function isClassRegistrationOpen(classEntity: Class): boolean {
   if (classEntity.status !== 'published') return false;
-  // Booking a private hour needs a slot-aware checkout, which hasn't shipped.
-  // Until then the seat checkout must not sell one: it would charge the group
-  // price per person and never claim an hour.
-  if (isPrivateHoursClass(classEntity)) return false;
+  // A private-hours class stays open while any hour is still ahead; each
+  // hour closes on its own when it starts (`isPrivateHourBookable`).
+  if (isPrivateHoursClass(classEntity)) {
+    const now = Date.now();
+    return classEntity.sessions.some((s) => ensureDate(s.dateTime).getTime() > now);
+  }
   const publishable = asPublishable(classEntity);
   if (!publishable) return false;
   return getRegistrationCutoff(publishable) > new Date();
@@ -576,4 +641,136 @@ export function formatSessions(
     timeDisplay: 'Varies',
     sharedTime: false,
   };
+}
+
+/**
+ * How a private hour reads on a receipt, email or calendar entry, in the
+ * studio's time zone: "Sat, Dec 5, 10:00–11:00 AM".
+ */
+export function formatPrivateHour(
+  slotStart: Date | string,
+  durationMinutes: number,
+  timeZone = 'America/New_York'
+): string {
+  const start = ensureDate(slotStart);
+  const [day] = groupPrivateHoursByDay(
+    [{ dateTime: start }],
+    durationMinutes,
+    [],
+    new Date(start.getTime() - 1),
+    timeZone
+  );
+  return `${day.label}, ${day.hours[0].label}`;
+}
+
+/**
+ * The Square line-item name for a registration. A private hour names the
+ * hour, so the receipt and the Square order say which one was bought.
+ */
+export function lineItemName(
+  classEntity: Pick<Class, 'name' | 'format' | 'durationMinutes'>,
+  slotStart?: Date | string
+): string {
+  if (!slotStart || !isPrivateHoursClass(classEntity)) return classEntity.name;
+  return `${classEntity.name}, ${formatPrivateHour(slotStart, classEntity.durationMinutes)}`;
+}
+
+/**
+ * The first session of each day, in `timeZone`. Lists a private-hours class's
+ * dates once each, rather than once per hour.
+ */
+export function oneSessionPerDay(
+  sessions: ClassSession[],
+  timeZone = 'America/New_York'
+): ClassSession[] {
+  const dayKey = new Intl.DateTimeFormat('en-CA', { timeZone });
+  const seen = new Set<string>();
+  return [...sessions]
+    .sort((a, b) => ensureDate(a.dateTime).getTime() - ensureDate(b.dateTime).getTime())
+    .filter((s) => {
+      const key = dayKey.format(ensureDate(s.dateTime));
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+/** One bookable hour of a private-hours class, ready to show. */
+export interface PrivateHourOption {
+  /** ISO start; sent back as `slotStart` when booking. */
+  start: string;
+  /** e.g. "10:00–11:00 AM" in the studio's time zone. */
+  label: string;
+  /** Held or booked by another group. */
+  booked: boolean;
+}
+
+/** The bookable hours of one day. */
+export interface PrivateHourDay {
+  /** YYYY-MM-DD in the studio's time zone. */
+  key: string;
+  /** e.g. "Sat, Dec 5". */
+  label: string;
+  hours: PrivateHourOption[];
+  /** How many hours on this day are still open. */
+  openCount: number;
+}
+
+/**
+ * Group a private-hours class's future sessions into days for the booking
+ * form, marking the hours another group already holds. Past hours are left
+ * out. Days and hours are earliest-first, in `timeZone`.
+ */
+export function groupPrivateHoursByDay(
+  sessions: Array<{ dateTime: Date | string }>,
+  durationMinutes: number,
+  bookedStarts: Array<Date | string>,
+  now: Date = new Date(),
+  timeZone = 'America/New_York'
+): PrivateHourDay[] {
+  const booked = new Set(bookedStarts.map((d) => ensureDate(d).getTime()));
+  const dayKey = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone,
+  });
+  const dayLabel = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone,
+  });
+  const clock = (d: Date, withPeriod: boolean): string => {
+    const full = d.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone,
+    });
+    return withPeriod ? full : full.replace(/\s?[AP]M$/, '');
+  };
+  const period = (d: Date): string =>
+    d.toLocaleTimeString('en-US', { hour: 'numeric', timeZone }).slice(-2);
+
+  const days = new Map<string, PrivateHourDay>();
+  const starts = sessions
+    .map((s) => ensureDate(s.dateTime))
+    .filter((d) => d.getTime() > now.getTime())
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  for (const start of starts) {
+    const end = new Date(start.getTime() + durationMinutes * 60_000);
+    // "10:00–11:00 AM", or "11:30 AM–12:30 PM" when the hour crosses noon.
+    const samePeriod = period(start) === period(end);
+    const label = `${clock(start, !samePeriod)}–${clock(end, true)}`;
+    const key = dayKey.format(start);
+    const day =
+      days.get(key) ??
+      ({ key, label: dayLabel.format(start), hours: [], openCount: 0 } as PrivateHourDay);
+    const isBooked = booked.has(start.getTime());
+    day.hours.push({ start: start.toISOString(), label, booked: isBooked });
+    if (!isBooked) day.openCount += 1;
+    days.set(key, day);
+  }
+  return [...days.values()];
 }

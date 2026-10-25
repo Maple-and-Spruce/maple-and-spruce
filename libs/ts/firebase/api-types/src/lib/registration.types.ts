@@ -131,6 +131,16 @@ export interface CreateRegistrationRequest {
   quantity: number;
   /** Extra people on the registration. Per-attendee name and email are both optional. */
   additionalAttendees?: Attendee[];
+  /**
+   * Private-hours classes only: ISO start of the hour being booked. Must be
+   * one of the class's sessions. Required for a private-hours class.
+   */
+  slotStart?: string;
+  /**
+   * Private-hours classes only: roughly how many people are coming, 1 to the
+   * class's largest group. Required for a private-hours class.
+   */
+  groupSize?: number;
   discountCode?: string;
   notes?: string;
   /** Nonce from Square Web Payments SDK (card tokenization) */
@@ -177,6 +187,10 @@ export interface CreateRegistrationCheckoutLinkRequest {
   customerPhone?: string;
   quantity: number;
   additionalAttendees?: Attendee[];
+  /** Private-hours classes only: ISO start of the hour being booked. */
+  slotStart?: string;
+  /** Private-hours classes only: roughly how many people are coming. */
+  groupSize?: number;
   discountCode?: string;
   notes?: string;
   agreements?: InlineAgreementSigningData[];
@@ -234,5 +248,7 @@ export interface GetRegistrationStatusResponse {
     customerEmail: string;
     quantity: number;
     pricePaidCents: number;
+    /** Private hours: ISO start of the hour booked. */
+    slotStart?: string;
   };
 }

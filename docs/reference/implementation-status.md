@@ -163,9 +163,10 @@ A class can be booked as private hours: one group per hour, a flat price per gro
 
 | PR | Status | Scope |
 |----|--------|-------|
-| 1. Format, hours and the admin form | **In Review** | `Class.format`, hours as sessions, class form, duplicate, list chip; off sale until PR 2 |
-| 2. Booking an hour | Not Started | Day and time pickers in the widget, `slotId`/`groupSize`, slot-aware checkout, roster by hour |
-| 3. Waitlist by hour | Not Started | Waitlist per hour or any hour, email when an hour reopens |
+| 1. Format, hours and the admin form | **In Review** (#273) | `Class.format`, hours as sessions, class form, duplicate, list chip; off sale until PR 2 |
+| 2. Booking an hour | **In Review** | Day and time picker + group size in the widget, `slotStart`/`groupSize`, one group per hour in checkout, hour on receipts/emails/reminders, Webflow "hours open" |
+| 3. Admin by hour | Not Started | Roster grouped by hour, hour on registrations, dashboard and payouts count hours |
+| 4. Waitlist by hour | Not Started | Waitlist per hour; when an hour reopens, everyone waiting on it is emailed |
 
 ### Image2Pages Widget (PR pending)
 
