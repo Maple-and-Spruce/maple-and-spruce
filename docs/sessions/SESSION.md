@@ -14,7 +14,7 @@
 - **PR 1 (this one):** model and admin form only. A private-hours class can't be sold yet (seat
   checkout closed, no Square POS item). Keep it a draft until PR 2.
 - **Next:** PR 2, hour booking in the registration widget plus the roster by hour; PR 3, a waitlist
-  per hour. Open question: email every waiter when an hour reopens, or one at a time?
+  per hour. When an hour reopens, everyone waiting on it is emailed, the same as the class waitlist.
 
 ### MailerLite revenue attribution (2026-10-22, #262 Phase 0 + 2)
 
