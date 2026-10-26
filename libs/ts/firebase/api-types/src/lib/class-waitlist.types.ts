@@ -13,6 +13,11 @@ import type { ClassWaitlistEntry } from '@maple/ts/domain';
 export interface AddToClassWaitlistRequest {
   classId: string;
   email: string;
+  /**
+   * Private-hours classes: ISO start of the hour to wait for. Omit to wait
+   * for the whole class, or any hour of a private-hours class.
+   */
+  slotStart?: string;
 }
 
 export interface AddToClassWaitlistResponse {

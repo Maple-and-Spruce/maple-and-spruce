@@ -44,6 +44,7 @@ import type {
 import { registrationValidation } from '@maple/ts/validation';
 import { groupPrivateHoursByDay } from '@maple/ts/domain';
 import { PrivateHourPicker } from './PrivateHourPicker';
+import { HourWaitlistForm, type HourWaitlistStatus } from './HourWaitlistForm';
 import { formatPhoneNumber } from './formatPhoneNumber';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -171,6 +172,14 @@ interface RegistrationCheckoutFormProps {
     /** Private hours: ISO start of the hour booked. */
     slotStart?: string;
   }) => void;
+  /**
+   * Private hours: join the waitlist for a booked hour. When given, booked
+   * hours can be picked to open a waitlist form for that hour.
+   */
+  onJoinHourWaitlist?: (
+    slotStart: string,
+    email: string
+  ) => Promise<{ added: boolean }>;
 }
 
 export function RegistrationCheckoutForm({
@@ -184,6 +193,7 @@ export function RegistrationCheckoutForm({
   onSubmit,
   onHostedCheckout,
   onSuccess,
+  onJoinHourWaitlist,
 }: RegistrationCheckoutFormProps) {
   useSignals();
 
@@ -212,6 +222,13 @@ export function RegistrationCheckoutForm({
   );
   const selectedSlot = useSignal<string | null>(null);
   const groupSize = useSignal<number | null>(null);
+  // A booked hour picked to join its waitlist, and that form's state.
+  const waitlistSlot = useSignal<string | null>(null);
+  const waitlistEmail = useSignal('');
+  const waitlistStatus = useSignal<HourWaitlistStatus>({ kind: 'idle' });
+  const waitlistDay = hourDays.find((d) =>
+    d.hours.some((h) => h.start === waitlistSlot.value)
+  );
 
   // Quantity is derived: registrant + extras. Kept as a computed so all the
   // existing pricing/capacity code that reads `quantity.value` still works.
@@ -735,10 +752,58 @@ export function RegistrationCheckoutForm({
           onSelectDay={(key) => {
             selectedDay.value = key;
             selectedSlot.value = null;
+            waitlistSlot.value = null;
           }}
-          onSelectStart={(start) => (selectedSlot.value = start)}
+          onSelectStart={(start) => {
+            selectedSlot.value = start;
+            waitlistSlot.value = null;
+          }}
+          onSelectBooked={
+            onJoinHourWaitlist
+              ? (start) => {
+                  waitlistSlot.value = start;
+                  waitlistStatus.value = { kind: 'idle' };
+                }
+              : undefined
+          }
+          waitlistStart={waitlistSlot.value}
           error={hourError.value}
-        />
+        >
+          {waitlistSlot.value && onJoinHourWaitlist && (
+            <HourWaitlistForm
+              dayLabel={waitlistDay?.label ?? ''}
+              hourLabel={
+                waitlistDay?.hours.find((h) => h.start === waitlistSlot.value)
+                  ?.label ?? ''
+              }
+              email={waitlistEmail.value}
+              onEmailChange={(v) => (waitlistEmail.value = v)}
+              status={waitlistStatus.value}
+              onJoin={async () => {
+                const slot = waitlistSlot.value;
+                const email = waitlistEmail.value.trim();
+                if (!slot) return;
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                  waitlistStatus.value = {
+                    kind: 'error',
+                    message: 'Please enter a valid email.',
+                  };
+                  return;
+                }
+                waitlistStatus.value = { kind: 'sending' };
+                try {
+                  const res = await onJoinHourWaitlist(slot, email);
+                  waitlistStatus.value = { kind: 'joined', already: !res.added };
+                } catch (err) {
+                  waitlistStatus.value = {
+                    kind: 'error',
+                    message: extractErrorMessage(err),
+                  };
+                }
+              }}
+            />
+          )}
+        </PrivateHourPicker>
       )}
       {/* Customer Info Section */}
       <Box>

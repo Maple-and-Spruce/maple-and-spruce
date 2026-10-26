@@ -24,6 +24,7 @@ import {
   ClassWaitlistRepository,
 } from '@maple/firebase/database';
 import { classWaitlistValidation } from '@maple/ts/validation';
+import { isPrivateHourBookable } from '@maple/ts/domain';
 import type {
   AddToClassWaitlistRequest,
   AddToClassWaitlistResponse,
@@ -49,9 +50,20 @@ export const addToClassWaitlist = Functions.endpoint
         );
       }
 
+      // Waiting on one hour: it has to be an hour of this private-hours class
+      // that hasn't started.
+      let slotStart: Date | undefined;
+      if (data.slotStart) {
+        slotStart = new Date(data.slotStart);
+        if (!isPrivateHourBookable(classEntity!, slotStart)) {
+          throwInvalidArgument('That hour is not available for the waitlist');
+        }
+      }
+
       const { created } = await ClassWaitlistRepository.add({
         classId: data.classId,
         email: data.email,
+        slotStart,
       });
 
       return { added: created };

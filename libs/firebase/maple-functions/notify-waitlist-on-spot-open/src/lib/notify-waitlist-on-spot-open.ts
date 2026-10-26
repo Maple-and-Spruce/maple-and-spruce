@@ -23,7 +23,14 @@ import {
   ClassWaitlistRepository,
   getDb,
 } from '@maple/firebase/database';
-import { asPublishable, getFirstSession } from '@maple/ts/domain';
+import {
+  asPublishable,
+  formatPrivateHour,
+  getFirstSession,
+  isPrivateHourBookable,
+  isPrivateHoursClass,
+  waitlistEntriesForHour,
+} from '@maple/ts/domain';
 import type { RegistrationStatus } from '@maple/ts/domain';
 
 /**
@@ -139,13 +146,37 @@ export const notifyWaitlistOnSpotOpen = onDocumentWritten(
     // name-derived slug only for classes that haven't synced/backfilled yet.
     const slug = publishable.webflowSlug ?? generateClassSlug(publishable.name);
     const classUrl = `${PUBLIC_SITE_BASE_URL}/classes/${slug}`;
-    const firstSession = getFirstSession(publishable);
-    const classDate = formatSessionDate(firstSession.dateTime);
+
+    // A private hour reopened: email the people waiting on that hour and
+    // those waiting for any hour, and take only them off the list. An hour
+    // that has already started can't be booked, so nobody is emailed.
+    let recipients = waitlistEntries;
+    let classDate: string;
+    let notifiedIds: string[] | null = null;
+    if (isPrivateHoursClass(publishable)) {
+      const held = beforeData?.['slotStart'];
+      const heldDate: Date | undefined = held?.toDate?.() ?? held;
+      const slotStart = heldDate ? new Date(heldDate) : undefined;
+      if (!slotStart || !isPrivateHourBookable(publishable, slotStart)) {
+        return;
+      }
+      recipients = waitlistEntriesForHour(waitlistEntries, slotStart);
+      if (recipients.length === 0) return;
+      classDate = formatPrivateHour(slotStart, publishable.durationMinutes);
+      // Every entry for this hour or any hour comes off, including a
+      // duplicate address that got one email.
+      const t = slotStart.getTime();
+      notifiedIds = waitlistEntries
+        .filter((e) => !e.slotStart || new Date(e.slotStart).getTime() === t)
+        .map((e) => e.id);
+    } else {
+      classDate = formatSessionDate(getFirstSession(publishable).dateTime);
+    }
 
     const db = getDb();
     const batch = db.batch();
 
-    for (const entry of waitlistEntries) {
+    for (const entry of recipients) {
       const mailRef = db.collection('mail').doc();
       batch.set(mailRef, {
         to: entry.email,
@@ -165,11 +196,15 @@ export const notifyWaitlistOnSpotOpen = onDocumentWritten(
     console.log('Notified waitlist of spot opening', {
       classId,
       className: publishable.name,
-      notified: waitlistEntries.length,
+      notified: recipients.length,
     });
 
     // Clear the waitlist so the next cancellation doesn't re-notify the
     // same people. They can re-sign up if they still want in.
-    await ClassWaitlistRepository.clearByClassId(classId);
+    if (notifiedIds) {
+      await ClassWaitlistRepository.deleteEntries(classId, notifiedIds);
+    } else {
+      await ClassWaitlistRepository.clearByClassId(classId);
+    }
   }
 );

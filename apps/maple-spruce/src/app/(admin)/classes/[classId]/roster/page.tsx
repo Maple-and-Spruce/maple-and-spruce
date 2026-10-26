@@ -29,6 +29,7 @@ import type {
   RegistrationStatus,
 } from '@maple/ts/domain';
 import {
+  formatPrivateHourStart,
   getBookableCapacity,
   isPrivateHoursClass,
   oneSessionPerDay,
@@ -207,6 +208,7 @@ export default function ClassRosterPage() {
             <TableRow>
               <TableCell>#</TableCell>
               <TableCell>Email</TableCell>
+              {privateHours && <TableCell>Hour</TableCell>}
               <TableCell>Joined</TableCell>
             </TableRow>
           </TableHead>
@@ -215,6 +217,13 @@ export default function ClassRosterPage() {
               <TableRow key={entry.id}>
                 <TableCell>{index + 1}</TableCell>
                 <TableCell>{entry.email}</TableCell>
+                {privateHours && (
+                  <TableCell>
+                    {entry.slotStart
+                      ? formatPrivateHourStart(entry.slotStart)
+                      : 'Any hour'}
+                  </TableCell>
+                )}
                 <TableCell>
                   {formatDate(entry.createdAt)} at {formatTime(entry.createdAt)}
                 </TableCell>
@@ -360,6 +369,7 @@ export default function ClassRosterPage() {
             classItem={currentClass}
             registrationsState={registrationsState}
             onViewDetail={handleViewDetail}
+            waitlistEntries={waitlistEntries}
           />
           <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 3 }}>
             All registrations, including cancelled

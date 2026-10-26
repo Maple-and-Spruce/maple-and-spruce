@@ -105,3 +105,14 @@ export const LoadError: Story = {
     await expect(canvas.queryByText('Open')).toBeNull();
   },
 };
+
+/** Waitlist counts per hour: two waiting on a booked hour. */
+export const WithWaitlist: Story = {
+  args: {
+    waitlistEntries: [{ slotStart: first }, { slotStart: first }, {}],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('2 waiting')).toBeInTheDocument();
+  },
+};
