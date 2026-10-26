@@ -305,6 +305,8 @@ a weekly window a teacher's lessons must fall inside.
 | Block admin UI + lesson-dialog block selection + unattributed flag (legacy #689) | **Complete** | `libs/react/lessons/src/lib/LessonBlock*.tsx`, `apps/maple-spruce/src/app/(admin)/lesson-blocks/page.tsx` |
 | `getMyWeek` callable — weekly commitments + standing pattern + blocks (legacy #684/#716) | **Complete** | `libs/firebase/maple-functions/get-my-week/` |
 | Week tab — calendar grid + This week / Typical week toggle (legacy #685/#722) | **Complete** | `libs/react/lessons/src/lib/MyWeek.tsx` |
+| Week tab key (legend): explains yours / shared, one-off, outside teaching hours, teaching hours, another teacher's room time, per mode | **Complete** | `MyWeek.tsx` (`WeekLegend`) |
+| Typical week marks lapsed weekly times (no lesson in 4 weeks, nothing booked; judged from today) — dashed + "Lapsed" | **Complete** | `get-my-week.ts` (`studentsWithRecentLessons`, `withWeeklyTimes`), `MyWeek.tsx`, `apps/functions-integration-tests-lesson/src/my-week-lapsed.spec.ts` |
 | **Openings tab — open chunks within blocks, read-only (legacy #687)** | **Complete** | `libs/ts/domain/src/lib/openings.ts`, `libs/react/lessons/src/lib/MyOpenings.tsx` |
 | Openings slot-math unit tests + tab Storybook play tests | **Complete** | `libs/ts/domain/src/lib/openings.spec.ts`, `libs/react/lessons/src/lib/MyOpenings.stories.tsx` |
 | My Week page (Week / Today / Openings tabs; opens on Week, route stays `/my-day`) | **Complete** | `apps/maple-spruce/src/app/(admin)/my-day/page.tsx`, `apps/maple-spruce/src/components/my-day/MyWeekPageView.tsx` |

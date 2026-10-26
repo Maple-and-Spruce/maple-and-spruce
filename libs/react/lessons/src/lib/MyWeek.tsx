@@ -19,7 +19,7 @@
  *
  * Presentational — the page owns the data (`useMyWeek`) and week navigation.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   Alert,
@@ -32,6 +32,8 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
+  type SxProps,
+  type Theme,
 } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -89,6 +91,8 @@ const CATEGORIES: CalendarEventType[] = [
   'hours',
 ];
 const STORAGE_KEY = 'myWeek.hiddenCategories';
+/** Mirrors the server's LAPSED_AFTER_WEEKS, for the wording only. */
+const LAPSED_WEEKS_LABEL = '4 weeks';
 const MODE_STORAGE_KEY = 'myWeek.mode';
 
 type PaletteColor = 'default' | 'primary' | 'secondary' | 'info' | 'success';
@@ -125,6 +129,11 @@ interface WeekItem {
   studentId?: string;
   /** The caller's own lesson, held online (#210). */
   online?: boolean;
+  /**
+   * Typical week only: a weekly time whose student has no recent or booked
+   * lesson, so the time is probably free.
+   */
+  lapsed?: boolean;
 }
 
 function startMinutesOf(iso: string): number {
@@ -167,6 +176,7 @@ function standingToItem(s: MyWeekStandingSlot): WeekItem {
     unattributed: false,
     oneOff: false,
     studentId: s.studentId,
+    lapsed: s.lapsed,
   };
 }
 
@@ -199,6 +209,15 @@ function itemSx(item: WeekItem) {
         color: `${color}.contrastText`,
         borderColor: `${color}.main`,
       };
+  // A lapsed weekly time: dashed and muted, so it reads as "probably free".
+  if (item.lapsed) {
+    return {
+      bgcolor: 'background.paper',
+      color: 'text.secondary',
+      borderColor: isDefault ? 'grey.400' : `${color}.main`,
+      borderStyle: 'dashed',
+    };
+  }
   // Shared store-wide events read as context (outlined, not filled).
   if (item.ownership === 'shared' && !item.unattributed) {
     return {
@@ -351,9 +370,14 @@ export function MyWeek({
         sx={{
           alignItems: 'center',
           flexWrap: 'wrap',
-          mb: 2
-        }}>
-        <IconButton aria-label="Previous week" onClick={onPrevWeek} size="small">
+          mb: 2,
+        }}
+      >
+        <IconButton
+          aria-label="Previous week"
+          onClick={onPrevWeek}
+          size="small"
+        >
           <ChevronLeftIcon />
         </IconButton>
         <Button
@@ -374,7 +398,8 @@ export function MyWeek({
     ) : (
       <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
         Your recurring lessons and classes from the last few weeks, on a generic
-        week. One-offs are hidden.
+        week. One-offs are hidden. A dashed lesson has lapsed: no lesson in the
+        last {LAPSED_WEEKS_LABEL} and nothing booked.
       </Typography>
     );
 
@@ -421,11 +446,13 @@ export function MyWeek({
   const toggles = (
     <Stack
       direction="row"
+      aria-label="Show or hide a category"
       sx={{
         flexWrap: 'wrap',
-        mb: 2,
-        gap: 1
-      }}>
+        mb: 1.5,
+        gap: 1,
+      }}
+    >
       {CATEGORIES.map((cat) => {
         const on = !hidden.has(cat);
         return (
@@ -455,6 +482,7 @@ export function MyWeek({
     <Box>
       {header}
       {toggles}
+      <WeekLegend mode={mode} />
 
       {emptyTypical && (
         <Alert severity="info" sx={{ mb: 2 }}>
@@ -549,6 +577,144 @@ export function MyWeek({
           ))}
         </Box>
       </Box>
+    </Box>
+  );
+}
+
+/** A small sample of how something is drawn in the grid. */
+function Swatch({ sx }: { sx: SxProps<Theme> }) {
+  return (
+    <Box
+      aria-hidden
+      sx={[
+        {
+          width: 18,
+          height: 12,
+          borderRadius: 0.5,
+          border: '1px solid',
+          flexShrink: 0,
+        },
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
+    />
+  );
+}
+
+/**
+ * What the marks in the grid mean. The category chips above already name the
+ * colours; this explains everything else, for the mode on screen only.
+ */
+function WeekLegend({ mode }: { mode: WeekMode }) {
+  const entries: Array<{ key: string; label: string; swatch: ReactNode }> = [
+    {
+      key: 'mine',
+      label: 'Yours',
+      swatch: (
+        <Swatch sx={{ bgcolor: 'info.main', borderColor: 'info.main' }} />
+      ),
+    },
+    {
+      key: 'shared',
+      label: "Store events and other teachers' lessons",
+      swatch: (
+        <Swatch sx={{ bgcolor: 'transparent', borderColor: 'info.main' }} />
+      ),
+    },
+    ...(mode === 'this'
+      ? [
+          {
+            key: 'one-off',
+            label: 'Not a weekly slot (one-off)',
+            swatch: (
+              <Swatch
+                sx={{
+                  bgcolor: 'info.main',
+                  borderColor: 'info.main',
+                  opacity: 0.55,
+                }}
+              />
+            ),
+          },
+          {
+            key: 'needs-block',
+            label: '⚠ Outside your teaching hours',
+            swatch: (
+              <Swatch
+                sx={{ bgcolor: 'warning.main', borderColor: 'warning.main' }}
+              />
+            ),
+          },
+        ]
+      : [
+          {
+            key: 'lapsed',
+            label: `Lapsed: no lesson in ${LAPSED_WEEKS_LABEL}, nothing booked`,
+            swatch: (
+              <Swatch
+                sx={{
+                  bgcolor: 'background.paper',
+                  borderColor: 'info.main',
+                  borderStyle: 'dashed',
+                }}
+              />
+            ),
+          },
+        ]),
+    {
+      key: 'block',
+      label: 'Your teaching hours',
+      swatch: (
+        <Swatch
+          sx={{
+            bgcolor: 'action.hover',
+            borderColor: 'divider',
+            borderStyle: 'dashed',
+          }}
+        />
+      ),
+    },
+    {
+      key: 'other-block',
+      label: 'Another teacher has the room',
+      swatch: (
+        <Swatch
+          sx={(theme) => ({
+            bgcolor: 'action.disabledBackground',
+            borderColor: 'divider',
+            backgroundImage: `repeating-linear-gradient(45deg, ${theme.palette.action.disabled} 0, ${theme.palette.action.disabled} 1px, transparent 1px, transparent 5px)`,
+          })}
+        />
+      ),
+    },
+  ];
+
+  return (
+    <Box
+      component="ul"
+      aria-label="Key"
+      sx={{
+        listStyle: 'none',
+        p: 0,
+        m: 0,
+        mb: 2,
+        display: 'flex',
+        flexWrap: 'wrap',
+        columnGap: 2,
+        rowGap: 0.75,
+      }}
+    >
+      {entries.map((entry) => (
+        <Box
+          component="li"
+          key={entry.key}
+          sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+        >
+          {entry.swatch}
+          <Typography variant="caption" color="textSecondary">
+            {entry.label}
+          </Typography>
+        </Box>
+      ))}
     </Box>
   );
 }
@@ -689,7 +855,9 @@ function DayColumn({
         // The caller's own lesson opens that student's Next lessons (#160):
         // the end of a lesson is when Katie books the next four.
         const href =
-          item.studentId && studentHref ? studentHref(item.studentId) : undefined;
+          item.studentId && studentHref
+            ? studentHref(item.studentId)
+            : undefined;
         return (
           <Box
             key={item.id}
@@ -697,10 +865,10 @@ function DayColumn({
               ? {
                   component: Link,
                   href,
-                  'aria-label': `${formatMinutes(item.startMin)} ${item.title}${item.online ? ', online' : ''}`,
+                  'aria-label': `${formatMinutes(item.startMin)} ${item.title}${item.online ? ', online' : ''}${item.lapsed ? ', lapsed' : ''}`,
                 }
               : {})}
-            title={`${formatMinutes(item.startMin)} ${item.title}${item.online ? ' · Online' : ''}`}
+            title={`${formatMinutes(item.startMin)} ${item.title}${item.online ? ' · Online' : ''}${item.lapsed ? ' · Lapsed: no lesson in ' + LAPSED_WEEKS_LABEL + ', nothing booked' : ''}`}
             sx={{
               position: 'absolute',
               top,
@@ -738,6 +906,11 @@ function DayColumn({
             {item.online && (
               <Box component="span" sx={{ fontStyle: 'italic' }}>
                 {' · Online'}
+              </Box>
+            )}
+            {item.lapsed && (
+              <Box component="span" sx={{ fontStyle: 'italic' }}>
+                {' · Lapsed'}
               </Box>
             )}
           </Box>

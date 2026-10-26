@@ -159,3 +159,63 @@ export const TogglesCategoryOff: Story = {
     );
   },
 };
+
+/** The key explains every mark the grid uses in this mode, and only those. */
+export const KeyThisWeek: Story = {
+  args: { weekState: { status: 'success', data: mockMyWeekResponse } },
+  play: async ({ canvas }) => {
+    const key = within(await canvas.findByRole('list', { name: 'Key' }));
+    for (const label of [
+      'Yours',
+      "Store events and other teachers' lessons",
+      'Not a weekly slot (one-off)',
+      '⚠ Outside your teaching hours',
+      'Your teaching hours',
+      'Another teacher has the room',
+    ]) {
+      await expect(key.getByText(label)).toBeInTheDocument();
+    }
+    // Lapsed belongs to the typical week only.
+    await expect(key.queryByText(/Lapsed/)).not.toBeInTheDocument();
+  },
+};
+
+/** A weekly time whose student stopped coming: dashed, labelled, and keyed. */
+const withLapsed = {
+  ...mockMyWeekResponse,
+  standing: [
+    ...mockMyWeekResponse.standing,
+    {
+      id: 'std-lesson-wed-lapsed',
+      weekday: 3, // Wednesday
+      startMinutes: 15 * 60,
+      durationMinutes: 30,
+      category: 'lesson' as const,
+      ownership: 'mine' as const,
+      title: 'Test Student B',
+      studentId: 'stu-b',
+      studentName: 'Test Student B',
+      lapsed: true,
+    },
+  ],
+};
+
+export const TypicalWeekShowsLapsed: Story = {
+  args: { weekState: { status: 'success', data: withLapsed } },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole('button', { name: /typical week/i }));
+    const body = within(document.body);
+
+    const lapsed = await body.findByTitle(/Test Student B · Lapsed/);
+    await expect(lapsed).toHaveTextContent('Lapsed');
+    // A current weekly time is not marked.
+    await expect(body.getByTitle(/Test Student A$/)).not.toHaveTextContent('Lapsed');
+
+    const key = within(canvas.getByRole('list', { name: 'Key' }));
+    await expect(
+      key.getByText('Lapsed: no lesson in 4 weeks, nothing booked'),
+    ).toBeInTheDocument();
+    await expect(key.queryByText(/one-off/)).not.toBeInTheDocument();
+    await expect(body.getByText(/A dashed lesson has lapsed/)).toBeInTheDocument();
+  },
+};
