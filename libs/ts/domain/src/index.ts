@@ -49,6 +49,7 @@ export * from './lib/student-billing-view';
 export * from './lib/lesson-prepayment';
 export * from './lib/lesson-payment-state';
 export * from './lib/next-lessons';
+export * from './lib/push-lessons-back';
 export * from './lib/instruments-config';
 export * from './lib/invoice';
 export * from './lib/lesson-invoice';

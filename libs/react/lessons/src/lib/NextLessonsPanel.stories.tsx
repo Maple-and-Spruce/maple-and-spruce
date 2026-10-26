@@ -139,11 +139,43 @@ export const ChangeADate: Story = {
     await userEvent.click(canvas.getAllByRole('button', { name: /^Change/ })[0]);
     const dialog = within(await screen.findByRole('dialog'));
     await expect(dialog.getByText('Change this lesson')).toBeInTheDocument();
+    // Without a handler the dialog is a plain move.
+    await expect(
+      dialog.queryByRole('button', { name: /Push this and later/ })
+    ).toBeNull();
     await userEvent.click(dialog.getByRole('button', { name: 'Change' }));
     await expect(args.onMove).toHaveBeenCalledWith(
       fourNew[0],
       fourNew[0].scheduledAt
     );
+  },
+};
+
+/**
+ * Katie is out that day: from Change she pushes this lesson and every later
+ * one back a week, instead of moving it onto the next one.
+ */
+export const PushBackAWeek: Story = {
+  args: {
+    viewState: {
+      status: 'success',
+      data: { items: oneBookedThreeNew, noSlot: false },
+    },
+    onPushBack: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getAllByRole('button', { name: /^Change/ })[0]);
+    const dialog = within(await screen.findByRole('dialog'));
+    await expect(dialog.getByText(/Out that day\?/)).toBeInTheDocument();
+    await userEvent.click(
+      dialog.getByRole('button', {
+        name: 'Push this and later lessons back a week',
+      })
+    );
+    await expect(args.onPushBack).toHaveBeenCalledWith(oneBookedThreeNew[0]);
+    // Pushing back is not also a move.
+    await expect(args.onMove).not.toHaveBeenCalled();
   },
 };
 

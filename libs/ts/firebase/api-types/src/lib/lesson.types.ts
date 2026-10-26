@@ -135,3 +135,19 @@ export interface RescheduleLessonWithCreditResponse {
   replacement: Lesson;
   coverage: CarriedLessonCoverage;
 }
+
+/**
+ * Push a lesson and every later one of the student's back by `weeks` (default
+ * 1), keeping their times and their payments.
+ */
+export interface PushLessonsBackRequest {
+  /** The first lesson to move. Every later `scheduled` lesson moves with it. */
+  lessonId: string;
+  /** 1 to MAX_PUSH_WEEKS. Defaults to 1. */
+  weeks?: number;
+}
+
+export interface PushLessonsBackResponse {
+  /** The lessons that moved, earliest first, as they now are. */
+  lessons: Lesson[];
+}

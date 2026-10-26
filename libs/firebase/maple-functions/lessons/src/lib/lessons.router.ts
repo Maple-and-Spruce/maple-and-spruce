@@ -62,6 +62,8 @@ import type {
   GetStudentLessonSchedulesResponse,
   GetStudioDayRequest,
   GetStudioDayResponse,
+  PushLessonsBackRequest,
+  PushLessonsBackResponse,
   RescheduleLessonWithCreditRequest,
   RescheduleLessonWithCreditResponse,
   ResolvePosLessonAttributionRequest,
@@ -85,6 +87,7 @@ import { createLessonSeries } from './create-lesson-series';
 import { updateLesson } from './update-lesson';
 import { deleteLesson } from './delete-lesson';
 import { rescheduleLessonWithCredit } from './reschedule-lesson-with-credit';
+import { pushLessonsBack } from './push-lessons-back';
 import { getLessonBlocks } from './get-lesson-blocks';
 import { createLessonBlock } from './create-lesson-block';
 import { updateLessonBlock } from './update-lesson-block';
@@ -137,6 +140,11 @@ export const lessons = Functions.router('lessons', {
       RescheduleLessonWithCreditRequest,
       RescheduleLessonWithCreditResponse
     >(rescheduleLessonWithCredit),
+
+  // Push a lesson and every later one back a week, together
+  pushLessonsBack: Functions.endpoint
+    .requiringRole([Role.Admin, Role.LessonTeacher])
+    .asRoute<PushLessonsBackRequest, PushLessonsBackResponse>(pushLessonsBack),
 
   // Lesson blocks: the teaching windows lessons must fall inside
   getLessonBlocks: Functions.endpoint

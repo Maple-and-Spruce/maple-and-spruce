@@ -55,6 +55,11 @@ export interface NextLessonsPanelProps {
   /** Dismiss the notice and propose the next lessons again. */
   onBookMore: () => void;
   onMove: (item: NextLessonItem, to: Date) => void;
+  /**
+   * Push this lesson and every later one back a week (Katie is out, the family
+   * is away). Omit to leave the Change dialog as a plain move.
+   */
+  onPushBack?: (item: NextLessonItem) => void;
   onCharge: () => void;
   onInvoice: () => void;
   onBook: () => void;
@@ -98,6 +103,7 @@ export function NextLessonsPanel({
   error,
   notice,
   onMove,
+  onPushBack,
   onCharge,
   onInvoice,
   onBook,
@@ -267,6 +273,23 @@ export function NextLessonsPanel({
               />
             </LocalizationProvider>
           </Box>
+          {onPushBack && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                Out that day? Move this lesson and every later one a week, so
+                they keep their order.
+              </Typography>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  if (moving) onPushBack(moving);
+                  setMoving(null);
+                }}
+              >
+                Push this and later lessons back a week
+              </Button>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setMoving(null)}>Back</Button>

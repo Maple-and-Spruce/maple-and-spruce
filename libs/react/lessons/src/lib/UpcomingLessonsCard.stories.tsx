@@ -71,6 +71,25 @@ export const MoveAndDelete: Story = {
   },
 };
 
+/** Push back is offered only where the page handles it. */
+export const PushBack: Story = {
+  args: { onPushBack: fn() },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getAllByRole('button', { name: /^Push back a week from/ })[1]
+    );
+    await expect(args.onPushBack).toHaveBeenCalledWith(eight[1]);
+  },
+};
+
+export const NoPushBackWithoutHandler: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole('button', { name: /^Push back/ })).toBeNull();
+  },
+};
+
 /** Cancel opens the cancel dialog, where Katie can also reschedule with a credit. */
 export const Cancel: Story = {
   play: async ({ args, canvasElement }) => {

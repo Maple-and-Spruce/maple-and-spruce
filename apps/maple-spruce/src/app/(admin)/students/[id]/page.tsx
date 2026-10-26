@@ -42,6 +42,7 @@ import {
   SCHEDULE_TIME_ZONE,
   invoicedLessonIds,
   lessonBillingState,
+  planPushLessonsBack,
   resolvePrivatePayLessonRateCents,
 } from '@maple/ts/domain';
 import type {
@@ -67,6 +68,7 @@ import {
   LessonActivity,
   NextLessonsPanel,
   PaymentMethodCard,
+  PushLessonsBackDialog,
   ScheduleLessonDialog,
   StandingScheduleCard,
   StandingScheduleDialog,
@@ -160,6 +162,7 @@ export default function StudentDetailPage() {
     updateLesson,
     deleteLesson,
     rescheduleLessonWithCredit,
+    pushLessonsBack,
   } = useLessons({ studentId });
   const {
     invoicesState,
@@ -229,6 +232,11 @@ export default function StudentDetailPage() {
   // ---- Next lessons -------------------------------------------------------
 
   const [moved, setMoved] = useState<ReadonlyMap<string, Date>>(new Map());
+  /**
+   * Proposed dates Katie pushed back: not booked yet, so pushing one back is
+   * skipping it, and the plan fills the four from the following weeks.
+   */
+  const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   const [payNotice, setPayNotice] = useState<string | null>(null);
@@ -249,6 +257,7 @@ export default function StudentDetailPage() {
         invoicedIds: invoicedLessonIds(invoices),
         now: new Date(),
         moved,
+        skipped,
       }),
     };
   }, [
@@ -261,6 +270,7 @@ export default function StudentDetailPage() {
     charges,
     invoices,
     moved,
+    skipped,
   ]);
 
   const priceOf = (item: Pick<Lesson, 'durationMinutes'>) =>
@@ -313,6 +323,7 @@ export default function StudentDetailPage() {
       if (result.ok) {
         setPayNotice(result.notice);
         setMoved(new Map());
+        setSkipped(new Set());
       } else {
         setPayError(result.error);
       }
@@ -356,6 +367,58 @@ export default function StudentDetailPage() {
       ),
     [lessons, charges, invoices]
   );
+
+  // ---- Push lessons back a week ------------------------------------------
+
+  /** The first lesson Katie is pushing back; every later one moves with it. */
+  const [pushAnchor, setPushAnchor] = useState<Lesson | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+
+  const pushMoves = useMemo(
+    () =>
+      pushAnchor
+        ? planPushLessonsBack(pushAnchor, lessons)
+            .reverse()
+            .map(({ lesson, to }) => ({
+              id: lesson.id,
+              from: lesson.scheduledAt,
+              to,
+              paid: paidLessonIds.has(lesson.id),
+            }))
+        : [],
+    [pushAnchor, lessons, paidLessonIds]
+  );
+
+  const openPushBack = (lesson: Lesson) => {
+    setPushError(null);
+    setPushAnchor(lesson);
+  };
+
+  const handlePushBackNext = (item: NextLessonItem) => {
+    const booked = item.lessonId
+      ? lessons.find((l) => l.id === item.lessonId)
+      : undefined;
+    if (booked) {
+      openPushBack(booked);
+      return;
+    }
+    setSkipped((prev) => new Set(prev).add(item.key));
+  };
+
+  const confirmPushBack = async () => {
+    if (!pushAnchor) return;
+    setPushBusy(true);
+    setPushError(null);
+    try {
+      await pushLessonsBack(pushAnchor.id);
+      setPushAnchor(null);
+    } catch (err) {
+      setPushError(err instanceof Error ? err.message : 'Could not push them back');
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   const openScheduleDialog = (schedule?: StudentLessonSchedule) => {
     setEditingSchedule(schedule);
@@ -677,6 +740,7 @@ export default function StudentDetailPage() {
           error={payError}
           notice={payNotice}
           onMove={handleMoveNext}
+          onPushBack={handlePushBackNext}
           onCharge={() => handlePay('card')}
           onInvoice={() => handlePay('invoice')}
           onBook={() => handlePay('none')}
@@ -719,6 +783,7 @@ export default function StudentDetailPage() {
             paidLessonIds={paidLessonIds}
             pendingLessonId={pendingLessonId}
             onMove={(lesson) => setEditLesson(lesson)}
+            onPushBack={openPushBack}
             onCancel={openCancel}
             onWeather={openWeather}
             onInPerson={(lesson) => setVirtual(lesson, false)}
@@ -920,6 +985,13 @@ export default function StudentDetailPage() {
           await createLessonSeries(input);
         }}
         isSubmitting={isSubmitting}
+      />
+      <PushLessonsBackDialog
+        moves={pushMoves}
+        busy={pushBusy}
+        error={pushError}
+        onConfirm={confirmPushBack}
+        onClose={() => setPushAnchor(null)}
       />
       <CancelLessonDialog
         lesson={cancellingLesson}
