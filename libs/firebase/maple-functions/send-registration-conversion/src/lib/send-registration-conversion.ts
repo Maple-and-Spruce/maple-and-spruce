@@ -182,18 +182,32 @@ export function buildPurchaseEvent(
  * unit-testable without the functions test harness. Sends a `Purchase` via
  * `send` when the write is a fresh confirmation. Best-effort: never throws —
  * a dropped conversion must not retry-loop or affect the registration.
- * Returns whether an event was sent.
+ *
+ * `send` resolves to whether Meta ACCEPTED the event. The production sender
+ * (`trySendMetaCapiEvents`) swallows failures and returns `false` rather than
+ * throwing, so "it didn't throw" is not "it was sent" — treating it that way
+ * logged "Sent Meta CAPI Purchase" for every registration while Meta was
+ * rejecting all of them.
+ *
+ * Returns whether Meta accepted the event.
  */
 export async function emitPurchaseIfConfirmed(
   before: RegistrationConversionData | undefined,
   after: RegistrationConversionData | undefined,
-  send: (event: MetaCapiEvent) => Promise<void>,
+  send: (event: MetaCapiEvent) => Promise<boolean>,
   logger: Pick<Console, 'log' | 'error'> = console,
 ): Promise<boolean> {
   if (!shouldEmitPurchase(before, after)) return false;
   const data = after as RegistrationConversionData;
   try {
-    await send(buildPurchaseEvent(data));
+    const accepted = await send(buildPurchaseEvent(data));
+    if (!accepted) {
+      logger.error('Meta CAPI Purchase NOT sent for confirmed registration', {
+        confirmationNumber: data.confirmationNumber,
+        valueCents: data.pricePaidCents,
+      });
+      return false;
+    }
     logger.log('Sent Meta CAPI Purchase for confirmed registration', {
       confirmationNumber: data.confirmationNumber,
       valueCents: data.pricePaidCents,
@@ -460,9 +474,9 @@ export const sendRegistrationConversion = onDocumentWritten(
     // Independent beacons: none throws, and one being down must not hold
     // up or suppress another.
     await Promise.all([
-      emitPurchaseIfConfirmed(before, after, async (evt) => {
-        await trySendMetaCapiEvents(config, [evt]);
-      }),
+      emitPurchaseIfConfirmed(before, after, (evt) =>
+        trySendMetaCapiEvents(config, [evt]),
+      ),
       emitGa4PurchaseIfConfirmed(before, after, (payload) =>
         sendGa4Payload(ga4Config, payload),
       ),

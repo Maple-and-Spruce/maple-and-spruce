@@ -217,19 +217,31 @@ export function buildMusicTogetherPurchaseEvent(
 /**
  * Core emit logic, decoupled from the Firestore-trigger wrapper so it is
  * unit-testable without the functions test harness. Best-effort: never throws.
- * Returns whether an event was sent.
+ *
+ * `send` resolves to whether Meta ACCEPTED the event — `trySendMetaCapiEvents`
+ * returns `false` instead of throwing, so only a `true` may be logged as sent.
+ * Returns whether Meta accepted the event.
  */
 export async function emitMusicTogetherPurchaseIfConfirmed(
   registrationId: string,
   before: MusicTogetherConversionData | undefined,
   after: MusicTogetherConversionData | undefined,
-  send: (event: MetaCapiEvent) => Promise<void>,
+  send: (event: MetaCapiEvent) => Promise<boolean>,
   logger: Pick<Console, 'log' | 'error'> = console
 ): Promise<boolean> {
   if (!shouldEmitMusicTogetherPurchase(before, after)) return false;
   const data = after as MusicTogetherConversionData;
   try {
-    await send(buildMusicTogetherPurchaseEvent(registrationId, data));
+    const accepted = await send(
+      buildMusicTogetherPurchaseEvent(registrationId, data)
+    );
+    if (!accepted) {
+      logger.error(
+        'Meta CAPI Purchase NOT sent for confirmed Music Together registration',
+        { registrationId, committedCents: reportedValueCents(data) }
+      );
+      return false;
+    }
     logger.log(
       'Sent Meta CAPI Purchase for confirmed Music Together registration',
       {
@@ -274,9 +286,7 @@ export const sendMusicTogetherConversion = onDocumentWritten(
       event.params.registrationId,
       before,
       after,
-      async (evt) => {
-        await trySendMetaCapiEvents(config, [evt]);
-      }
+      (evt) => trySendMetaCapiEvents(config, [evt])
     );
   }
 );

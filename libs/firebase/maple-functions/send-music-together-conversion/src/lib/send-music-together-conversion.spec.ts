@@ -324,7 +324,7 @@ describe('emitMusicTogetherPurchaseIfConfirmed', () => {
   const logger = { log: vi.fn(), error: vi.fn() };
 
   it('sends exactly one Purchase on a fresh confirmation', async () => {
-    const send = vi.fn().mockResolvedValue(undefined);
+    const send = vi.fn().mockResolvedValue(true);
     await expect(
       emitMusicTogetherPurchaseIfConfirmed(
         REG_ID,
@@ -350,6 +350,27 @@ describe('emitMusicTogetherPurchaseIfConfirmed', () => {
       )
     ).resolves.toBe(false);
     expect(send).not.toHaveBeenCalled();
+  });
+
+  // `trySendMetaCapiEvents` resolves `false` instead of throwing when Meta
+  // rejects the batch, so a resolved send is not proof of delivery.
+  it('does not log success when the sender reports Meta rejected it', async () => {
+    const rejectLogger = { log: vi.fn(), error: vi.fn() };
+    const send = vi.fn().mockResolvedValue(false);
+    await expect(
+      emitMusicTogetherPurchaseIfConfirmed(
+        REG_ID,
+        { status: 'pending' },
+        confirmed(),
+        send,
+        rejectLogger
+      )
+    ).resolves.toBe(false);
+    expect(rejectLogger.log).not.toHaveBeenCalled();
+    expect(rejectLogger.error).toHaveBeenCalledWith(
+      'Meta CAPI Purchase NOT sent for confirmed Music Together registration',
+      expect.objectContaining({ registrationId: REG_ID })
+    );
   });
 
   // Real money, real customers: the family is already charged and enrolled by
