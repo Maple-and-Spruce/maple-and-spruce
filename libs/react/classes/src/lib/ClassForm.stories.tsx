@@ -849,6 +849,8 @@ export const EditPrivateHours: Story = {
     expect(canvas.getByLabelText(/price per group/i)).toHaveValue('60.00');
     expect(canvas.queryByLabelText(/minimum enrollment/i)).toBeNull();
     expect(canvas.getByText(/6 bookable hours/i)).toBeInTheDocument();
+    // One room check per day (3 days), not one per hour (6).
+    expect(canvas.getAllByTestId('room-check')).toHaveLength(3);
 
     await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
     await waitFor(() => {

@@ -129,4 +129,34 @@ describe('ClassTable', () => {
       screen.getByText('No classes match your filters')
     ).toBeInTheDocument();
   });
+
+  it('describes a private-hours class in hours, with the span of the day they cover', () => {
+    const at = (d: string, t: string) => ({ dateTime: new Date(`${d}T${t}:00`) });
+    render(
+      <ClassTable
+        classesState={asState([
+          {
+            ...baseClass,
+            format: 'privateHours',
+            durationMinutes: 60,
+            capacity: 12,
+            sessions: [
+              at('2099-12-05', '10:00'),
+              at('2099-12-05', '11:30'),
+              at('2099-12-05', '13:00'),
+              at('2099-12-12', '10:00'),
+              at('2099-12-12', '11:30'),
+              at('2099-12-12', '13:00'),
+            ],
+          },
+        ])}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+    expect(screen.getByText('6 hours')).toBeInTheDocument();
+    expect(screen.getByText('10:00 AM–2:00 PM')).toBeInTheDocument();
+    expect(screen.queryByText('Varies')).toBeNull();
+    expect(screen.getByText('0/6 hrs')).toBeInTheDocument();
+  });
 });
