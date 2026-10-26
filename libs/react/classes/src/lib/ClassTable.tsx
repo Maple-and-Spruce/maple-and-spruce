@@ -32,6 +32,7 @@ import {
   formatClassPrice,
   formatWeekdayTimeBlock,
   getBookableCapacity,
+  getSessionStartTimes,
   isPrivateHoursClass,
 } from '@maple/ts/domain';
 import { surfaces, borders, radii, shadows } from '@maple/react/theme';
@@ -60,6 +61,27 @@ const statusColors: Record<
   cancelled: 'error',
   completed: 'warning',
 };
+
+/**
+ * The part of the day a private-hours class's hours cover, from the earliest
+ * start to the end of the latest hour: "10:00 AM–2:00 PM". Undefined when the
+ * class has no hours yet.
+ */
+function privateHoursSpan(
+  sessions: Class['sessions'],
+  durationMinutes: number
+): string | undefined {
+  const starts = getSessionStartTimes(sessions);
+  if (starts.length === 0) return undefined;
+  const clock = (minutes: number): string => {
+    const d = new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60);
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+  const first = starts[0].hours * 60 + starts[0].minutes;
+  const last = starts[starts.length - 1];
+  const end = last.hours * 60 + last.minutes + durationMinutes;
+  return `${clock(first)}–${clock(end)}`;
+}
 
 interface ClassRow {
   id: string;
@@ -113,15 +135,21 @@ export function ClassTable({
         classItem.sessions.map((s) => s.dateTime),
         classItem.durationMinutes
       );
+      const privateHours = isPrivateHoursClass(classItem);
       return {
         id: classItem.id,
         classItem,
         name: classItem.name,
         imageUrl: classItem.imageUrl,
         isFeatured: classItem.isFeatured === true,
-        isPrivateHours: isPrivateHoursClass(classItem),
+        isPrivateHours: privateHours,
         dayDisplay: schedule.dayDisplay,
-        timeBlockDisplay: schedule.timeBlockDisplay,
+        // Private hours start at several times a day, which reads as
+        // "Varies"; show the span the hours cover instead.
+        timeBlockDisplay: privateHours
+          ? privateHoursSpan(classItem.sessions, classItem.durationMinutes) ??
+            schedule.timeBlockDisplay
+          : schedule.timeBlockDisplay,
         dateRangeDisplay: schedule.dateRangeDisplay,
         sessionCount: schedule.count,
         weekdaySortKey: schedule.weekdaySortKey,
@@ -245,7 +273,8 @@ export function ClassTable({
                 noWrap
                 sx={{ lineHeight: 1.35 }}
               >
-                {params.row.sessionCount} session
+                {params.row.sessionCount}{' '}
+                {params.row.isPrivateHours ? 'hour' : 'session'}
                 {params.row.sessionCount === 1 ? '' : 's'}
               </Typography>
             </Box>

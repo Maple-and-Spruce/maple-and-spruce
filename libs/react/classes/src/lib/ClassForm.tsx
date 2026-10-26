@@ -173,6 +173,19 @@ function MultiSelectDay(
   );
 }
 
+/**
+ * Starting values for a new class in each format. A private hour is one hour
+ * for a group at the group price; a seat class keeps the long-standing
+ * defaults the form has always used.
+ */
+const FORMAT_DEFAULTS: Record<
+  ClassFormat,
+  { durationMinutes: number; priceCents: number; capacity: number }
+> = {
+  seats: { durationMinutes: 120, priceCents: 4500, capacity: 8 },
+  privateHours: { durationMinutes: 60, priceCents: 6000, capacity: 12 },
+};
+
 export function ClassForm({
   open,
   onClose,
@@ -288,6 +301,59 @@ export function ClassForm({
       }
       return { dateTime: dt };
     });
+  });
+
+  // Switching a NEW class between formats swaps in that format's starting
+  // values, but only for fields still at the other format's starting value,
+  // so nothing the person typed is lost. An existing class keeps its values.
+  const switchFormat = useCallback(
+    (next: ClassFormat) => {
+      if (next === format.value) return;
+      if (!classItem) {
+        const from = FORMAT_DEFAULTS[format.value];
+        const to = FORMAT_DEFAULTS[next];
+        batch(() => {
+          if (durationMinutes.value === from.durationMinutes) {
+            durationMinutes.value = to.durationMinutes;
+            durationMode.value = 'preset';
+          }
+          if (priceCents.value === from.priceCents) {
+            priceCents.value = to.priceCents;
+            priceDisplay.value = (to.priceCents / 100).toFixed(2);
+          }
+          if (capacity.value === from.capacity) {
+            capacity.value = to.capacity;
+          }
+        });
+      }
+      format.value = next;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [classItem]
+  );
+
+  // What to check the room against: each session, or for private hours one
+  // span per day from the first hour to the end of the last. The gaps between
+  // hours are the reset time, when the room is still in use.
+  const roomChecks = useComputed<Array<{ start: Date; end: Date }>>(() => {
+    const lengthMs = durationMinutes.value * 60_000;
+    const spans = composedSessions.value.map((s) => ({
+      start: s.dateTime,
+      end: new Date(s.dateTime.getTime() + lengthMs),
+    }));
+    if (format.value !== 'privateHours') return spans;
+    const byDay = new Map<string, { start: Date; end: Date }>();
+    for (const span of spans) {
+      const key = toDateKey(span.start);
+      const day = byDay.get(key);
+      if (!day) {
+        byDay.set(key, { ...span });
+      } else {
+        if (span.start < day.start) day.start = span.start;
+        if (span.end > day.end) day.end = span.end;
+      }
+    }
+    return [...byDay.values()];
   });
 
   // ============================================================
@@ -486,11 +552,11 @@ export function ClassForm({
         perDateTimes.value = new Map();
         useDifferentTimes.value = false;
         registrationClosesAt.value = null;
-        durationMinutes.value = 120;
+        durationMinutes.value = FORMAT_DEFAULTS.seats.durationMinutes;
         durationMode.value = 'preset';
-        capacity.value = 8;
+        capacity.value = FORMAT_DEFAULTS.seats.capacity;
         minimumEnrollment.value = null;
-        priceCents.value = 4500;
+        priceCents.value = FORMAT_DEFAULTS.seats.priceCents;
         priceDisplay.value = '45.00';
         imageUrl.value = '';
         galleryImages.value = [];
@@ -893,7 +959,7 @@ export function ClassForm({
                 exclusive
                 value={format.value}
                 onChange={(_e, v: ClassFormat | null) => {
-                  if (v) format.value = v;
+                  if (v) switchFormat(v);
                 }}
                 aria-labelledby="class-format-label"
                 disabled={hasRegistrations}
@@ -1415,23 +1481,19 @@ export function ClassForm({
             </FormControl>
 
             {/* Per-session room availability when a room is chosen */}
-            {room.value && composedSessions.value.length > 0 && (
+            {room.value && roomChecks.value.length > 0 && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                {composedSessions.value.map((session) => (
-                  <RoomAvailability
-                    key={session.dateTime.toISOString()}
-                    room={room.value as Room}
-                    start={session.dateTime}
-                    end={
-                      new Date(
-                        session.dateTime.getTime() +
-                          durationMinutes.value * 60_000
-                      )
-                    }
-                    ignoreSourceRef={
-                      classItem ? `classes/${classItem.id}` : undefined
-                    }
-                  />
+                {roomChecks.value.map((check) => (
+                  <Box key={check.start.toISOString()} data-testid="room-check">
+                    <RoomAvailability
+                      room={room.value as Room}
+                      start={check.start}
+                      end={check.end}
+                      ignoreSourceRef={
+                        classItem ? `classes/${classItem.id}` : undefined
+                      }
+                    />
+                  </Box>
                 ))}
               </Box>
             )}

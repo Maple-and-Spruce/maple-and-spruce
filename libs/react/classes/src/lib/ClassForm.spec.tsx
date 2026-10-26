@@ -618,4 +618,57 @@ describe('ClassForm', { timeout: 30_000 }, () => {
       expect(screen.getByRole('button', { name: 'Seats' })).toBeDisabled();
     });
   });
+
+  describe('starting values when switching format', () => {
+    it('gives a new private-hours class one hour, $60 and a group of 12', async () => {
+      const user = userEvent.setup();
+      render(<ClassForm {...defaultProps} />);
+
+      await user.click(screen.getByRole('button', { name: 'Private group hours' }));
+
+      expect(screen.getByRole('textbox', { name: /Price per group/ })).toHaveValue('60.00');
+      expect(screen.getByRole('spinbutton', { name: /Largest group/ })).toHaveValue(12);
+      expect(screen.getByRole('combobox', { name: /Duration/ })).toHaveTextContent('1 hour');
+
+      await user.click(screen.getByRole('button', { name: 'Seats' }));
+      expect(screen.getByRole('textbox', { name: /^Price/ })).toHaveValue('45.00');
+      expect(screen.getByRole('spinbutton', { name: /Capacity/ })).toHaveValue(8);
+      expect(screen.getByRole('combobox', { name: /Duration/ })).toHaveTextContent('2 hours');
+    });
+
+    it('keeps a value the person already changed', async () => {
+      const user = userEvent.setup();
+      render(<ClassForm {...defaultProps} />);
+      setInputValue(screen.getByRole('textbox', { name: /^Price/ }), '75.00');
+
+      await user.click(screen.getByRole('button', { name: 'Private group hours' }));
+
+      expect(screen.getByRole('textbox', { name: /Price per group/ })).toHaveValue('75.00');
+      expect(screen.getByRole('spinbutton', { name: /Largest group/ })).toHaveValue(12);
+    });
+
+    it('leaves an existing class as it is', async () => {
+      const user = userEvent.setup();
+      const existing = {
+        id: 'class-seats',
+        name: 'Pottery Workshop',
+        description: 'Learn the basics of wheel throwing in this hands-on workshop.',
+        sessions: [{ dateTime: futureDate }],
+        durationMinutes: 120,
+        capacity: 8,
+        priceCents: 4500,
+        skillLevel: 'beginner',
+        status: 'draft',
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+      } as Class;
+      render(<ClassForm {...defaultProps} classItem={existing} />);
+
+      await user.click(screen.getByRole('button', { name: 'Private group hours' }));
+
+      expect(screen.getByRole('textbox', { name: /Price per group/ })).toHaveValue('45.00');
+      expect(screen.getByRole('spinbutton', { name: /Largest group/ })).toHaveValue(8);
+    });
+  });
 });
+
