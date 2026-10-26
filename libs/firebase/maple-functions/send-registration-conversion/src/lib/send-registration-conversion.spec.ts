@@ -340,16 +340,16 @@ describe('emitGa4PurchaseIfConfirmed', () => {
 describe('buildMailerLiteSale', () => {
   it('makes the class a product and the confirmation number the order id', () => {
     expect(
-      buildMailerLiteSale(
-        { ...confirmed, eventSourceUrl: 'https://example.com/classes/x' },
-        'Intro to Pottery',
-      ),
+      buildMailerLiteSale(confirmed, {
+        name: 'Intro to Pottery',
+        webflowSlug: 'intro-to-pottery-a1b2c',
+      }),
     ).toEqual({
       product: {
         resourceId: 'cls_1',
         name: 'Intro to Pottery',
         price: 53,
-        url: 'https://example.com/classes/x',
+        url: 'https://mapleandsprucefolkarts.com/classes/intro-to-pottery-a1b2c',
       },
       order: {
         resourceId: 'MS-ABC123',
@@ -363,9 +363,52 @@ describe('buildMailerLiteSale', () => {
   });
 
   it('names the product after the class id when the name is unknown', () => {
-    const { product } = buildMailerLiteSale(confirmed, '  ');
+    const { product } = buildMailerLiteSale(confirmed, { name: '  ' });
     expect(product.name).toBe('cls_1');
     expect(product.url).toBeUndefined();
+  });
+
+  it("links the class's own page, not the page the buyer was on", () => {
+    // A registration transferred to another run of the same class keeps the
+    // eventSourceUrl of the run it was bought on.
+    const { product } = buildMailerLiteSale(
+      {
+        ...confirmed,
+        eventSourceUrl:
+          'https://mapleandsprucefolkarts.com/classes/intro-to-pottery-0ld01',
+      },
+      { name: 'Intro to Pottery', webflowSlug: 'intro-to-pottery-n3w02' },
+    );
+    expect(product.url).toBe(
+      'https://mapleandsprucefolkarts.com/classes/intro-to-pottery-n3w02',
+    );
+  });
+
+  it('sends no URL rather than guess one when the class has no slug', () => {
+    const { product } = buildMailerLiteSale(
+      {
+        ...confirmed,
+        eventSourceUrl: 'https://mapleandsprucefolkarts.com/classes/other-run',
+      },
+      { name: 'Intro to Pottery' },
+    );
+    expect(product.url).toBeUndefined();
+  });
+
+  it('counts the seats paid for, with the unit price from the amount paid', () => {
+    // Three seats, $60 each plus 6% tax: what the buyer paid at checkout.
+    const { product, order } = buildMailerLiteSale({
+      ...confirmed,
+      quantity: 3,
+      pricePaidCents: 19080,
+    });
+    expect(product.price).toBe(63.6);
+    expect(order.items[0]).toEqual({
+      productResourceId: 'cls_1',
+      quantity: 3,
+      price: 63.6,
+    });
+    expect(order.totalPrice).toBe(190.8);
   });
 
   it('treats a missing quantity as one seat', () => {
@@ -383,7 +426,10 @@ describe('buildMailerLiteSale', () => {
 
 describe('emitMailerLiteOrderIfConfirmed', () => {
   const pending = { ...confirmed, status: 'pending' };
-  const name = async () => 'Intro to Pottery';
+  const name = async () => ({
+    name: 'Intro to Pottery',
+    webflowSlug: 'intro-to-pottery-a1b2c',
+  });
 
   it('records one order on a fresh confirmation', async () => {
     const record = vi.fn().mockResolvedValue(true);
@@ -399,6 +445,9 @@ describe('emitMailerLiteOrderIfConfirmed', () => {
     ).resolves.toBe(true);
     expect(record).toHaveBeenCalledTimes(1);
     expect(record.mock.calls[0][0].product.name).toBe('Intro to Pottery');
+    expect(record.mock.calls[0][0].product.url).toBe(
+      'https://mapleandsprucefolkarts.com/classes/intro-to-pottery-a1b2c',
+    );
   });
 
   it('does nothing until a shop is configured', async () => {

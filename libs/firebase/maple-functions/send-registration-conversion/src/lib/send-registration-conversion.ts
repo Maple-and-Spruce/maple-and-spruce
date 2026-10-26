@@ -313,6 +313,30 @@ export async function emitGa4PurchaseIfConfirmed(
   }
 }
 
+/**
+ * Public site the class pages live on. Hardcoded, like `class-catalog-feed`
+ * and the waitlist email: dev and prod both describe the one public site.
+ */
+export const PUBLIC_SITE_BASE_URL = 'https://mapleandsprucefolkarts.com';
+
+/** The class fields the MailerLite product is built from. */
+export interface MailerLiteClassInfo {
+  name?: string;
+  /** Webflow's own slug for the class page (`Class.webflowSlug`). */
+  webflowSlug?: string;
+}
+
+/**
+ * The class's own public page, or undefined when it has no stored Webflow
+ * slug yet. Never derived from the name: classes that run more than once share
+ * a name and Webflow suffixes each run's slug, so a name-derived slug points at
+ * another run or 404s.
+ */
+export function classPageUrl(webflowSlug?: string): string | undefined {
+  const slug = webflowSlug?.trim();
+  return slug ? `${PUBLIC_SITE_BASE_URL}/classes/${slug}` : undefined;
+}
+
 /** The MailerLite product and order for one confirmed registration. */
 export interface MailerLiteSale {
   product: MailerLiteProduct;
@@ -321,12 +345,24 @@ export interface MailerLiteSale {
 
 /**
  * Build the MailerLite product (the class) and order for a confirmed
- * registration. `className` comes from the class doc; without it the product is
- * named after the class id, which MailerLite will show but still counts.
+ * registration. `classInfo` comes from the class doc; without a name the
+ * product is named after the class id, which MailerLite will show but still
+ * counts.
+ *
+ * The product URL is the class's own page, not `eventSourceUrl`. The product is
+ * keyed by class id, so its URL must describe that class. `eventSourceUrl` is
+ * only the page the buyer happened to be on, and it is copied unchanged when
+ * staff transfer a registration to another run of the class
+ * (`tools/transfer-registration.ts`), so it can name a different run.
+ *
+ * Quantity is the seats on the registration when it is confirmed, the seats
+ * this payment bought. A seat staff add afterwards is billed separately (a
+ * Square invoice) and the trigger does not fire again, so it is not counted
+ * here. `totalPrice` is always the amount actually paid.
  */
 export function buildMailerLiteSale(
   data: RegistrationConversionData,
-  className?: string,
+  classInfo: MailerLiteClassInfo = {},
 ): MailerLiteSale {
   const total = Math.round(data.pricePaidCents ?? 0) / 100;
   const quantity = data.quantity && data.quantity > 0 ? data.quantity : 1;
@@ -336,9 +372,9 @@ export function buildMailerLiteSale(
     product: {
       // Same id Meta's catalog and GA4's items use.
       resourceId: classId,
-      name: className?.trim() || classId,
+      name: classInfo.name?.trim() || classId,
       price: unitPrice,
-      url: data.eventSourceUrl || undefined,
+      url: classPageUrl(classInfo.webflowSlug),
     },
     order: {
       // The confirmation number, so a retry updates this order rather than
@@ -362,7 +398,7 @@ export async function emitMailerLiteOrderIfConfirmed(
   before: RegistrationConversionData | undefined,
   after: RegistrationConversionData | undefined,
   shopConfigured: boolean,
-  lookupClassName: (classId: string) => Promise<string | undefined>,
+  lookupClass: (classId: string) => Promise<MailerLiteClassInfo | undefined>,
   record: (sale: MailerLiteSale) => Promise<boolean>,
   logger: Pick<Console, 'log' | 'error'> = console,
 ): Promise<boolean> {
@@ -370,15 +406,15 @@ export async function emitMailerLiteOrderIfConfirmed(
   if (!shouldEmitPurchase(before, after)) return false;
   const data = after as RegistrationConversionData;
   if (!data.confirmationNumber) return false;
-  let className: string | undefined;
+  let classInfo: MailerLiteClassInfo | undefined;
   try {
-    className = await lookupClassName(data.classId as string);
+    classInfo = await lookupClass(data.classId as string);
   } catch (err) {
-    // The name is cosmetic; the order still counts without it.
+    // Name and URL are cosmetic; the order still counts without them.
     logger.error('MailerLite: class lookup failed, using the class id', err);
   }
   try {
-    return await record(buildMailerLiteSale(data, className));
+    return await record(buildMailerLiteSale(data, classInfo));
   } catch (err) {
     logger.error('MailerLite order send failed', err);
     return false;
@@ -434,7 +470,12 @@ export const sendRegistrationConversion = onDocumentWritten(
         before,
         after,
         Boolean(mailerLiteConfig.shopId.trim()),
-        async (classId) => (await ClassRepository.findById(classId))?.name,
+        async (classId) => {
+          const cls = await ClassRepository.findById(classId);
+          return cls
+            ? { name: cls.name, webflowSlug: cls.webflowSlug }
+            : undefined;
+        },
         ({ product, order }) =>
           tryRecordOrder(mailerLiteConfig, [product], order),
       ),

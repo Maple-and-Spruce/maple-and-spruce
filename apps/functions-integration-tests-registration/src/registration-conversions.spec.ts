@@ -587,10 +587,16 @@ describe('Meta CAPI Purchase triggers', () => {
       const confirmationNumber = `MS-ML${stamp}`;
       await setFirestoreDoc('classes', classId, {
         name: 'Beginner Wheel Throwing',
+        webflowSlug: 'beginner-wheel-throwing-a1b2c',
         createdAt: now,
         updatedAt: now,
       });
-      const doc = classRegistration({ classId, confirmationNumber });
+      // The buyer was on another page (e.g. a different run, as a transferred
+      // registration keeps). The product must still link this class's page.
+      const doc = {
+        ...classRegistration({ classId, confirmationNumber }),
+        eventSourceUrl: 'https://example.com/classes/some-other-run',
+      };
       await setFirestoreDoc('registrations', id, doc);
       await setFirestoreDoc('registrations', id, {
         ...doc,
@@ -622,7 +628,8 @@ describe('Meta CAPI Purchase triggers', () => {
         'accepts_marketing',
       );
 
-      // The class was upserted as a product, by name, before the order.
+      // The class was upserted as a product, by name and its own page, before
+      // the order.
       const { requests } = await mailerLiteState();
       const productCall = requests.find(
         (r) =>
@@ -631,6 +638,7 @@ describe('Meta CAPI Purchase triggers', () => {
       expect(productCall?.body).toMatchObject({
         name: 'Beginner Wheel Throwing',
         price: 47.7,
+        url: 'https://mapleandsprucefolkarts.com/classes/beginner-wheel-throwing-a1b2c',
         exclude_from_automations: true,
       });
       const orderIndex = requests.findIndex(
