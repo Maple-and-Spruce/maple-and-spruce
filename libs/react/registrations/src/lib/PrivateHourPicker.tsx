@@ -14,8 +14,17 @@ interface PrivateHourPickerProps {
   selectedStart: string | null;
   onSelectDay: (dayKey: string) => void;
   onSelectStart: (start: string) => void;
+  /**
+   * Called when a booked hour is picked, to join its waitlist. When omitted,
+   * booked hours can't be picked.
+   */
+  onSelectBooked?: (start: string) => void;
+  /** The booked hour whose waitlist is open, shown as selected. */
+  waitlistStart?: string | null;
   /** Shown under the times, e.g. "Pick a time". */
   error?: string | null;
+  /** Rendered under the times, e.g. the waitlist form for a booked hour. */
+  children?: React.ReactNode;
 }
 
 export function PrivateHourPicker({
@@ -24,7 +33,10 @@ export function PrivateHourPicker({
   selectedStart,
   onSelectDay,
   onSelectStart,
+  onSelectBooked,
+  waitlistStart,
   error,
+  children,
 }: PrivateHourPickerProps) {
   const day = days.find((d) => d.key === selectedDay) ?? null;
 
@@ -82,20 +94,31 @@ export function PrivateHourPicker({
             }}
           >
             {day.hours.map((h) => {
-              const selected = h.start === selectedStart;
+              const selected = h.booked
+                ? h.start === waitlistStart
+                : h.start === selectedStart;
+              const canWaitlist = h.booked && !!onSelectBooked;
               return (
                 <Button
                   key={h.start}
                   variant={selected ? 'contained' : 'outlined'}
+                  color={h.booked ? 'secondary' : 'primary'}
                   aria-pressed={selected}
-                  disabled={h.booked}
-                  onClick={() => onSelectStart(h.start)}
-                  sx={{ flexDirection: 'column', py: 1, lineHeight: 1.3 }}
+                  disabled={h.booked && !canWaitlist}
+                  onClick={() =>
+                    h.booked ? onSelectBooked?.(h.start) : onSelectStart(h.start)
+                  }
+                  sx={{
+                    flexDirection: 'column',
+                    py: 1,
+                    lineHeight: 1.3,
+                    ...(h.booked && !selected ? { borderStyle: 'dashed' } : {}),
+                  }}
                 >
                   <span>{h.label}</span>
                   {h.booked && (
                     <Typography component="span" variant="caption">
-                      Booked
+                      {canWaitlist ? 'Booked · join waitlist' : 'Booked'}
                     </Typography>
                   )}
                 </Button>
@@ -103,6 +126,7 @@ export function PrivateHourPicker({
             })}
           </Box>
           {error && <FormHelperText error>{error}</FormHelperText>}
+          {children}
         </Box>
       )}
     </Box>

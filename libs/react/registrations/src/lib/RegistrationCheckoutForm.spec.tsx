@@ -977,3 +977,82 @@ describe('RegistrationCheckoutForm — private group hours', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });
+
+describe('RegistrationCheckoutForm — waitlist for a booked hour', () => {
+  const hoursClass = {
+    ...mockPublicClass,
+    id: 'class-hours',
+    format: 'privateHours',
+    capacity: 12,
+    priceCents: 6000,
+    spotsRemaining: 1,
+    sessions: [
+      { dateTime: '2099-12-05T15:00:00.000Z' },
+      { dateTime: '2099-12-05T16:30:00.000Z' },
+    ],
+    bookedSlotStarts: ['2099-12-05T16:30:00.000Z'],
+  } as unknown as PublicClass;
+
+  afterEach(() => cleanup());
+
+  function renderForm(onJoinHourWaitlist?: (s: string, e: string) => Promise<{ added: boolean }>) {
+    render(
+      <RegistrationCheckoutForm
+        publicClass={hoursClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={vi.fn().mockResolvedValue(makeCostResponse(1, 6000))}
+        onSubmit={vi.fn()}
+        onSuccess={vi.fn()}
+        onJoinHourWaitlist={onJoinHourWaitlist}
+      />
+    );
+  }
+
+  it('keeps a booked hour unpickable when no waitlist handler is given', () => {
+    renderForm();
+    expect(screen.getByRole('button', { name: /11:30 AM–12:30 PM/ })).toBeDisabled();
+  });
+
+  it('joins the waitlist for the booked hour', async () => {
+    const user = userEvent.setup();
+    const join = vi.fn().mockResolvedValue({ added: true });
+    renderForm(join);
+
+    const booked = screen.getByRole('button', { name: /11:30 AM–12:30 PM/ });
+    expect(booked).toHaveTextContent('Booked · join waitlist');
+    await user.click(booked);
+    expect(booked).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(/Sat, Dec 5, 11:30 AM–12:30 PM is booked/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getAllByLabelText(/Email Address/)[0], {
+      target: { value: 'robin@example.com' },
+    });
+    await user.click(screen.getByRole('button', { name: 'Join waitlist' }));
+
+    await waitFor(() =>
+      expect(join).toHaveBeenCalledWith('2099-12-05T16:30:00.000Z', 'robin@example.com')
+    );
+    expect(await screen.findByText(/on the waitlist for Sat, Dec 5, 11:30 AM–12:30 PM/)).toBeInTheDocument();
+  });
+
+  it('asks for a valid email before joining', async () => {
+    const user = userEvent.setup();
+    const join = vi.fn();
+    renderForm(join);
+    await user.click(screen.getByRole('button', { name: /11:30 AM–12:30 PM/ }));
+    fireEvent.change(screen.getAllByLabelText(/Email Address/)[0], { target: { value: 'nope' } });
+    await user.click(screen.getByRole('button', { name: 'Join waitlist' }));
+    expect(await screen.findByText('Please enter a valid email.')).toBeInTheDocument();
+    expect(join).not.toHaveBeenCalled();
+  });
+
+  it('picking an open hour closes the waitlist form', async () => {
+    const user = userEvent.setup();
+    renderForm(vi.fn());
+    await user.click(screen.getByRole('button', { name: /11:30 AM–12:30 PM/ }));
+    await user.click(screen.getByRole('button', { name: /10:00–11:00 AM/ }));
+    expect(screen.queryByRole('button', { name: 'Join waitlist' })).toBeNull();
+  });
+});
+

@@ -1976,6 +1976,9 @@ reminder all name the booked hour, and an edit that removes a booked hour is ref
 - Anything that counts seats has to learn the hour rule. The admin does: the roster lists hours by
   day with the group holding each, the class table and dashboard count booked hours against the
   number of hours, and the Today card shows a private hour only once it is booked.
+- A waitlist entry can name the hour it waits for (no hour = any hour). When a booking frees an
+  hour that hasn't started, everyone waiting on it or on any hour is emailed once, and only those
+  entries are removed. The first to book gets it, as with the class waitlist.
 - An instructor's share of a private hour is the whole group price, paid once that hour ends. Its
   ledger entry id doesn't use the session index, so adding hours later can't make a paid booking
   read as unpaid.

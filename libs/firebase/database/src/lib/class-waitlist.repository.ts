@@ -41,8 +41,14 @@ function docToEntry(
     id: doc.id,
     classId,
     email: data.email,
+    slotStart: data.slotStart ? toDate(data.slotStart) : undefined,
     createdAt: toDate(data.createdAt),
   };
+}
+
+/** Doc id for an entry: the email, plus the hour when waiting on one hour. */
+export function waitlistEntryId(email: string, slotStart?: Date): string {
+  return slotStart ? `${emailKey(email)}__${slotStart.getTime()}` : emailKey(email);
 }
 
 export const ClassWaitlistRepository = {
@@ -53,8 +59,9 @@ export const ClassWaitlistRepository = {
   async add(input: {
     classId: string;
     email: string;
+    slotStart?: Date;
   }): Promise<{ entry: ClassWaitlistEntry; created: boolean }> {
-    const id = emailKey(input.email);
+    const id = waitlistEntryId(input.email, input.slotStart);
     const ref = waitlistRef(input.classId).doc(id);
     const existing = await ref.get();
     if (existing.exists) {
@@ -63,6 +70,7 @@ export const ClassWaitlistRepository = {
     const createdAt = new Date();
     await ref.set({
       email: input.email.trim(),
+      ...(input.slotStart ? { slotStart: input.slotStart } : {}),
       createdAt,
     });
     return {
@@ -70,6 +78,7 @@ export const ClassWaitlistRepository = {
         id,
         classId: input.classId,
         email: input.email.trim(),
+        slotStart: input.slotStart,
         createdAt,
       },
       created: true,
@@ -116,6 +125,17 @@ export const ClassWaitlistRepository = {
    * Delete every entry for a class. Used after a broadcast notification
    * fires so we don't re-email everyone on the next cancellation.
    */
+  /**
+   * Delete some entries of a class by id. Used after a private hour reopens:
+   * only the people emailed about it come off the list.
+   */
+  async deleteEntries(classId: string, ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const batch = getDb().batch();
+    ids.forEach((id) => batch.delete(waitlistRef(classId).doc(id)));
+    await batch.commit();
+  },
+
   async clearByClassId(classId: string): Promise<void> {
     const snapshot = await waitlistRef(classId).get();
     if (snapshot.empty) return;

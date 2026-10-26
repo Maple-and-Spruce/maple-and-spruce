@@ -241,3 +241,27 @@ export const PrivateHours: Story = {
     await expect(canvas.queryByText(/Anyone else coming/)).toBeNull();
   },
 };
+
+/**
+ * A booked hour can be picked to join its waitlist; the form opens under the
+ * times and confirms once joined.
+ */
+export const JoinHourWaitlist: Story = {
+  args: {
+    publicClass: privateHoursClass,
+    onJoinHourWaitlist: fn(async () => ({ added: true })),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const booked = canvas.getByRole('button', { name: /1:00–2:00 PM/ });
+    await expect(booked).toHaveTextContent('Booked · join waitlist');
+    await userEvent.click(booked);
+    await userEvent.type(canvas.getAllByLabelText(/Email Address/)[0], 'robin@example.com');
+    await userEvent.click(canvas.getByRole('button', { name: 'Join waitlist' }));
+    await expect(args.onJoinHourWaitlist).toHaveBeenCalledWith(
+      '2030-12-07T18:00:00.000Z',
+      'robin@example.com'
+    );
+    await expect(await canvas.findByText(/on the waitlist for Sat, Dec 7, 1:00–2:00 PM/)).toBeInTheDocument();
+  },
+};

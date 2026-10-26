@@ -23,19 +23,33 @@ import {
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { buildPrivateHourRoster } from '@maple/ts/domain';
-import type { Class, Registration, RequestState } from '@maple/ts/domain';
+import type {
+  Class,
+  ClassWaitlistEntry,
+  Registration,
+  RequestState,
+} from '@maple/ts/domain';
 
 interface PrivateHourRosterProps {
   classItem: Pick<Class, 'sessions' | 'durationMinutes'>;
   registrationsState: RequestState<Registration[]>;
   onViewDetail: (registration: Registration) => void;
+  /** Waitlist entries, to show how many are waiting on each hour. */
+  waitlistEntries?: ReadonlyArray<Pick<ClassWaitlistEntry, 'slotStart'>>;
 }
 
 export function PrivateHourRoster({
   classItem,
   registrationsState,
   onViewDetail,
+  waitlistEntries = [],
 }: PrivateHourRosterProps) {
+  const waitingByHour = new Map<number, number>();
+  for (const e of waitlistEntries) {
+    if (!e.slotStart) continue;
+    const t = new Date(e.slotStart).getTime();
+    waitingByHour.set(t, (waitingByHour.get(t) ?? 0) + 1);
+  }
   if (registrationsState.status === 'idle' || registrationsState.status === 'loading') {
     return (
       <Box aria-busy="true" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -123,13 +137,22 @@ export function PrivateHourRoster({
                     </TableCell>
                     <TableCell>{reg?.groupSize ? `about ${reg.groupSize}` : ''}</TableCell>
                     <TableCell>
-                      {reg && (
-                        <Chip
-                          label={reg.status === 'pending' ? 'Checking out' : 'Booked'}
-                          size="small"
-                          color={reg.status === 'pending' ? 'warning' : 'success'}
-                        />
-                      )}
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                        {reg && (
+                          <Chip
+                            label={reg.status === 'pending' ? 'Checking out' : 'Booked'}
+                            size="small"
+                            color={reg.status === 'pending' ? 'warning' : 'success'}
+                          />
+                        )}
+                        {(waitingByHour.get(new Date(hour.start).getTime()) ?? 0) > 0 && (
+                          <Chip
+                            label={`${waitingByHour.get(new Date(hour.start).getTime())} waiting`}
+                            size="small"
+                            variant="outlined"
+                          />
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell align="right">
                       {reg && (

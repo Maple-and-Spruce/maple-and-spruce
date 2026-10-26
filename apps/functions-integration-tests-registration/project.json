@@ -9,6 +9,8 @@
     "firebase-maple-functions-sync-registration-count",
     "firebase-maple-functions-update-registration",
     "firebase-maple-functions-send-class-reminders",
+    "firebase-maple-functions-add-to-class-waitlist",
+    "firebase-maple-functions-notify-waitlist-on-spot-open",
     "firebase-integration-test-utils"
   ],
   "targets": {}

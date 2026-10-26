@@ -18,7 +18,9 @@
 - **PR 3 (stacked on #274):** admin by hour: roster grouped by day and hour, the hour and group
   size on registrations, the class table and dashboard counting hours, payouts paying each group's
   price for its own hour.
-- **Next:** PR 4, waitlist per hour. When an hour reopens, everyone waiting on it is emailed, the same as the class waitlist.
+- **PR 4 (stacked on #275):** waitlist per hour. A booked hour on the class page offers "Join
+  waitlist"; when it reopens, everyone waiting on it (and anyone waiting for any hour) is emailed
+  once and taken off the list. The roster shows how many wait on each hour. When an hour reopens, everyone waiting on it is emailed, the same as the class waitlist.
 
 ### MailerLite revenue attribution (2026-10-22, #262 Phase 0 + 2)
 

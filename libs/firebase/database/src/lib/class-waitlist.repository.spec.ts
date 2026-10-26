@@ -52,11 +52,32 @@ vi.mock('./utilities/database.config', () => {
 import {
   ClassWaitlistRepository,
   emailKey,
+  waitlistEntryId,
 } from './class-waitlist.repository';
 
 describe('emailKey', () => {
   it('lowercases and trims', () => {
     expect(emailKey('  Alice@Example.com  ')).toBe('alice@example.com');
+  });
+});
+
+describe('waitlistEntryId', () => {
+  it('is the lowercased email when waiting on the whole class or any hour', () => {
+    expect(waitlistEntryId(' Robin@Example.com ')).toBe('robin@example.com');
+  });
+
+  it('appends the hour in epoch ms when waiting on one hour', () => {
+    const hour = new Date('2030-12-07T18:00:00Z');
+    expect(waitlistEntryId('Robin@Example.com', hour)).toBe(
+      `robin@example.com__${hour.getTime()}`
+    );
+  });
+
+  it('gives different ids for different hours of the same address', () => {
+    const a = waitlistEntryId('robin@example.com', new Date('2030-12-07T18:00:00Z'));
+    const b = waitlistEntryId('robin@example.com', new Date('2030-12-07T19:00:00Z'));
+    expect(a).not.toBe(b);
+    expect(a).not.toBe(waitlistEntryId('robin@example.com'));
   });
 });
 
@@ -82,6 +103,37 @@ describe('ClassWaitlistRepository.add', () => {
     expect(result.entry.id).toBe('alice@example.com');
     expect(mocks.set).toHaveBeenCalledOnce();
     expect(mocks.doc).toHaveBeenCalledWith('alice@example.com');
+  });
+
+  it('stores the hour and keys the doc by email and hour', async () => {
+    mocks.get.mockResolvedValue({ exists: false });
+    mocks.set.mockResolvedValue(undefined);
+    const hour = new Date('2030-12-07T18:00:00Z');
+
+    const result = await ClassWaitlistRepository.add({
+      classId: 'class-1',
+      email: 'Robin@Example.com',
+      slotStart: hour,
+    });
+
+    const id = `robin@example.com__${hour.getTime()}`;
+    expect(mocks.doc).toHaveBeenCalledWith(id);
+    expect(mocks.set).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'Robin@Example.com', slotStart: hour })
+    );
+    expect(result.entry).toMatchObject({ id, slotStart: hour });
+  });
+
+  it('writes no slotStart field for a whole-class entry', async () => {
+    mocks.get.mockResolvedValue({ exists: false });
+    mocks.set.mockResolvedValue(undefined);
+
+    await ClassWaitlistRepository.add({
+      classId: 'class-1',
+      email: 'robin@example.com',
+    });
+
+    expect(mocks.set.mock.calls[0]?.[0]).not.toHaveProperty('slotStart');
   });
 
   it('returns existing entry without writing when email already on list', async () => {
@@ -138,6 +190,30 @@ describe('ClassWaitlistRepository.findByClassId', () => {
     });
   });
 
+  it('reads slotStart back for an entry waiting on one hour', async () => {
+    const createdAt = new Date('2026-02-01');
+    const hour = new Date('2030-12-07T18:00:00Z');
+    mocks.collectionGet.mockResolvedValue({
+      docs: [
+        {
+          id: `robin@example.com__${hour.getTime()}`,
+          exists: true,
+          data: () => ({ email: 'robin@example.com', slotStart: hour, createdAt }),
+        },
+        {
+          id: 'sam@example.com',
+          exists: true,
+          data: () => ({ email: 'sam@example.com', createdAt }),
+        },
+      ],
+    });
+
+    const result = await ClassWaitlistRepository.findByClassId('class-1');
+
+    expect(result[0]?.slotStart).toEqual(hour);
+    expect(result[1]?.slotStart).toBeUndefined();
+  });
+
   it('returns empty array when no entries', async () => {
     mocks.collectionGet.mockResolvedValue({ docs: [] });
     const result = await ClassWaitlistRepository.findByClassId('class-1');
@@ -192,6 +268,35 @@ describe('ClassWaitlistRepository.countsByClass', () => {
   it('returns an empty map when no waitlists exist', async () => {
     mocks.collectionGroupGet.mockResolvedValue({ docs: [] });
     expect(await ClassWaitlistRepository.countsByClass()).toEqual({});
+  });
+});
+
+describe('ClassWaitlistRepository.deleteEntries', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.doc.mockImplementation((id: string) => ({ id }));
+  });
+
+  it('batches a delete for each id and commits once', async () => {
+    mocks.batchCommit.mockResolvedValue(undefined);
+
+    await ClassWaitlistRepository.deleteEntries('class-1', [
+      'robin@example.com',
+      'sam@example.com__1923328800000',
+    ]);
+
+    expect(mocks.batchDelete).toHaveBeenCalledTimes(2);
+    expect(mocks.batchDelete).toHaveBeenCalledWith({ id: 'robin@example.com' });
+    expect(mocks.batchDelete).toHaveBeenCalledWith({
+      id: 'sam@example.com__1923328800000',
+    });
+    expect(mocks.batchCommit).toHaveBeenCalledOnce();
+  });
+
+  it('does nothing for an empty list', async () => {
+    await ClassWaitlistRepository.deleteEntries('class-1', []);
+    expect(mocks.batchDelete).not.toHaveBeenCalled();
+    expect(mocks.batchCommit).not.toHaveBeenCalled();
   });
 });
 

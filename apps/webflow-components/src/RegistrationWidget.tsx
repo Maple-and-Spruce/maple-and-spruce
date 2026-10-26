@@ -561,6 +561,19 @@ export function RegistrationWidget({
    * redirect to. `returnUrl` is this page so Square sends the buyer back here
    * after paying (the server appends ?reg=<id>).
    */
+  /** Private hours: wait for one booked hour of this class. */
+  const handleJoinHourWaitlist = useCallback(
+    async (slotStart: string, email: string): Promise<{ added: boolean }> => {
+      const call = httpsCallable<
+        AddToClassWaitlistRequest,
+        AddToClassWaitlistResponse
+      >(functions, 'addToClassWaitlist');
+      const result = await call({ classId, email, slotStart });
+      return { added: result.data.added };
+    },
+    [functions, classId]
+  );
+
   const handleHostedCheckout = useCallback(
     async (data: {
       classId: string;
@@ -705,6 +718,7 @@ export function RegistrationWidget({
                   onSubmit={handleSubmit}
                   onHostedCheckout={handleHostedCheckout}
                   onSuccess={handleSuccess}
+                  onJoinHourWaitlist={handleJoinHourWaitlist}
                 />
               </Box>
             )}
