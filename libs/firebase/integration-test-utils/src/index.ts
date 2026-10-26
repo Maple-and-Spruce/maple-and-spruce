@@ -40,6 +40,9 @@ export {
   SAMPLE_INSTRUCTOR,
   SAMPLE_CLASS_CATEGORY,
   CLASS_IDS,
+  privateHourStarts,
+  privateHoursClass,
+  privateHourBooking,
 } from './lib/fixtures/class.fixtures.js';
 export {
   PUBLISHED_MT_SECTION,

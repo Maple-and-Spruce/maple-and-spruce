@@ -20,7 +20,16 @@ import {
   DISCOUNT_IDS,
   PERCENT_DISCOUNT,
   AMOUNT_DISCOUNT,
+  privateHoursClass,
+  privateHourBooking,
 } from '@maple/firebase/integration-test-utils';
+
+/** The private-hours class a run seeds, and the booking holding one hour. */
+export interface PrivateHoursSeed {
+  classId: string;
+  bookingId: string;
+  starts: Date[];
+}
 
 const DEV_PROJECT_ID = 'maple-and-spruce-dev';
 
@@ -70,11 +79,23 @@ async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
   throw lastErr;
 }
 
-export async function seedDev(classId: string): Promise<void> {
+export async function seedDev(
+  classId: string,
+  hours: PrivateHoursSeed,
+  heldIndex: number
+): Promise<void> {
   const db = getAdminDb();
   await withRetry('seedDev', () =>
     Promise.all([
       db.collection('classes').doc(classId).set(PUBLISHED_CLASS),
+      db
+        .collection('classes')
+        .doc(hours.classId)
+        .set(privateHoursClass(hours.starts)),
+      db
+        .collection('registrations')
+        .doc(hours.bookingId)
+        .set(privateHourBooking(hours.classId, hours.starts[heldIndex])),
       db
         .collection('discounts')
         .doc(DISCOUNT_IDS.percent)
@@ -95,6 +116,17 @@ export async function seedDev(classId: string): Promise<void> {
  */
 export async function teardownDev(classId: string): Promise<void> {
   const db = getAdminDb();
+
+  // Waitlist entries first. They live in a subcollection, which deleting the
+  // class document leaves behind, and deleting a booking below reads as an
+  // hour reopening: with the list still there, the waitlist trigger would
+  // email the test address.
+  const waitlist = await withRetry('teardownDev:queryWaitlist', () =>
+    db.collection('classes').doc(classId).collection('waitlist').get()
+  );
+  await withRetry('teardownDev:deleteWaitlist', () =>
+    Promise.all(waitlist.docs.map((d) => d.ref.delete()))
+  );
 
   const regs = await withRetry('teardownDev:query', () =>
     db.collection('registrations').where('classId', '==', classId).get()

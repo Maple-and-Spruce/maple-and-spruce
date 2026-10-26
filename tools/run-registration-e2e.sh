@@ -11,6 +11,7 @@
 #   ./tools/run-registration-e2e.sh             # headless run
 #   ./tools/run-registration-e2e.sh --ui        # Playwright UI mode
 #   ./tools/run-registration-e2e.sh --debug     # Playwright debug mode
+#   ./tools/run-registration-e2e.sh --grep "Private group hours"   # any Playwright args
 #
 # Port isolation: respects EMULATOR_PORT_OFFSET (source .env.worktree)
 # so parallel worktrees never collide.
@@ -35,6 +36,10 @@ PLAYWRIGHT_EXTRA_ARGS=()
 case "${1:-}" in
   --ui)    PLAYWRIGHT_EXTRA_ARGS+=("--ui") ;;
   --debug) PLAYWRIGHT_EXTRA_ARGS+=("--debug") ;;
+  "")      ;;
+  # Anything else goes straight to Playwright, e.g.
+  #   ./tools/run-registration-e2e.sh --grep "Private group hours"
+  *)       PLAYWRIGHT_EXTRA_ARGS+=("$@") ;;
 esac
 
 # Kill stale processes on OUR ports (leave other worktrees alone).

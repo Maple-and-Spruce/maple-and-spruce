@@ -124,3 +124,73 @@ export const CLASS_IDS = {
   publishedWithRefs: 'test-class-published-with-refs',
   publishedNoInstructor: 'test-class-published-no-instructor',
 } as const;
+
+/**
+ * Bookable hours of the private-hours fixture: two days, 10 and 17 days out,
+ * each with three hours at 15:00, 16:30 and 18:00 UTC. Fixed to the top of
+ * the hour so hour labels are stable; recomputed per process so they stay
+ * in the future.
+ */
+export function privateHourStarts(now: Date = new Date()): Date[] {
+  const starts: Date[] = [];
+  for (const daysOut of [10, 17]) {
+    for (const [h, m] of [
+      [15, 0],
+      [16, 30],
+      [18, 0],
+    ]) {
+      const d = new Date(now);
+      d.setUTCDate(d.getUTCDate() + daysOut);
+      d.setUTCHours(h, m, 0, 0);
+      starts.push(d);
+    }
+  }
+  return starts;
+}
+
+/**
+ * A published private-hours class: each session is one hour a single group
+ * books, at $60 per group, largest group 12. Dates are real `Date`s so both
+ * the emulator REST writer and the Admin SDK store Firestore Timestamps.
+ */
+export function privateHoursClass(starts: Date[] = privateHourStarts()) {
+  return {
+    name: 'E2E Ornament Party',
+    description: 'A private hour for your group to decorate ornaments.',
+    format: 'privateHours',
+    sessions: starts.map((dateTime) => ({ dateTime })),
+    firstSessionAt: starts[0],
+    durationMinutes: 60,
+    capacity: 12,
+    priceCents: 6000,
+    skillLevel: 'all-levels',
+    status: 'published',
+    room: 'spruce',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
+
+/**
+ * A confirmed booking holding one hour of a private-hours class, so a spec
+ * can see that hour as booked. Invented person.
+ */
+export function privateHourBooking(classId: string, slotStart: Date) {
+  return {
+    classId,
+    customerEmail: 'held-hour@maplespruce.test',
+    customerName: 'Held Hour Host',
+    quantity: 1,
+    slotStart,
+    groupSize: 6,
+    pricePaidCents: 6360,
+    subtotalCents: 6000,
+    taxAmountCents: 360,
+    taxRatePercent: 6,
+    status: 'confirmed',
+    source: 'web',
+    confirmationNumber: 'MS-E2EHLD',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}

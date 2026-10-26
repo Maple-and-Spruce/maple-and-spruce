@@ -29,10 +29,15 @@ async function globalTeardown(): Promise<void> {
     return;
   }
 
+  const hoursClassId = process.env['TEST_HOURS_CLASS_ID'];
   console.log(`[e2e] Tearing down dev fixtures for classId=${classId}…`);
   try {
     await teardownDev(classId);
     console.log(`[e2e] Removed class=${classId} + any registrations`);
+    if (hoursClassId) {
+      await teardownDev(hoursClassId);
+      console.log(`[e2e] Removed class=${hoursClassId} + registrations + waitlist`);
+    }
   } catch (err) {
     // Don't fail the whole job on a teardown hiccup — the test result
     // is the signal. Surface the error so it's visible in the log.
