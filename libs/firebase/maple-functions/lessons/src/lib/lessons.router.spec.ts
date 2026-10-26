@@ -36,6 +36,7 @@ vi.mock('./delete-lesson', () => ({ deleteLesson: vi.fn() }));
 vi.mock('./reschedule-lesson-with-credit', () => ({
   rescheduleLessonWithCredit: vi.fn(),
 }));
+vi.mock('./push-lessons-back', () => ({ pushLessonsBack: vi.fn() }));
 vi.mock('./get-lesson-blocks', () => ({ getLessonBlocks: vi.fn() }));
 vi.mock('./get-student-lesson-schedules', () => ({
   getStudentLessonSchedules: vi.fn(),
@@ -82,6 +83,7 @@ import { createLessonSeries } from './create-lesson-series';
 import { updateLesson } from './update-lesson';
 import { deleteLesson } from './delete-lesson';
 import { rescheduleLessonWithCredit } from './reschedule-lesson-with-credit';
+import { pushLessonsBack } from './push-lessons-back';
 import { getLessonBlocks } from './get-lesson-blocks';
 import { getStudentLessonSchedules } from './get-student-lesson-schedules';
 import { createStudentLessonSchedule } from './create-student-lesson-schedule';
@@ -113,6 +115,7 @@ const handlers: Record<string, unknown> = {
   updateLesson,
   deleteLesson,
   rescheduleLessonWithCredit,
+  pushLessonsBack,
   getLessonBlocks,
   getStudentLessonSchedules,
   createStudentLessonSchedule,
@@ -143,6 +146,7 @@ const ADMIN_OR_LESSON_TEACHER = [
   'updateLesson',
   'deleteLesson',
   'rescheduleLessonWithCredit',
+  'pushLessonsBack',
   'getLessonBlocks',
   'getStudentLessonSchedules',
   'createStudentLessonSchedule',

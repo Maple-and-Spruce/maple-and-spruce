@@ -82,6 +82,11 @@ export {
   type UpcomingLessonsCardProps,
 } from './lib/UpcomingLessonsCard';
 export {
+  PushLessonsBackDialog,
+  type PushLessonsBackDialogProps,
+  type PushLessonsBackMove,
+} from './lib/PushLessonsBackDialog';
+export {
   LessonActivity,
   type LessonActivityLabel,
   type LessonActivityProps,

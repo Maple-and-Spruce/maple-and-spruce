@@ -5,7 +5,8 @@
  *
  * Katie plans by the weekly time and books a few concrete lessons at a time,
  * so this shows at most five — never a long series — each of which can be
- * moved, cancelled (optionally rescheduled with a credit, #209) or deleted.
+ * moved, pushed back a week along with every later one, cancelled
+ * (optionally rescheduled with a credit, #209) or deleted.
  * A lesson rescheduled with a credit says **Credit**. **Weather** (#210)
  * reschedules a lesson with a credit or holds it online; a lesson held online
  * says **Online** and offers to bring it back **In person**.
@@ -34,6 +35,8 @@ export interface UpcomingLessonsCardProps {
   /** The lesson whose change is being saved. */
   pendingLessonId?: string | null;
   onMove: (lesson: Lesson) => void;
+  /** Push this lesson and every later one back a week, together. */
+  onPushBack?: (lesson: Lesson) => void;
   /** Opens the cancel dialog, where Katie can also reschedule with a credit. */
   onCancel: (lesson: Lesson) => void;
   /** Opens the weather dialog: reschedule with a credit, or hold it online. */
@@ -59,6 +62,7 @@ export function UpcomingLessonsCard({
   paidLessonIds,
   pendingLessonId,
   onMove,
+  onPushBack,
   onCancel,
   onWeather,
   onInPerson,
@@ -117,7 +121,8 @@ export function UpcomingLessonsCard({
                     </Box>
                   }
                 />
-                <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                {/* Wraps on a phone: five actions do not fit beside each other. */}
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
                   <Button
                     size="small"
                     disabled={busy}
@@ -126,6 +131,16 @@ export function UpcomingLessonsCard({
                   >
                     Move
                   </Button>
+                  {onPushBack && (
+                    <Button
+                      size="small"
+                      disabled={busy}
+                      aria-label={`Push back a week from ${when}`}
+                      onClick={() => onPushBack(lesson)}
+                    >
+                      Push back
+                    </Button>
+                  )}
                   <Button
                     size="small"
                     disabled={busy}

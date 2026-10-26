@@ -23,6 +23,8 @@ import type {
   UpdateLessonResponse,
   DeleteLessonRequest,
   DeleteLessonResponse,
+  PushLessonsBackRequest,
+  PushLessonsBackResponse,
   RescheduleLessonWithCreditRequest,
   RescheduleLessonWithCreditResponse,
 } from '@maple/ts/firebase/api-types';
@@ -209,6 +211,32 @@ export function useLessons({
     []
   );
 
+  /**
+   * Push a lesson and every later one of the student's back a week, together.
+   * Payments stay with the lessons, so only the lessons change.
+   */
+  const pushLessonsBack = useCallback(
+    async (lessonId: string, weeks = 1): Promise<Lesson[]> => {
+      const functions = getMapleFunctions();
+      const push = httpsCallableFromURL<
+        PushLessonsBackRequest,
+        PushLessonsBackResponse
+      >(functions, routerCallableUrl('lessons', 'pushLessonsBack'));
+      const result = await push({ lessonId, weeks });
+      const moved = result.data.lessons.map(hydrateLesson);
+      const byId = new Map(moved.map((l) => [l.id, l]));
+      setLessonsState((prev) => {
+        if (prev.status !== 'success') return prev;
+        const newData = prev.data
+          .map((l) => byId.get(l.id) ?? l)
+          .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+        return { ...prev, data: newData };
+      });
+      return moved;
+    },
+    []
+  );
+
   useEffect(() => {
     if (autoFetch) {
       fetchLessons();
@@ -223,5 +251,6 @@ export function useLessons({
     updateLesson,
     deleteLesson,
     rescheduleLessonWithCredit,
+    pushLessonsBack,
   };
 }
