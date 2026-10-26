@@ -1973,8 +1973,11 @@ hour closes when it starts. Receipts, the confirmation email, the widget confirm
 reminder all name the booked hour, and an edit that removes a booked hour is refused.
 
 ### Consequences
-- Anything that counts seats has to learn the hour rule. Places that still read headcount for a
-  private-hours class (roster totals, dashboard fill, instructor payout proration, the per-hour
-  waitlist) are later PRs of #272.
+- Anything that counts seats has to learn the hour rule. The admin does: the roster lists hours by
+  day with the group holding each, the class table and dashboard count booked hours against the
+  number of hours, and the Today card shows a private hour only once it is booked.
+- An instructor's share of a private hour is the whole group price, paid once that hour ends. Its
+  ledger entry id doesn't use the session index, so adding hours later can't make a paid booking
+  read as unpaid.
 - `syncClassToSquare` gives a private-hours class no POS item, so the register can't book an hour.
   Hours are booked online through the class page.

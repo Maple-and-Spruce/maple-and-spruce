@@ -108,3 +108,20 @@ export const NoRefund: Story = {
     );
   },
 };
+
+/** A private-hours booking shows its hour and the group's size, not "1 spot". */
+export const PrivateHourBooking: Story = {
+  args: {
+    registration: {
+      ...mockRegistrationConfirmed,
+      slotStart: new Date('2030-12-07T18:00:00Z'),
+      groupSize: 8,
+    },
+  },
+  play: async () => {
+    await waitFor(() => expect(screen().getByText('Hour')).toBeInTheDocument());
+    expect(screen().getByText('Sat, Dec 7, 1:00 PM')).toBeInTheDocument();
+    expect(screen().getByText('about 8 people')).toBeInTheDocument();
+    expect(screen().queryByText(/1 spot/)).toBeNull();
+  },
+};

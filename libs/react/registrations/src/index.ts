@@ -1,6 +1,7 @@
 export { RegistrationList } from './lib/RegistrationList';
 export { RegistrationDetailDialog } from './lib/RegistrationDetailDialog';
 export { PublicClassCard } from './lib/PublicClassCard';
+export { PrivateHourRoster } from './lib/PrivateHourRoster';
 export { RegistrationCheckoutForm } from './lib/RegistrationCheckoutForm';
 export type { RequiredAgreementTemplate } from './lib/RegistrationCheckoutForm';
 export { CostSummary } from './lib/CostSummary';

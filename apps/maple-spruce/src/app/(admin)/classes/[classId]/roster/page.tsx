@@ -29,6 +29,12 @@ import type {
   RegistrationStatus,
 } from '@maple/ts/domain';
 import {
+  getBookableCapacity,
+  isPrivateHoursClass,
+  oneSessionPerDay,
+} from '@maple/ts/domain';
+import {
+  PrivateHourRoster,
   RegistrationList,
   RegistrationDetailDialog,
 } from '@maple/react/registrations';
@@ -111,6 +117,9 @@ export default function ClassRosterPage() {
     () => confirmedRegistrations.reduce((sum, r) => sum + r.quantity, 0),
     [confirmedRegistrations]
   );
+
+  // A private-hours class sells hours: one group each.
+  const privateHours = !!currentClass && isPrivateHoursClass(currentClass);
 
   // Detail dialog
   const [selectedRegistration, setSelectedRegistration] =
@@ -247,12 +256,25 @@ export default function ClassRosterPage() {
                 {currentClass.name}
               </Typography>
               <Typography variant="body1" color="textSecondary">
-                {(() => {
-                  const first = currentClass.sessions?.[0];
-                  if (!first) return '';
-                  return `${formatDate(first.dateTime)} at ${formatTime(first.dateTime)}`;
-                })()}{currentClass.sessions.length > 1 ? ` (+${currentClass.sessions.length - 1} more)` : ''} &middot;{' '}
-                {currentClass.durationMinutes} min
+                {privateHours ? (
+                  <>
+                    Private group hours &middot;{' '}
+                    {(() => {
+                      const days = oneSessionPerDay(currentClass.sessions).length;
+                      return `${days} day${days === 1 ? '' : 's'}, ${currentClass.sessions.length} hours`;
+                    })()}{' '}
+                    &middot; up to {currentClass.capacity} per group
+                  </>
+                ) : (
+                  <>
+                    {(() => {
+                      const first = currentClass.sessions?.[0];
+                      if (!first) return '';
+                      return `${formatDate(first.dateTime)} at ${formatTime(first.dateTime)}`;
+                    })()}{currentClass.sessions.length > 1 ? ` (+${currentClass.sessions.length - 1} more)` : ''} &middot;{' '}
+                    {currentClass.durationMinutes} min
+                  </>
+                )}
               </Typography>
               {currentClass.location && (
                 <Typography variant="body2" color="textSecondary">
@@ -264,13 +286,13 @@ export default function ClassRosterPage() {
               <Typography variant="h5" sx={{
                 fontWeight: 700
               }}>
-                {spotsFilled} / {currentClass.capacity}
+                {spotsFilled} / {getBookableCapacity(currentClass)}
               </Typography>
               <Typography variant="body2" color="textSecondary">
-                spots filled
+                {privateHours ? 'hours booked' : 'spots filled'}
               </Typography>
               <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
-                {formatPrice(currentClass.priceCents)} per spot
+                {formatPrice(currentClass.priceCents)} per {privateHours ? 'group' : 'spot'}
               </Typography>
             </Box>
           </Box>
@@ -331,6 +353,19 @@ export default function ClassRosterPage() {
           </Button>
         </Box>
       </Box>
+      {/* Private hours: who has each hour, by day */}
+      {privateHours && currentClass && (
+        <Box sx={{ mb: 3 }}>
+          <PrivateHourRoster
+            classItem={currentClass}
+            registrationsState={registrationsState}
+            onViewDetail={handleViewDetail}
+          />
+          <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 3 }}>
+            All registrations, including cancelled
+          </Typography>
+        </Box>
+      )}
       {/* Registrations Table */}
       <RegistrationList
         registrationsState={registrationsState}

@@ -21,6 +21,7 @@ import {
   fixtureStudioDay,
 } from './dashboard-fixtures';
 import type { StudioDayLesson } from '@maple/ts/firebase/api-types';
+import type { Class, Registration } from '@maple/ts/domain';
 
 const NOW = FIXTURE_NOW;
 const local = (day: number, hour: number, minute = 0) =>
@@ -272,5 +273,113 @@ describe('buildClassesThisWeek', () => {
     const v = buildClassesThisWeek(fixtureClasses, [], local(14, 19));
     expect(v.rows[0].id).toBe('cls-wheel');
     expect(v.rows[0].fillRatio).toBe(0);
+  });
+});
+
+describe('private group hours', () => {
+  // Three bookable hours today, mid-day so every runtime zone keeps them on
+  // the 14th. One is booked, one was booked and cancelled, one is open.
+  const hours = [local(14, 11), local(14, 12), local(14, 13)];
+  const privateClass = {
+    id: 'cls-private',
+    name: 'Private Pottery Party',
+    description: 'An invented class.',
+    format: 'privateHours',
+    sessions: hours.map((dateTime) => ({ dateTime })),
+    durationMinutes: 60,
+    capacity: 10,
+    priceCents: 30000,
+    skillLevel: 'all-levels',
+    status: 'published',
+    createdAt: local(1, 9),
+    updatedAt: local(1, 9),
+  } as Class;
+
+  function booking(
+    id: string,
+    slotStart: Date,
+    extra: Partial<Registration> = {},
+  ): Registration {
+    return {
+      id,
+      classId: 'cls-private',
+      customerName: 'Robin Ashfield',
+      customerEmail: `${id}@example.com`,
+      quantity: 1,
+      groupSize: 6,
+      slotStart,
+      pricePaidCents: 30000,
+      subtotalCents: 30000,
+      taxAmountCents: 0,
+      taxRatePercent: 6,
+      status: 'confirmed',
+      source: 'web',
+      createdAt: local(1, 9),
+      updatedAt: local(1, 9),
+      ...extra,
+    } as Registration;
+  }
+
+  const bookings = [
+    booking('reg-ph-1', hours[1]),
+    booking('reg-ph-2', hours[2], { status: 'cancelled', customerName: 'Olive Thompson' }),
+  ];
+  const morning = local(14, 9);
+
+  it('puts only the booked hour on the agenda, under the group name', () => {
+    const v = buildAgenda(null, [privateClass], bookings, morning);
+    expect(v.items).toHaveLength(1);
+    expect(v.items[0]).toMatchObject({
+      id: 'class-cls-private-1',
+      kind: 'class',
+      title: 'Private Pottery Party · Robin Ashfield',
+      detail: 'Private hour · about 6',
+      chip: { label: 'Booked', tone: 'class' },
+      href: '/classes/cls-private/roster',
+    });
+    expect(v.items[0].start.getTime()).toBe(hours[1].getTime());
+    expect(v.items[0].end.getTime()).toBe(local(14, 13).getTime());
+  });
+
+  it('leaves seat classes alongside it unchanged', () => {
+    const v = buildAgenda(
+      null,
+      [privateClass, ...fixtureClasses],
+      [...bookings, ...fixtureRegistrations],
+      morning,
+    );
+    expect(v.items.map((i) => i.title)).toEqual([
+      'Private Pottery Party · Robin Ashfield',
+      'Wheel Throwing Basics',
+    ]);
+    expect(v.items[1]).toMatchObject({
+      detail: '5 of 8 registered',
+      chip: { label: '5/8', tone: 'class' },
+      href: '/classes/cls-wheel',
+    });
+  });
+
+  it('counts only booked hours today, and none without registrations', () => {
+    expect(todayCounts(null, [privateClass], morning, bookings).classes).toBe(1);
+    expect(todayCounts(null, [privateClass], morning).classes).toBe(0);
+    expect(
+      todayCounts(null, [privateClass, ...fixtureClasses], morning, bookings).classes,
+    ).toBe(2);
+  });
+
+  it('fills a private-hours row by hours, and keeps it out of open seats', () => {
+    const v = buildClassesThisWeek(
+      [privateClass, ...fixtureClasses],
+      [...bookings, ...fixtureRegistrations],
+      morning,
+    );
+    const row = v.rows.find((r) => r.id === 'cls-private');
+    expect(row).toMatchObject({ privateHours: true, filled: 1, capacity: 3 });
+    expect(row?.fillRatio).toBeCloseTo(1 / 3);
+    expect(v.rows.find((r) => r.id === 'cls-wheel')).toMatchObject({
+      privateHours: false,
+      capacity: 8,
+    });
+    expect(v.openSeats).toBe(3 + 9 + 2);
   });
 });

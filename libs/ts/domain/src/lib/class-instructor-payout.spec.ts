@@ -442,6 +442,155 @@ describe('buildClassInstructorStatementDraft', () => {
   });
 });
 
+describe('buildClassInstructorStatementDraft: private group hours', () => {
+  // Three one-hour slots on Saturday Oct 10 (10, 11 AM and noon Eastern).
+  const hours = ['2026-10-10T14:00:00Z', '2026-10-10T15:00:00Z', '2026-10-10T16:00:00Z'];
+  const privateClass = (overrides: Parameters<typeof klass>[0] = {}) =>
+    klass({
+      id: 'class-ph',
+      name: 'Private Glass Party',
+      format: 'privateHours',
+      sessions: hours,
+      durationMinutes: 60,
+      capacity: 10,
+      priceCents: 30000,
+      ...overrides,
+    });
+  const group = (id: string, hourIndex: number, overrides: Partial<Registration> = {}) =>
+    reg({
+      id,
+      classId: 'class-ph',
+      customerName: 'Robin Ashfield',
+      customerEmail: 'robin@example.com',
+      slotStart: new Date(hours[hourIndex]),
+      groupSize: 6,
+      subtotalCents: 30000,
+      pricePaidCents: 31800,
+      ...overrides,
+    });
+
+  it('pays a group\'s whole subtotal on the hour it booked, once that hour has ended', () => {
+    const draft = build({
+      classes: [privateClass()],
+      registrationsByClass: { 'class-ph': [group('reg-a', 0), group('reg-b', 1)] },
+      now: new Date('2026-10-10T15:30:00Z'), // hour 0 over, hour 1 in progress
+    });
+    expect(draft.classes).toHaveLength(1);
+    expect(draft.classes[0]).toMatchObject({
+      classId: 'class-ph',
+      totalSessions: 3,
+      registrationIds: ['reg-a'],
+      grossCents: 30000,
+      shareCents: 24000,
+    });
+    expect(draft.classes[0].sessions.map((s) => s.index)).toEqual([0]);
+    expect(draft.entries).toEqual([
+      expect.objectContaining({
+        id: classSessionEntryId('reg-a', 0),
+        registrationId: 'reg-a',
+        sessionIndex: 0,
+        revenueCents: 30000,
+        shareCents: 24000,
+      }),
+    ]);
+  });
+
+  it('rounds the share of the whole subtotal', () => {
+    const draft = build({
+      classes: [privateClass()],
+      registrationsByClass: { 'class-ph': [group('reg-a', 1, { subtotalCents: 12345 })] },
+    });
+    expect(draft.shareCents).toBe(Math.round(12345 * 0.8));
+    expect(draft.grossCents).toBe(12345);
+  });
+
+  it('ids the entry by registration alone, recording the real hour index', () => {
+    const fresh = build({
+      classes: [privateClass()],
+      registrationsByClass: { 'class-ph': [group('reg-c', 2)] },
+    });
+    expect(fresh.entries).toHaveLength(1);
+    expect(fresh.entries[0]).toMatchObject({
+      id: classSessionEntryId('reg-c', 0),
+      sessionIndex: 2,
+      revenueCents: 30000,
+    });
+    expect(fresh.classes[0].sessions.map((s) => s.index)).toEqual([2]);
+
+    const again = build({
+      classes: [privateClass()],
+      registrationsByClass: { 'class-ph': [group('reg-c', 2)] },
+      existingEntries: [entry({ id: 'class-session_reg-c_0', classId: 'class-ph', registrationId: 'reg-c' })],
+    });
+    expect(again.classes).toHaveLength(0);
+    expect(again.entries).toHaveLength(0);
+    expect(again.totalOwedCents).toBe(0);
+  });
+
+  it('counts the group size as headcount, falling back to quantity', () => {
+    const draft = build({
+      classes: [privateClass()],
+      registrationsByClass: {
+        'class-ph': [
+          group('reg-a', 0, { groupSize: 6 }),
+          group('reg-b', 1, { groupSize: 4 }),
+          group('reg-c', 2, { groupSize: undefined, quantity: 1 }),
+        ],
+      },
+    });
+    expect(draft.classes[0].headcount).toBe(6 + 4 + 1);
+    expect(draft.grossCents).toBe(90000);
+  });
+
+  it('skips a booking whose hour is not on the class', () => {
+    const draft = build({
+      classes: [privateClass()],
+      registrationsByClass: {
+        'class-ph': [group('reg-x', 0, { slotStart: new Date('2026-10-10T18:00:00Z') })],
+      },
+    });
+    expect(draft.classes).toHaveLength(0);
+    expect(draft.entries).toHaveLength(0);
+  });
+
+  it('flags a missing rate and owes nothing, still reporting revenue', () => {
+    const draft = build({
+      instructor: instructor({ payRate: undefined }),
+      classes: [privateClass()],
+      registrationsByClass: { 'class-ph': [group('reg-a', 0)] },
+    });
+    expect(draft.missingRateConfig).toBe(true);
+    expect(draft.payRate).toBeUndefined();
+    expect(draft.grossCents).toBe(30000);
+    expect(draft.shareCents).toBe(0);
+    expect(draft.entries[0]).toMatchObject({ revenueCents: 30000, shareCents: 0 });
+  });
+
+  it('still prorates a seat class on the same statement', () => {
+    const seats = klass({ sessions: ['2026-10-07T22:00:00Z', '2026-10-14T22:00:00Z'] });
+    const draft = build({
+      classes: [privateClass(), seats],
+      registrationsByClass: {
+        'class-ph': [group('reg-a', 0)],
+        'class-1': [reg({ subtotalCents: 9999 })],
+      },
+    });
+    const seatLine = draft.classes.find((c) => c.classId === 'class-1');
+    const privateLine = draft.classes.find((c) => c.classId === 'class-ph');
+    expect(seatLine).toMatchObject({ grossCents: 9999, headcount: 1, totalSessions: 2 });
+    expect(seatLine?.sessions.map((s) => s.index)).toEqual([0, 1]);
+    expect(
+      draft.entries.filter((e) => e.classId === 'class-1').map((e) => [e.id, e.revenueCents])
+    ).toEqual([
+      [classSessionEntryId('reg-1', 0), 4999],
+      [classSessionEntryId('reg-1', 1), 5000],
+    ]);
+    expect(seatLine?.shareCents).toBe(Math.round(9999 * 0.8));
+    expect(privateLine).toMatchObject({ grossCents: 30000, shareCents: 24000 });
+    expect(draft.totalOwedCents).toBe(Math.round(9999 * 0.8) + 24000);
+  });
+});
+
 describe('statementStaleReasons', () => {
   const statement: Pick<ClassInstructorStatement, 'status' | 'classes'> = {
     status: 'pending',

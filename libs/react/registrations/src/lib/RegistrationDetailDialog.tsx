@@ -17,6 +17,7 @@ import {
   RadioGroup,
 } from '@mui/material';
 import {
+  formatPrivateHourStart,
   hasOpenRefundReview,
   refundedInSquareAmountCents,
   type Registration,
@@ -234,12 +235,33 @@ export function RegistrationDetailDialog({
             }}
           >
             <Typography variant="subtitle2" color="textSecondary">
-              Quantity
+              {registration.slotStart ? 'Hour' : 'Quantity'}
             </Typography>
             <Typography variant="body2">
-              {registration.quantity} spot{registration.quantity > 1 ? 's' : ''}
+              {registration.slotStart
+                ? formatPrivateHourStart(registration.slotStart)
+                : `${registration.quantity} spot${registration.quantity > 1 ? 's' : ''}`}
             </Typography>
           </Box>
+
+          {registration.slotStart && (
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <Typography variant="subtitle2" color="textSecondary">
+                Group
+              </Typography>
+              <Typography variant="body2">
+                {registration.groupSize
+                  ? `about ${registration.groupSize} people`
+                  : 'size not given'}
+              </Typography>
+            </Box>
+          )}
 
           <Divider />
 

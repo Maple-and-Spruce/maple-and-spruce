@@ -24,7 +24,7 @@
  * module decides which ids a statement would claim; it never writes.
  */
 import type { Class } from './class';
-import { getSessionEndTime, getSortedSessions } from './class';
+import { getSessionEndTime, getSortedSessions, isPrivateHoursClass } from './class';
 import type { Instructor } from './instructor';
 import type { Registration } from './registration';
 import { zonedDateKey } from './schedule-format';
@@ -356,24 +356,45 @@ function buildClassLine(
   let grossCents = 0;
   let shareCents = 0;
 
+  const privateHours = isPrivateHoursClass(classEntity);
+
   for (const registration of registrations) {
     if (!registrationEarnsInstructorShare(registration)) continue;
-    const revenueParts = prorateAcrossSessions(registration.subtotalCents, sessionCount);
+    // A private hour is one session for one group: its whole payment belongs
+    // to the hour it booked. A seat registration is spread across sessions.
+    const bookedIndex =
+      privateHours && registration.slotStart
+        ? sessions.findIndex(
+            (s) =>
+              new Date(s.dateTime).getTime() ===
+              new Date(registration.slotStart as Date).getTime()
+          )
+        : -1;
+    if (privateHours && bookedIndex === -1) continue;
+    const revenueParts = privateHours
+      ? sessions.map((_, i) => (i === bookedIndex ? registration.subtotalCents : 0))
+      : prorateAcrossSessions(registration.subtotalCents, sessionCount);
     let counted = false;
 
     sessions.forEach((session, index) => {
+      if (privateHours && index !== bookedIndex) return;
       const at = new Date(session.dateTime);
       const sessionMonth = monthKeyInStudioZone(at);
       if (!isInStatementWindow(sessionMonth, ctx.month, ctx.startMonth)) return;
       if (getSessionEndTime(session, classEntity.durationMinutes) > ctx.now) return;
-      const id = classSessionEntryId(registration.id, index);
+      // A private-hours booking has exactly one entry. Its id doesn't use the
+      // session index, which shifts if hours are added before it later; a
+      // shifted id would read as unpaid and pay the same booking twice.
+      const id = classSessionEntryId(registration.id, privateHours ? 0 : index);
       if (ctx.existingIds.has(id)) return;
 
       const revenueCents = revenueParts[index];
       const share =
         ctx.rate === undefined
           ? 0
-          : sessionShareCents(registration.subtotalCents, ctx.rate, sessionCount, index);
+          : privateHours
+            ? sessionShareCents(registration.subtotalCents, ctx.rate, 1, 0)
+            : sessionShareCents(registration.subtotalCents, ctx.rate, sessionCount, index);
 
       ctx.entries.push({
         id,
@@ -395,7 +416,10 @@ function buildClassLine(
 
     if (counted) {
       registrationIds.add(registration.id);
-      headcount += registration.quantity;
+      // A group counts as the people the host said were coming.
+      headcount += privateHours
+        ? registration.groupSize ?? registration.quantity
+        : registration.quantity;
     }
   }
 

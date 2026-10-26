@@ -31,6 +31,7 @@ import type {
 import {
   formatClassPrice,
   formatWeekdayTimeBlock,
+  getBookableCapacity,
   isPrivateHoursClass,
 } from '@maple/ts/domain';
 import { surfaces, borders, radii, shadows } from '@maple/react/theme';
@@ -132,7 +133,8 @@ export function ClassTable({
           ? categoryMap.get(classItem.categoryId) ?? '—'
           : '—',
         filled: registrationCounts?.get(classItem.id) ?? 0,
-        capacity: classItem.capacity,
+        // Hours for a private-hours class (one group each), seats otherwise.
+        capacity: getBookableCapacity(classItem),
         waitlist: waitlistCounts?.get(classItem.id) ?? 0,
         priceCents: classItem.priceCents,
         status: classItem.status,
@@ -274,6 +276,7 @@ export function ClassTable({
               sx={{ fontWeight: isFull ? 600 : 400 }}
             >
               {filled}/{capacity}
+              {params.row.isPrivateHours ? ' hrs' : ''}
             </Typography>
           );
         },
