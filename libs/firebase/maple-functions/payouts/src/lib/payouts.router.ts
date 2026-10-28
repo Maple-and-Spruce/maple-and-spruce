@@ -149,6 +149,11 @@ export const payouts = Functions.router('payouts', {
             month: data.month,
           }),
         ]);
+        if (monthData.nonContractorIds.includes(data.instructorId)) {
+          throwFailedPrecondition(
+            'Only contract instructors are paid through statements; turn on "Paid contractor (1099)" on their profile if they should be'
+          );
+        }
         if (monthData.instructors.length === 0) throwNotFound('Instructor', data.instructorId);
         // Checked again inside the transaction; this just gives the clearer message.
         const live = existing.find((s) => s.status !== 'void');
