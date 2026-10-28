@@ -66,10 +66,17 @@ export async function fillSquareCard(
 
   // Single frame OR multi-frame: try each iframe under the container
   // and fill whichever input is present.
+  //
+  // Look for Square's frames anywhere in the page, not only under
+  // `#square-card-container`: when the widget is mounted in a shadow root
+  // (`?shadow=1`, as Webflow does), SquareCardForm puts the card field in a
+  // container outside the shadow root, next to the widget, with no id.
   const iframeNames = await page
-    .locator('#square-card-container iframe')
+    .locator('iframe')
     .evaluateAll((els) =>
-      (els as HTMLIFrameElement[]).map((el) => el.getAttribute('name') ?? '')
+      (els as HTMLIFrameElement[])
+        .filter((el) => /square/i.test(el.getAttribute('src') ?? ''))
+        .map((el) => el.getAttribute('name') ?? '')
     );
 
   const fillers: Array<[selector: string, value: string]> = [
