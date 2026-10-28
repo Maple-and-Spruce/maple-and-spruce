@@ -816,14 +816,18 @@ jobs:
           export SALES_TAX_RATE=$(grep '^SALES_TAX_RATE=' .env.dev | cut -d= -f2-)
           pnpm exec vitest run --config apps/pos-sandbox-e2e/vitest.config.ts --reporter=verbose
 
-      - name: Upload Playwright report on failure
-        if: failure()
+      - name: Upload Playwright report
+        # Always, not just on failure: the report carries the screenshots the
+        # specs attach (e.g. the private-hours picker and confirmation), so a
+        # green run against dev is also a visual check of the live widget.
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-dev
           path: |
             apps/registration-e2e/playwright-report/
             apps/registration-e2e/test-results/
+          if-no-files-found: ignore
           retention-days: 7
 
   mt_e2e_dev:
