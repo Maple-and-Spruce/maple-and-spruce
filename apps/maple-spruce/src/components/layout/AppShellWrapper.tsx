@@ -8,6 +8,7 @@ import {
 } from '@maple/react/data';
 import { useRoles } from '@maple/react/auth';
 import { buildCreateActions, buildNavGroups } from './nav-groups';
+import { buildQuickLinks } from './quick-links';
 
 interface AppShellWrapperProps {
   children: ReactNode;
@@ -48,11 +49,13 @@ export function AppShellWrapper({
   );
 
   const createActions = useMemo(() => buildCreateActions(roles), [roles]);
+  const pinnedLinks = useMemo(() => buildQuickLinks(roles), [roles]);
 
   return (
     <AppShell
       navGroups={navGroups}
       createActions={createActions}
+      pinnedLinks={pinnedLinks}
       maxWidth={maxWidth}
     >
       {children}

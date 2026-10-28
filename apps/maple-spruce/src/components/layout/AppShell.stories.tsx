@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { Box, Typography } from '@mui/material';
 import { StaticRolesProvider } from '@maple/react/auth';
 import { AppShell } from '.';
@@ -239,6 +239,101 @@ export const AdminCreateMenu: Story = {
   },
 };
 
+const PINNED = ['Square', 'Wave', 'Tally'];
+const MORE = [
+  'MailerLite',
+  'Google Drive',
+  'Facebook Ads',
+  'Webflow',
+  'Firebase',
+  'Vercel',
+  'Google Voice',
+  'Hope Scholarship',
+  'WV MyTaxes',
+  'Apple Business',
+];
+
+/**
+ * Admin's pinned external links: Square, Wave and Tally as tiles, the
+ * other ten behind the sliver in a panel beside the sidebar. Esc closes
+ * it and puts focus back on the sliver.
+ */
+export const AdminPinnedLinks: Story = {
+  args: {
+    children: <SampleContent />,
+    maxWidth: 'lg',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const row = within(
+      await canvas.findByRole('group', { name: 'Pinned links' }),
+    );
+    const tiles = row.getAllByRole('link');
+    await expect(tiles.map((t) => t.getAttribute('aria-label'))).toEqual(PINNED);
+    for (const tile of tiles) {
+      await expect(tile).toHaveAttribute('target', '_blank');
+      await expect(tile).toHaveAttribute('rel', 'noopener noreferrer');
+      await expect(tile).toHaveAttribute('title', tile.getAttribute('aria-label'));
+    }
+    await expect(
+      row.getByRole('link', { name: 'Square' }),
+    ).toHaveAttribute('href', 'https://squareup.com/dashboard');
+
+    const sliver = row.getByRole('button', { name: '10 more links' });
+    await expect(sliver).toHaveAttribute('aria-haspopup', 'dialog');
+    await expect(sliver).toHaveAttribute('aria-expanded', 'false');
+
+    // The panel portals out of the canvas.
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(body.queryByRole('dialog', { name: 'More links' })).toBeNull();
+
+    await userEvent.click(sliver);
+    const panel = await body.findByRole('dialog', { name: 'More links' });
+    await expect(sliver).toHaveAttribute('aria-expanded', 'true');
+    await expect(sliver).toHaveAttribute('aria-controls', panel.id);
+    const more = within(panel).getAllByRole('link');
+    await expect(more.map((a) => a.getAttribute('aria-label'))).toEqual(MORE);
+    for (const name of PINNED) {
+      await expect(within(panel).queryByRole('link', { name })).toBeNull();
+    }
+    for (const link of more) {
+      await expect(link).toHaveAttribute('target', '_blank');
+    }
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(body.queryByRole('dialog', { name: 'More links' })).toBeNull(),
+    );
+    await expect(sliver).toHaveAttribute('aria-expanded', 'false');
+    await waitFor(() => expect(sliver).toHaveFocus());
+  },
+};
+
+/** Clicking outside the panel closes it too. */
+export const PinnedLinksOutsideClickCloses: Story = {
+  args: {
+    children: <SampleContent />,
+    maxWidth: 'lg',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: '10 more links' }),
+    );
+    await body.findByRole('dialog', { name: 'More links' });
+    // MUI's backdrop covers the page; clicking it is an outside click.
+    const backdrop = canvasElement.ownerDocument.querySelector(
+      '.MuiPopover-root .MuiBackdrop-root',
+    );
+    await expect(backdrop).not.toBeNull();
+    await userEvent.click(backdrop as HTMLElement);
+    await waitFor(() =>
+      expect(body.queryByRole('dialog', { name: 'More links' })).toBeNull(),
+    );
+  },
+};
+
 /**
  * Nav filtered for an MT teacher (Stephanie): six pages, so the plain
  * grouped list — Music Together + shared calendar items only.
@@ -258,6 +353,8 @@ export const MtTeacherNav: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Sections')).toBeInTheDocument();
+    // External links are admin only.
+    await expect(canvas.queryByRole('group', { name: 'Pinned links' })).toBeNull();
     await expect(canvas.getByText('Spruce Room Schedule')).toBeInTheDocument();
     await expect(canvas.queryByText('Inventory')).not.toBeInTheDocument();
     await expect(canvas.queryByText('Users')).not.toBeInTheDocument();
@@ -287,6 +384,8 @@ export const LessonTeacherNav: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('My Week')).toBeInTheDocument();
+    // External links are admin only.
+    await expect(canvas.queryByRole('group', { name: 'Pinned links' })).toBeNull();
     await expect(canvas.getByText('Teaching Days')).toBeInTheDocument();
     await expect(canvas.queryByText('Inquiries')).not.toBeInTheDocument();
     await expect(canvas.queryByText('Events')).not.toBeInTheDocument();
@@ -324,6 +423,8 @@ export const ClerkLessonTeacherNav: Story = {
     const shop = within(
       await canvas.findByRole('list', { name: 'Shop pages' }),
     );
+    // External links are admin only.
+    await expect(canvas.queryByRole('group', { name: 'Pinned links' })).toBeNull();
     await expect(
       shop.getAllByRole('link').map((a) => a.textContent),
     ).toEqual(['Inventory', 'Sales', 'Categories']);

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ElementType, ReactNode } from 'react';
 
 export type NavBadgeColor =
   | 'primary'
@@ -35,6 +35,41 @@ export interface NavAction {
   label: string;
   href: string;
   icon?: ReactNode;
+}
+
+/**
+ * An external service pinned at the top of the sidebar (Square, Wave...).
+ * Opens in a new tab.
+ */
+export interface ExternalLink {
+  label: string;
+  href: string;
+  /** Glyph drawn white on `color`, until real logo assets exist. */
+  icon: ElementType;
+  /** Brand colour behind the glyph. Dark enough for a white glyph. */
+  color: string;
+  /**
+   * Shown in the sidebar row; the rest go behind the "more" sliver.
+   * Static for now; the seam for user-chosen pins later.
+   */
+  pinned?: boolean;
+}
+
+/** The sidebar row fits three tiles beside the sliver. */
+export const MAX_PINNED_LINKS = 3;
+
+/**
+ * Pinned links (in list order, at most `max`) for the row, and every
+ * other link, in list order, for the "More links" panel. A link marked
+ * pinned past the row's capacity falls through to the panel rather
+ * than disappearing.
+ */
+export function splitPinnedLinks<Link extends { pinned?: boolean }>(
+  links: readonly Link[],
+  max = MAX_PINNED_LINKS,
+): { pinned: Link[]; more: Link[] } {
+  const pinned = links.filter((l) => l.pinned).slice(0, max);
+  return { pinned, more: links.filter((l) => !pinned.includes(l)) };
 }
 
 export type NavMode = 'flat' | 'accordion';
