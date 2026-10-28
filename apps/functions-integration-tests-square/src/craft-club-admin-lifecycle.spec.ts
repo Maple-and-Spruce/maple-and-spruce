@@ -10,7 +10,7 @@ import {
   clearAuthEmulator,
   clearFirestoreEmulator,
   setFirestoreDoc,
-  listFirestoreDocs,
+  listMail,
   callFunction,
   ADMIN_USER,
 } from '@maple/firebase/integration-test-utils';
@@ -75,7 +75,7 @@ describe('Craft Club admin lifecycle', () => {
     expect(cancel.status).toBe(200);
     expect(cancel.data?.member.status).toBe('cancelled');
 
-    const mail = await listFirestoreDocs('mail');
+    const mail = await listMail();
     const cancelEmail = mail.find(
       (d) =>
         d.data['to'] === MEMBER_EMAIL &&

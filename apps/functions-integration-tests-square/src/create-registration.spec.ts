@@ -12,6 +12,7 @@ import {
   clearFirestoreEmulator,
   setFirestoreDoc,
   listFirestoreDocs,
+  listMail,
   getFirestoreDoc,
   callFunction,
 } from '@maple/firebase/integration-test-utils';
@@ -271,7 +272,7 @@ describe('createRegistration', () => {
         { name: 'Bob Friend' },
       ]);
 
-      const mailDocs = await listFirestoreDocs('mail');
+      const mailDocs = await listMail();
       type MailDocData = {
         to?: string;
         template?: {
@@ -826,7 +827,7 @@ describe('createRegistration', () => {
       expect(generated.length).toBe(0);
 
       // Mail doc for this registration has no referralCode field.
-      const mail = await listFirestoreDocs('mail');
+      const mail = await listMail();
       const ours = mail.find((m) => {
         const tmpl = m.data.template as { data?: { confirmationNumber?: string } } | undefined;
         return tmpl?.data?.confirmationNumber === result.data?.confirmationNumber;
@@ -871,7 +872,7 @@ describe('createRegistration', () => {
       expect(referral.expiresAt).toBeDefined();
 
       // Mail doc has the same code in its template payload.
-      const mail = await listFirestoreDocs('mail');
+      const mail = await listMail();
       const ours = mail.find((m) => {
         const tmpl = m.data.template as { data?: { confirmationNumber?: string } } | undefined;
         return tmpl?.data?.confirmationNumber === result.data?.confirmationNumber;
