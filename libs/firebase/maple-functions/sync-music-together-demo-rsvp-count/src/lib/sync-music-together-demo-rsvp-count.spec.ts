@@ -43,6 +43,8 @@ vi.mock('@maple/firebase/webflow', () => {
     Webflow: class MockWebflow {
       demoService = { syncDemo: mocks.syncDemo };
     },
+    isWebflowNotFound: (error: unknown) =>
+      (error as { statusCode?: number } | null)?.statusCode === 404,
     WEBFLOW_SECRET_NAMES: ['WEBFLOW_API_TOKEN'],
     WEBFLOW_STRING_NAMES: ['WEBFLOW_SITE_ID'],
   };
@@ -317,6 +319,62 @@ describe('Sync Music Together Demo RSVP Count', () => {
       );
       expect(mocks.updateWebflowItemId).not.toHaveBeenCalled();
       errorSpy.mockRestore();
+    });
+  });
+
+  describe('handler — racing a demo removal', () => {
+    const notFound = Object.assign(new Error('Requested resource not found'), {
+      statusCode: 404,
+    });
+    const event = makeEvent(
+      makeSnapshot(true, confirmedRsvp),
+      makeSnapshot(false)
+    );
+
+    it('does not alert when the demo was deleted while syncing', async () => {
+      mocks.demoFindById
+        .mockResolvedValueOnce(createMockDemo())
+        .mockResolvedValueOnce(undefined);
+      mocks.countByDemoIdAndStatus.mockResolvedValue(0);
+      mocks.syncDemo.mockRejectedValue(notFound);
+
+      await expect(handler(event)).resolves.toBeUndefined();
+      expect(reportSyncFailureMock).not.toHaveBeenCalled();
+    });
+
+    it('does not alert when the demo was hidden while syncing', async () => {
+      mocks.demoFindById
+        .mockResolvedValueOnce(createMockDemo())
+        .mockResolvedValueOnce(createMockDemo({ visible: false }));
+      mocks.countByDemoIdAndStatus.mockResolvedValue(0);
+      mocks.syncDemo.mockRejectedValue(notFound);
+
+      await handler(event);
+      expect(reportSyncFailureMock).not.toHaveBeenCalled();
+    });
+
+    it('still alerts on a 404 when the demo is still public', async () => {
+      mocks.demoFindById.mockResolvedValue(createMockDemo());
+      mocks.countByDemoIdAndStatus.mockResolvedValue(0);
+      mocks.syncDemo.mockRejectedValue(notFound);
+
+      await handler(event);
+      expect(reportSyncFailureMock).toHaveBeenCalledWith(
+        expect.objectContaining({ source: 'syncMusicTogetherDemoRsvpCount' })
+      );
+    });
+
+    it('still alerts on other errors even if the demo is gone', async () => {
+      mocks.demoFindById
+        .mockResolvedValueOnce(createMockDemo())
+        .mockResolvedValueOnce(undefined);
+      mocks.countByDemoIdAndStatus.mockResolvedValue(0);
+      mocks.syncDemo.mockRejectedValue(
+        Object.assign(new Error('Too many requests'), { statusCode: 429 })
+      );
+
+      await handler(event);
+      expect(reportSyncFailureMock).toHaveBeenCalled();
     });
   });
 });

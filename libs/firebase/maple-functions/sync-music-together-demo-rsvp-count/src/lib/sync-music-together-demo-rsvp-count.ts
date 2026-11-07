@@ -23,6 +23,7 @@ import {
 } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import {
+  isWebflowNotFound,
   Webflow,
   WEBFLOW_SECRET_NAMES,
   WEBFLOW_STRING_NAMES,
@@ -70,6 +71,25 @@ export function isCountRelevantChange(
   }
 
   return beforeData['status'] !== afterData['status'];
+}
+
+/**
+ * Whether a failed sync lost a race with the demo being removed.
+ *
+ * Deleting or hiding a demo removes its Webflow item, so an RSVP change at
+ * the same moment can get a 404 updating a card that is meant to be gone.
+ * Only a 404 qualifies, and only once a fresh read shows the demo really is
+ * deleted, hidden or past. A 404 on a demo that is still public still alerts.
+ */
+export async function demoWasRemoved(
+  error: unknown,
+  demoId: string
+): Promise<boolean> {
+  if (!isWebflowNotFound(error)) return false;
+  const current = await MusicTogetherDemoRepository.findById(demoId);
+  return (
+    !current || !current.visible || current.dateTime.getTime() < Date.now()
+  );
 }
 
 /**
@@ -172,6 +192,13 @@ export const syncMusicTogetherDemoRsvpCount = onDocumentWritten(
         console.log('Updated Firestore with Webflow item ID');
       }
     } catch (error) {
+      if (await demoWasRemoved(error, demoId)) {
+        console.log(
+          'MT demo was deleted, hidden or past mid-sync, skipping spot count:',
+          { demoId }
+        );
+        return;
+      }
       console.error('Webflow sync error (MT demo RSVP count):', error);
       await reportSyncFailure({
         source: 'syncMusicTogetherDemoRsvpCount',

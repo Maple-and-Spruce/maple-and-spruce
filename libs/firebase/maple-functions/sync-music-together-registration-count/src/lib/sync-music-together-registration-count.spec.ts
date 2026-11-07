@@ -44,6 +44,8 @@ vi.mock('@maple/firebase/webflow', () => {
     Webflow: class MockWebflow {
       sectionService = { syncSection: mocks.syncSection };
     },
+    isWebflowNotFound: (error: unknown) =>
+      (error as { statusCode?: number } | null)?.statusCode === 404,
     WEBFLOW_SECRET_NAMES: ['WEBFLOW_API_TOKEN'],
     WEBFLOW_STRING_NAMES: [
       'WEBFLOW_SITE_ID',
@@ -489,6 +491,68 @@ describe('Sync Music Together Registration Count', () => {
       expect(reportSyncFailureMock).toHaveBeenCalledWith(
         expect.objectContaining({ source: 'syncMusicTogetherRegistrationCount' })
       );
+    });
+  });
+
+  describe('handler — racing a section removal', () => {
+    const notFound = Object.assign(new Error('Requested resource not found'), {
+      statusCode: 404,
+    });
+    const event = {
+      params: { registrationId: 'mt-reg-011' },
+      data: {
+        before: makeSnapshot(true, {
+          sectionId: 'section-001',
+          status: 'confirmed',
+        }),
+        after: makeSnapshot(false),
+      },
+    };
+
+    it('does not alert when the section was deleted while syncing', async () => {
+      mocks.sectionFindById
+        .mockResolvedValueOnce(createMockSection())
+        .mockResolvedValueOnce(undefined);
+      mocks.countBySectionId.mockResolvedValue(0);
+      mocks.syncSection.mockRejectedValue(notFound);
+
+      await expect(handler(event)).resolves.toBeUndefined();
+      expect(reportSyncFailureMock).not.toHaveBeenCalled();
+    });
+
+    it('does not alert when the section was hidden while syncing', async () => {
+      mocks.sectionFindById
+        .mockResolvedValueOnce(createMockSection())
+        .mockResolvedValueOnce(createMockSection({ visible: false }));
+      mocks.countBySectionId.mockResolvedValue(0);
+      mocks.syncSection.mockRejectedValue(notFound);
+
+      await handler(event);
+      expect(reportSyncFailureMock).not.toHaveBeenCalled();
+    });
+
+    it('still alerts on a 404 when the section is still public', async () => {
+      mocks.sectionFindById.mockResolvedValue(createMockSection());
+      mocks.countBySectionId.mockResolvedValue(0);
+      mocks.syncSection.mockRejectedValue(notFound);
+
+      await handler(event);
+      expect(reportSyncFailureMock).toHaveBeenCalledWith(
+        expect.objectContaining({ source: 'syncMusicTogetherRegistrationCount' })
+      );
+    });
+
+    it('still alerts on other errors even if the section is gone', async () => {
+      mocks.sectionFindById
+        .mockResolvedValueOnce(createMockSection())
+        .mockResolvedValueOnce(undefined);
+      mocks.countBySectionId.mockResolvedValue(0);
+      mocks.syncSection.mockRejectedValue(
+        Object.assign(new Error('Too many requests'), { statusCode: 429 })
+      );
+
+      await handler(event);
+      expect(reportSyncFailureMock).toHaveBeenCalled();
     });
   });
 });

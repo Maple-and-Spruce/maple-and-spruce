@@ -6,6 +6,7 @@ export {
   type WebflowSecrets,
   type WebflowStrings,
 } from './lib/webflow.utility';
+export { isWebflowNotFound } from './lib/webflow-errors';
 
 // Artist service
 export {
