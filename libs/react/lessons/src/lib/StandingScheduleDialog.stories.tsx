@@ -433,3 +433,33 @@ export const DropsAStaleChoiceOnceTheTimeFitsAgain: Story = {
     expect(input.dayOfWeek).toBe(2);
   },
 };
+
+/**
+ * There is no weekday field, so the dialog says the block is where the day
+ * comes from. With a single block listed, the menu read as a locked detail and
+ * moving a student to another day looked impossible.
+ */
+export const ExplainsHowToMoveToAnotherDay: Story = {
+  args: { schedule: existing },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    expect(
+      await canvas.findByText(/the block sets the day/i)
+    ).toBeInTheDocument();
+    expect(
+      canvas.getByRole('link', { name: /lesson blocks/i })
+    ).toHaveAttribute('href', '/lesson-blocks');
+  },
+};
+
+/** No blocks: the existing "create one first" message, not the day hint. */
+export const NoBlocksKeepsTheCreateFirstMessage: Story = {
+  args: { blocks: [] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    expect(
+      await canvas.findByText(/this teacher has no blocks yet/i)
+    ).toBeInTheDocument();
+    expect(canvas.queryByText(/the block sets the day/i)).toBeNull();
+  },
+};
