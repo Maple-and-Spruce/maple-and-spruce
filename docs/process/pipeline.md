@@ -211,7 +211,7 @@ carries it until then.
 
 ### 8. Look back
 
-**Weekly retro (Mondays).** The Retro routine writes
+**Weekly retro (Sunday evenings).** The Retro routine writes
 `docs/process/retros/YYYY-MM-DD.md` and opens it as a `lane:invisible` PR:
 
 1. What shipped, by lane
