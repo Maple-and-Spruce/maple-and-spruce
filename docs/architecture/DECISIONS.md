@@ -2011,8 +2011,10 @@ PR whenever a new advisory was published against something already on `main`.
 ### Consequences
 - Merging to `main` deploys to prod, so an eligible fix reaches prod with no person in the loop.
   The gate plus the full PR suite (unit, integration, four E2E suites) is the safety.
-- The workflow acts as GITHUB_TOKEN, which starts no `pull_request`/`push` workflows. It
-  dispatches `build-check.yml` on the PR branch and `firebase-functions-merge.yml` after merging.
+- The workflow acts as GITHUB_TOKEN. GitHub holds `pull_request` runs on its PRs for approval
+  and starts no `push` workflow for its merges. It approves the held `build-check.yml` run
+  (falling back to dispatching it on the branch, with a commit status so the result shows on
+  the PR) and dispatches `firebase-functions-merge.yml` after merging.
   That needs "Allow GitHub Actions to create and approve pull requests" on, at org and repo level.
 - `pnpm audit --fix update` was rejected as the first tier: it re-resolves the whole lockfile and
   bumped ~20 direct dependencies to fix one transitive advisory.

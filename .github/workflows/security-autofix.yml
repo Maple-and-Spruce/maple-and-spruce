@@ -10,13 +10,14 @@ name: Security autofix
 #            3. `pnpm audit --fix override`          (only if no Claude token)
 #     └ gate (tools/security-autofix.ts): manifests only, fixes >=1 advisory,
 #       adds none, no major version jump anywhere in the lockfile
-#     └ PR → dispatch "Check builds on PR" on its branch → wait
+#     └ PR → approve its held "Check builds on PR" run (or dispatch it) → wait
 #         ├ green + gate passed → squash-merge → dispatch "Deploy on merge"
 #         └ otherwise           → leave the PR open and fail this run (emails you)
 #
-# Why the dispatches: everything here acts as GITHUB_TOKEN, and GitHub starts
-# no `pull_request` or `push` workflows for GITHUB_TOKEN events. Dispatching is
-# the one exception, so CI and the deploy are started explicitly.
+# Why the approvals and dispatches: everything here acts as GITHUB_TOKEN.
+# GitHub holds `pull_request` runs on a GITHUB_TOKEN PR for approval and starts
+# no `push` workflow for a GITHUB_TOKEN merge, so CI and the deploy are
+# started explicitly.
 #
 # Dependabot is not used: it reports zero alerts for this repo because it
 # cannot read the pnpm 11+ lockfile. See ADR-039.
@@ -32,7 +33,8 @@ permissions:
   contents: write
   pull-requests: write
   issues: write # labels
-  actions: write # dispatch CI and the deploy
+  actions: write # approve or dispatch CI, dispatch the deploy
+  statuses: write # mirror the check result onto the PR
 
 concurrency:
   group: security-autofix
@@ -239,17 +241,52 @@ jobs:
         if: steps.pr.outcome == 'success'
         env:
           BRANCH: ${{ steps.pr.outputs.branch }}
+          SHA: ${{ steps.pr.outputs.sha }}
         run: |
-          gh workflow run build-check.yml --ref "$BRANCH"
-          for _ in $(seq 1 30); do
-            run=$(gh run list --workflow build-check.yml --branch "$BRANCH" --event workflow_dispatch \
-              --json databaseId --jq '.[0].databaseId // ""')
-            [ -n "$run" ] && break
-            sleep 10
+          # GitHub queues the PR's own "Check builds on PR" run and holds it
+          # for approval, because GITHUB_TOKEN opened the PR. Approving it is
+          # best: the checks then show on the PR like any other. GitHub's docs
+          # only promise approval to a person, so if the API refuses, dispatch
+          # the same workflow on the branch instead (proven on the first run).
+          # The held run then waits harmlessly and closes when the PR merges.
+          held=""
+          for _ in $(seq 1 12); do
+            held=$(gh run list --workflow build-check.yml --branch "$BRANCH" --event pull_request \
+              --json databaseId,conclusion --jq '[.[]|select(.conclusion=="action_required")][0].databaseId // ""')
+            [ -n "$held" ] && break
+            sleep 5
           done
-          [ -n "$run" ] || { echo "::error::The dispatched check run never appeared."; exit 1; }
-          echo "Watching $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$run"
-          gh run watch "$run" --exit-status --interval 60 > /dev/null
+          run=""
+          if [ -n "$held" ] && gh api -X POST "repos/${GITHUB_REPOSITORY}/actions/runs/${held}/approve" > /dev/null; then
+            echo "Approved the PR's own check run."
+            run=$held
+          else
+            echo "::notice::Could not approve the PR's check run; dispatching it on the branch instead."
+            gh workflow run build-check.yml --ref "$BRANCH"
+            for _ in $(seq 1 30); do
+              run=$(gh run list --workflow build-check.yml --branch "$BRANCH" --event workflow_dispatch \
+                --json databaseId --jq '.[0].databaseId // ""')
+              [ -n "$run" ] && break
+              sleep 10
+            done
+          fi
+          [ -n "$run" ] || { echo "::error::The check run never appeared."; exit 1; }
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$run"
+          echo "Watching $url"
+
+          # A dispatched run's checks attach to the commit but not to the PR's
+          # Checks tab, so mirror the result as one commit status on the PR.
+          status() {
+            gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" -f state="$1" -f description="$2" \
+              -f context='security-autofix / PR checks' -f target_url="$url" > /dev/null
+          }
+          status pending 'Full PR check suite running'
+          if gh run watch "$run" --exit-status --interval 60 > /dev/null; then
+            status success 'Full PR check suite passed'
+          else
+            status failure 'Full PR check suite failed'
+            exit 1
+          fi
 
       - name: Merge and deploy
         if: steps.ci.outcome == 'success' && steps.gate.outputs.automerge == 'true'
