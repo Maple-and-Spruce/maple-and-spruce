@@ -34,6 +34,13 @@ export interface AgreementSection {
   content: string;
   /** If set, this section requires a specific interactive response from the signer */
   responseType?: AgreementSectionResponseType;
+  /**
+   * Plain-text statements the signer must tick one by one, each its own
+   * required checkbox. Use for terms that must be acknowledged individually,
+   * such as the West Virginia contractor acknowledgments (W. Va. Code
+   * 21-5I-4). See `requiredAcknowledgments`.
+   */
+  acknowledgmentItems?: string[];
 }
 
 export type AgreementTemplateStatus = 'active' | 'archived';

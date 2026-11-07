@@ -36,6 +36,8 @@ export interface InstructorAgreementPanelProps {
   templatesState: RequestState<AgreementTemplate[]>;
   onSend: (templateId: string) => Promise<void>;
   onResend: (requestId: string) => Promise<void>;
+  /** Opens the signed copy. Without it, no link is shown. */
+  onViewSigned?: (signedAgreementId: string) => void;
   /** For stories and tests; defaults to the current time. */
   now?: Date;
 }
@@ -60,6 +62,7 @@ export function InstructorAgreementPanel({
   templatesState,
   onSend,
   onResend,
+  onViewSigned,
   now,
 }: InstructorAgreementPanelProps) {
   const [templateId, setTemplateId] = useState('');
@@ -165,7 +168,23 @@ export function InstructorAgreementPanel({
   switch (state.kind) {
     case 'signed':
       body = (
-        <Alert severity="success">
+        <Alert
+          severity="success"
+          action={
+            onViewSigned && state.request.signedAgreementId ? (
+              <Button
+                color="inherit"
+                size="small"
+                sx={{ whiteSpace: 'nowrap' }}
+                onClick={() =>
+                  onViewSigned(state.request.signedAgreementId as string)
+                }
+              >
+                View signed copy
+              </Button>
+            ) : undefined
+          }
+        >
           Signed online{' '}
           {formatDay(state.request.updatedAt)}.
         </Alert>

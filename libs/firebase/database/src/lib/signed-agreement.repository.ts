@@ -31,6 +31,9 @@ function docToSignedAgreement(
     signerEmail: data.signerEmail,
     printedName: data.printedName,
     signatureImagePath: data.signatureImagePath,
+    acknowledgments: Array.isArray(data.acknowledgments)
+      ? data.acknowledgments
+      : undefined,
     mediaReleaseChoice: data.mediaReleaseChoice as
       | MediaReleaseChoice
       | undefined,

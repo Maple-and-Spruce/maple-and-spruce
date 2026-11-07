@@ -155,6 +155,19 @@ export const Signed: Story = {
   },
 };
 
+/** Signed, on the instructor page: the signed copy is one click away. */
+export const SignedWithCopy: Story = {
+  args: {
+    ...Signed.args,
+    onViewSigned: fn(),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: /view signed copy/i }));
+    await expect(args.onViewSigned).toHaveBeenCalledWith('sa-1');
+  },
+};
+
 /** No email on file: explain instead of offering a send that can't work. */
 export const NoEmail: Story = {
   args: { signerEmail: undefined },

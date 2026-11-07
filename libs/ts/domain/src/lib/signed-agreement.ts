@@ -10,6 +10,7 @@
  */
 
 import type { MediaReleaseChoice } from './agreement-template';
+import type { RecordedAcknowledgment } from './agreement-acknowledgments';
 
 /**
  * Signed Agreement entity — immutable once created
@@ -30,6 +31,8 @@ export interface SignedAgreement {
   printedName: string;
   /** Firebase Storage path to signature image (e.g., agreements/{id}/signature.png) */
   signatureImagePath: string;
+  /** Every checkbox statement the signer ticked, in the words they saw */
+  acknowledgments?: RecordedAcknowledgment[];
   /** Response to the media release section, if the template includes one */
   mediaReleaseChoice?: MediaReleaseChoice;
   /** Whether a minor was involved */

@@ -311,6 +311,87 @@ describe('agreements router', () => {
     expect(instructor?.['readiness']).toEqual({ contractorAgreement: paper });
   });
 
+  it("a contractor agreement shows the instructor's split, requires every checkbox and records them", async () => {
+    const contractTemplate = await call<unknown, { template: { id: string } }>(
+      'createAgreementTemplate',
+      {
+        ...waiver,
+        name: 'Test Contractor Agreement',
+        sections: [
+          {
+            id: 'contractor',
+            title: 'Independent contractor',
+            content: '<p>You acknowledge that you:</p>',
+            responseType: 'acknowledgment',
+            acknowledgmentItems: [
+              'Provide services as an independent contractor.',
+              'Will not be treated as an employee.',
+            ],
+          },
+          {
+            id: 'pay',
+            title: 'Pay',
+            content: '<p>You receive {{instructorSharePercent}}%; we keep {{studioSharePercent}}%.</p>',
+          },
+        ],
+      }
+    );
+    expect(contractTemplate.status).toBe(200);
+    await setFirestoreDoc('instructors', 'inst-split', {
+      name: 'Robin Ashfield',
+      email: 'robin@example.com',
+      status: 'active',
+      isContractor: true,
+      payRate: 0.75,
+      payRateType: 'percentage',
+      createdAt: created,
+      updatedAt: created,
+    });
+    const sent = await call<unknown, SendAgreementRequestResponse>('sendAgreementRequest', {
+      templateId: contractTemplate.data!.template.id,
+      signerEmail: 'robin@example.com',
+      signerName: 'Robin Ashfield',
+      instructorId: 'inst-split',
+    });
+    expect(sent.status).toBe(200);
+    const token = sent.data!.request.signingToken;
+
+    const shown = await callFunction<unknown, { sections: Array<{ content: string }> }>({
+      functionName: 'getAgreementForSigning',
+      data: { token },
+    });
+    expect(shown.status).toBe(200);
+    expect(shown.data!.sections[1].content).toBe('<p>You receive 75%; we keep 25%.</p>');
+
+    const signing = {
+      token,
+      printedName: 'Robin Ashfield',
+      signatureData: `data:image/png;base64,${ONE_PIXEL_PNG}`,
+    };
+    const partly = await callFunction({
+      functionName: 'submitSignedAgreement',
+      data: { ...signing, acknowledgments: ['contractor:0'] },
+    });
+    expect(partly.status).toBe(400);
+    expect((await getFirestoreDoc('agreementRequests', sent.data!.request.id))?.['status']).toBe(
+      'pending'
+    );
+
+    const signed = await callFunction<unknown, SubmitSignedAgreementResponse>({
+      functionName: 'submitSignedAgreement',
+      data: { ...signing, acknowledgments: ['contractor:0', 'contractor:1'] },
+    });
+    expect(signed.status).toBe(200);
+    const record = await getFirestoreDoc('signedAgreements', signed.data!.signedAgreement.id);
+    expect(record?.['acknowledgments']).toEqual([
+      { sectionId: 'contractor', text: 'Provide services as an independent contractor.' },
+      { sectionId: 'contractor', text: 'Will not be treated as an employee.' },
+    ]);
+    expect(record?.['agreementHtmlSnapshot']).toContain('You receive 75%; we keep 25%.');
+    expect(record?.['ipAddress']).not.toBe('captured-by-cloud-function');
+    expect(record?.['userAgent']).not.toBe('captured-by-cloud-function');
+  });
+
   it('refuses to resend a request that is no longer pending', async () => {
     await setFirestoreDoc('agreementRequests', 'req-signed', {
       templateId,

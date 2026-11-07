@@ -23,6 +23,12 @@ vi.mock('@maple/firebase/functions', () => ({
       withOptions: () => ({ handle: (handler: unknown) => handler }),
     },
   },
+  throwFailedPrecondition: (message: string) => {
+    throw new Error(`failed-precondition: ${message}`);
+  },
+  throwInvalidArgument: (message: string) => {
+    throw new Error(`invalid-argument: ${message}`);
+  },
 }));
 
 vi.mock('@maple/firebase/database', () => ({
@@ -59,7 +65,8 @@ import {
 } from './submit-signed-agreement';
 
 const handler = submitSignedAgreement as unknown as (
-  data: unknown
+  data: unknown,
+  context: unknown
 ) => Promise<unknown>;
 
 // 9pm in New York on Oct 14 is already Oct 15 in UTC: the studio day wins.
@@ -165,12 +172,39 @@ describe('submitSignedAgreement', () => {
     }));
   });
 
-  const submit = () =>
-    handler({
-      token: 'tok',
-      printedName: 'Robin Ashfield',
-      signatureData: 'data:image/png;base64,AAAA',
-    });
+  const submit = (extra: Record<string, unknown> = {}) =>
+    handler(
+      {
+        token: 'tok',
+        printedName: 'Robin Ashfield',
+        signatureData: 'data:image/png;base64,AAAA',
+        ...extra,
+      },
+      { ip: '203.0.113.7', userAgent: 'Mozilla/5.0 (test)' }
+    );
+
+  const contractorTemplate = {
+    id: 'tpl-1',
+    name: 'Class Instructor Agreement (1099)',
+    sections: [
+      {
+        id: 'contractor',
+        title: '1. Independent contractor',
+        content: '<p>You acknowledge:</p>',
+        responseType: 'acknowledgment',
+        acknowledgmentItems: [
+          'I provide services as an independent contractor.',
+          'I am responsible for my own taxes & supplies.',
+        ],
+      },
+      {
+        id: 'pay',
+        title: '3. Pay',
+        content: '<p>You receive {{instructorSharePercent}}% and we keep {{studioSharePercent}}%.</p>',
+      },
+    ],
+  };
+  const ALL_TICKED = ['contractor:0', 'contractor:1'];
 
   it("records the agreement on the instructor's readiness once the request is signed", async () => {
     mocks.findByToken.mockResolvedValue({ ...request, instructorId: 'inst-1' });
@@ -199,10 +233,72 @@ describe('submitSignedAgreement', () => {
 
   it('still succeeds when recording on the instructor fails', async () => {
     mocks.findByToken.mockResolvedValue({ ...request, instructorId: 'inst-1' });
-    mocks.instructorFindById.mockRejectedValue(new Error('firestore down'));
+    mocks.instructorFindById.mockResolvedValue({ id: 'inst-1' });
+    mocks.instructorUpdate.mockRejectedValue(new Error('firestore down'));
 
     await expect(submit()).resolves.toMatchObject({
       signedAgreement: { id: 'sa-1' },
+    });
+  });
+
+  it("records the signer's IP address and browser", async () => {
+    mocks.findByToken.mockResolvedValue(request);
+
+    await submit();
+
+    expect(mocks.signedCreate.mock.calls[0][0]).toMatchObject({
+      ipAddress: '203.0.113.7',
+      userAgent: 'Mozilla/5.0 (test)',
+    });
+  });
+
+  describe('a contractor agreement with checkbox statements', () => {
+    beforeEach(() => {
+      mocks.templateFindById.mockResolvedValue(contractorTemplate);
+      mocks.findByToken.mockResolvedValue({ ...request, instructorId: 'inst-1' });
+      mocks.instructorFindById.mockResolvedValue({
+        id: 'inst-1',
+        payRate: 0.75,
+        payRateType: 'percentage',
+      });
+    });
+
+    it('refuses a signature with any statement unchecked, before storing anything', async () => {
+      await expect(submit({ acknowledgments: ['contractor:0'] })).rejects.toThrow(
+        /invalid-argument.*1 not checked/
+      );
+      expect(mocks.signedCreate).not.toHaveBeenCalled();
+      expect(mocks.markSigned).not.toHaveBeenCalled();
+    });
+
+    it('records every statement in the words the signer saw', async () => {
+      await submit({ acknowledgments: ALL_TICKED });
+
+      const created = mocks.signedCreate.mock.calls[0][0];
+      expect(created.acknowledgments).toEqual([
+        { sectionId: 'contractor', text: 'I provide services as an independent contractor.' },
+        { sectionId: 'contractor', text: 'I am responsible for my own taxes & supplies.' },
+      ]);
+      expect(created.agreementHtmlSnapshot).toContain(
+        '&#9745; I am responsible for my own taxes &amp; supplies.'
+      );
+    });
+
+    it("stores the instructor's own pay split in the snapshot", async () => {
+      await submit({ acknowledgments: ALL_TICKED });
+
+      const { agreementHtmlSnapshot } = mocks.signedCreate.mock.calls[0][0];
+      expect(agreementHtmlSnapshot).toContain('You receive 75% and we keep 25%.');
+      expect(agreementHtmlSnapshot).not.toContain('{{');
+    });
+
+    it('refuses to sign when the pay rate is missing', async () => {
+      mocks.instructorFindById.mockResolvedValue({ id: 'inst-1' });
+
+      await expect(submit({ acknowledgments: ALL_TICKED })).rejects.toThrow(
+        /failed-precondition/
+      );
+      expect(mocks.signedCreate).not.toHaveBeenCalled();
     });
   });
 });

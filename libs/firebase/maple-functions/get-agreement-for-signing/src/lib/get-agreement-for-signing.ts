@@ -5,13 +5,21 @@
  * for a given signing token. Used by the public signing page.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createPublicFunction } from '@maple/firebase/functions';
+import {
+  createPublicFunction,
+  throwFailedPrecondition,
+} from '@maple/firebase/functions';
 import {
   AgreementRequestRepository,
   AgreementTemplateRepository,
   ClassRepository,
+  InstructorRepository,
 } from '@maple/firebase/database';
-import { isAgreementRequestSignable } from '@maple/ts/domain';
+import {
+  applyAgreementVariables,
+  instructorAgreementVariables,
+  isAgreementRequestSignable,
+} from '@maple/ts/domain';
 import type {
   GetAgreementForSigningRequest,
   GetAgreementForSigningResponse,
@@ -54,9 +62,23 @@ export const getAgreementForSigning = createPublicFunction<
     className = classEntity?.name;
   }
 
+  // A contractor agreement shows that instructor's own pay split.
+  const instructor = request.instructorId
+    ? await InstructorRepository.findById(request.instructorId)
+    : undefined;
+  const { sections, unresolved } = applyAgreementVariables(
+    template.sections,
+    instructorAgreementVariables(instructor)
+  );
+  if (unresolved.length > 0) {
+    throwFailedPrecondition(
+      'This agreement is missing some details, such as your pay rate. Please contact Maple & Spruce.'
+    );
+  }
+
   return {
     templateName: template.name,
-    sections: template.sections,
+    sections,
     supportsMinor: template.supportsMinor,
     signerName: request.signerName,
     signerEmail: request.signerEmail,

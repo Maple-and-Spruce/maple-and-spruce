@@ -165,6 +165,8 @@ export interface SubmitSignedAgreementRequest {
   /** Base64-encoded PNG of the signature canvas */
   signatureData: string;
   printedName: string;
+  /** Keys of the acknowledgment checkboxes ticked (see `requiredAcknowledgments`) */
+  acknowledgments?: string[];
   /** Section responses (keyed by section id) */
   mediaReleaseChoice?: MediaReleaseChoice;
   /** Minor fields */

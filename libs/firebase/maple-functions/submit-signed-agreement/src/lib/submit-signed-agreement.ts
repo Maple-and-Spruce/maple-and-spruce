@@ -8,7 +8,11 @@
  * Captures IP address and user agent for audit trail.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { Functions } from '@maple/firebase/functions';
+import {
+  Functions,
+  throwFailedPrecondition,
+  throwInvalidArgument,
+} from '@maple/firebase/functions';
 import {
   AgreementRequestRepository,
   AgreementTemplateRepository,
@@ -16,8 +20,12 @@ import {
   SignedAgreementRepository,
 } from '@maple/firebase/database';
 import {
+  applyAgreementVariables,
   contractorAgreementSignedOnline,
+  instructorAgreementVariables,
   isAgreementRequestSignable,
+  missingAcknowledgments,
+  requiredAcknowledgments,
 } from '@maple/ts/domain';
 import { agreementSigningValidation } from '@maple/ts/validation';
 import { getStorage } from 'firebase-admin/storage';
@@ -25,22 +33,42 @@ import type {
   SubmitSignedAgreementRequest,
   SubmitSignedAgreementResponse,
 } from '@maple/ts/firebase/api-types';
-import type { MediaReleaseChoice } from '@maple/ts/domain';
+import type {
+  AgreementSection,
+  MediaReleaseChoice,
+  RecordedAcknowledgment,
+} from '@maple/ts/domain';
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 /**
  * Render the agreement sections into an HTML snapshot for the legal record.
- * This is a simple rendering — the full template content is stored so that
- * even if the template is later edited, the legal record is preserved.
+ * The text is stored as the signer saw it (pay split filled in, each ticked
+ * statement under its section), so the record stands even if the template
+ * is later edited.
  */
-function renderAgreementHtml(
+export function renderAgreementHtml(
   templateName: string,
-  sections: Array<{ title: string; content: string }>
+  sections: readonly AgreementSection[],
+  acknowledgments: readonly RecordedAcknowledgment[] = []
 ): string {
   const sectionHtml = sections
-    .map(
-      (s) =>
-        `<section><h2>${s.title}</h2><div>${s.content}</div></section>`
-    )
+    .map((s) => {
+      const ticked = acknowledgments
+        .filter((a) => a.sectionId === s.id)
+        .map((a) => `<li>&#9745; ${escapeHtml(a.text)}</li>`)
+        .join('');
+      const tickedHtml = ticked
+        ? `<ul class="acknowledged">${ticked}</ul>`
+        : '';
+      return `<section><h2>${s.title}</h2><div>${s.content}</div>${tickedHtml}</section>`;
+    })
     .join('\n');
 
   return `<!DOCTYPE html>
@@ -123,7 +151,7 @@ export async function recordInstructorAgreement(
 export const submitSignedAgreement = Functions.endpoint
   .withOptions({ timeoutSeconds: 120 })
   .handle<SubmitSignedAgreementRequest, SubmitSignedAgreementResponse>(
-    async (data, _context, _secrets, _strings) => {
+    async (data, context, _secrets, _strings) => {
       // Validate input
       const result = agreementSigningValidation(data);
       if (result.hasErrors()) {
@@ -155,6 +183,31 @@ export const submitSignedAgreement = Functions.endpoint
         throw new Error('Agreement template not found');
       }
 
+      // A contractor agreement carries that instructor's own pay split.
+      const instructor = request.instructorId
+        ? await InstructorRepository.findById(request.instructorId)
+        : undefined;
+      const { sections, unresolved } = applyAgreementVariables(
+        template.sections,
+        instructorAgreementVariables(instructor)
+      );
+      if (unresolved.length > 0) {
+        throwFailedPrecondition(
+          'This agreement is missing some details, such as your pay rate. Please contact Maple & Spruce.'
+        );
+      }
+
+      // Every checkbox statement must be ticked, each on its own.
+      const missing = missingAcknowledgments(sections, data.acknowledgments);
+      if (missing.length > 0) {
+        throwInvalidArgument(
+          `Please check every acknowledgment before signing (${missing.length} not checked).`
+        );
+      }
+      const acknowledgments: RecordedAcknowledgment[] = requiredAcknowledgments(
+        sections
+      ).map(({ sectionId, text }) => ({ sectionId, text }));
+
       // Generate a temporary ID for the storage path
       const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -177,7 +230,8 @@ export const submitSignedAgreement = Functions.endpoint
       // Render HTML snapshot of the agreement
       const agreementHtmlSnapshot = renderAgreementHtml(
         template.name,
-        template.sections
+        sections,
+        acknowledgments
       );
 
       // Create the signed agreement record
@@ -189,6 +243,7 @@ export const submitSignedAgreement = Functions.endpoint
         signerEmail: request.signerEmail,
         printedName: data.printedName,
         signatureImagePath,
+        ...(acknowledgments.length > 0 ? { acknowledgments } : {}),
         mediaReleaseChoice: data.mediaReleaseChoice as
           | MediaReleaseChoice
           | undefined,
@@ -197,8 +252,8 @@ export const submitSignedAgreement = Functions.endpoint
         guardianName: data.guardianName,
         guardianSignatureImagePath,
         signedAt: new Date(),
-        ipAddress: 'captured-by-cloud-function',
-        userAgent: 'captured-by-cloud-function',
+        ipAddress: context.ip ?? 'unknown',
+        userAgent: context.userAgent ?? 'unknown',
       });
 
       // Rename storage files to use the actual signed agreement ID

@@ -17,6 +17,8 @@ import {
   FormLabel,
   FormHelperText,
   Switch,
+  Checkbox,
+  FormGroup,
 } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
 import {
@@ -25,6 +27,7 @@ import {
   useSignals,
 } from '@maple/react/signals';
 import { SignatureCanvas, type SignatureCanvasHandle } from './SignatureCanvas';
+import { requiredAcknowledgments } from '@maple/ts/domain';
 import type { AgreementSection, MediaReleaseChoice } from '@maple/ts/domain';
 
 interface FirebaseError {
@@ -57,6 +60,8 @@ export interface SigningFormProps {
   onSubmit: (data: {
     signatureData: string;
     printedName: string;
+    /** Keys of the acknowledgment checkboxes ticked */
+    acknowledgments: string[];
     mediaReleaseChoice?: MediaReleaseChoice;
     isMinor: boolean;
     minorName?: string;
@@ -83,6 +88,11 @@ export function SigningForm({
   const guardianSignatureRef = useRef<SignatureCanvasHandle>(null);
 
   const printedName = useSignal(signerName);
+  const checkedAcknowledgments = useSignal<string[]>([]);
+  const acknowledgments = React.useMemo(
+    () => requiredAcknowledgments(sections),
+    [sections]
+  );
   const mediaReleaseChoice = useSignal<MediaReleaseChoice | ''>('');
   const isMinor = useSignal(false);
   const minorName = useSignal('');
@@ -103,6 +113,11 @@ export function SigningForm({
 
     if (!printedName.value.trim()) {
       errors.printedName = 'Printed name is required';
+    }
+
+    const checked = new Set(checkedAcknowledgments.value);
+    if (acknowledgments.some((a) => !checked.has(a.key))) {
+      errors.acknowledgments = 'Please check each statement above to continue';
     }
 
     if (hasMediaRelease.value && !mediaReleaseChoice.value) {
@@ -152,6 +167,7 @@ export function SigningForm({
       await onSubmit({
         signatureData: signatureRef.current!.toDataURL(),
         printedName: printedName.value.trim(),
+        acknowledgments: [...checkedAcknowledgments.value],
         mediaReleaseChoice: mediaReleaseChoice.value as MediaReleaseChoice || undefined,
         isMinor: isMinor.value,
         minorName: isMinor.value ? minorName.value.trim() : undefined,
@@ -167,6 +183,7 @@ export function SigningForm({
         // Reset form after 5 seconds in kiosk mode
         setTimeout(() => {
           printedName.value = '';
+          checkedAcknowledgments.value = [];
           mediaReleaseChoice.value = '';
           isMinor.value = false;
           minorName.value = '';
@@ -186,6 +203,7 @@ export function SigningForm({
     onSubmit,
     kioskMode,
     printedName,
+    checkedAcknowledgments,
     mediaReleaseChoice,
     isMinor,
     minorName,
@@ -246,6 +264,62 @@ export function SigningForm({
             sx={{ '& p': { mb: 1.5 }, '& ul': { pl: 3 }, '& li': { mb: 0.5 } }}
             dangerouslySetInnerHTML={{ __html: section.content }}
           />
+
+          {/* Required acknowledgments, one checkbox per statement */}
+          {acknowledgments.some((a) => a.sectionId === section.id) && (
+            <FormControl
+              component="fieldset"
+              sx={{ mt: 2, display: 'block' }}
+              error={!!validationErrors.value.acknowledgments}
+            >
+              <FormLabel component="legend">Check each to agree:</FormLabel>
+              <FormGroup>
+                {acknowledgments
+                  .filter((a) => a.sectionId === section.id)
+                  .map((a) => {
+                    const isChecked = checkedAcknowledgments.value.includes(
+                      a.key
+                    );
+                    const isMissing =
+                      !!validationErrors.value.acknowledgments && !isChecked;
+                    return (
+                      <FormControlLabel
+                        key={a.key}
+                        sx={{ alignItems: 'flex-start', mb: 1 }}
+                        control={
+                          <Checkbox
+                            checked={isChecked}
+                            sx={{ pt: 0.5 }}
+                            slotProps={{
+                              input: { 'aria-invalid': isMissing },
+                            }}
+                            onChange={(e) => {
+                              const others = checkedAcknowledgments.value.filter(
+                                (k) => k !== a.key
+                              );
+                              checkedAcknowledgments.value = e.target.checked
+                                ? [...others, a.key]
+                                : others;
+                            }}
+                          />
+                        }
+                        label={a.text}
+                      />
+                    );
+                  })}
+              </FormGroup>
+              {validationErrors.value.acknowledgments &&
+                acknowledgments.some(
+                  (a) =>
+                    a.sectionId === section.id &&
+                    !checkedAcknowledgments.value.includes(a.key)
+                ) && (
+                  <FormHelperText>
+                    {validationErrors.value.acknowledgments}
+                  </FormHelperText>
+                )}
+            </FormControl>
+          )}
 
           {/* Media Release Radio Buttons */}
           {section.responseType === 'media-release' && (
