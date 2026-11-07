@@ -24,6 +24,7 @@ import {
   DialogTitle,
   FormControl,
   InputLabel,
+  Link,
   MenuItem,
   Select,
   Stack,
@@ -50,6 +51,7 @@ import {
   zonedDateKey,
   zonedWallClockToInstant,
 } from '@maple/ts/domain';
+import NextLink from 'next/link';
 import { formatBlockOption, formatMinutes } from './block-format';
 import { BlockAttributionChoice } from './BlockAttributionChoice';
 
@@ -274,6 +276,19 @@ export function StandingScheduleDialog({
               <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
                 This teacher has no blocks yet. Create one first — a standing
                 slot has to sit inside a block.
+              </Typography>
+            )}
+            {/* There is no weekday field: the block is the weekday. With one
+                block on the list that reads as a locked detail, so a move to
+                another day looked impossible. Say where the day comes from. */}
+            {teacherBlocks.length > 0 && (
+              <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5 }}>
+                The block sets the day. To move to a different day, add a block
+                for that day on{' '}
+                <Link component={NextLink} href="/lesson-blocks">
+                  Lesson Blocks
+                </Link>{' '}
+                first, then pick it here.
               </Typography>
             )}
           </FormControl>
