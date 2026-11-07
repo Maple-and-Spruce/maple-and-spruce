@@ -336,6 +336,30 @@ describe('requests', () => {
     expect(mocks.requestCreate).not.toHaveBeenCalled();
   });
 
+  it('creates a link-only request with no email, and sends none', async () => {
+    mocks.templateFindById.mockResolvedValue(template);
+    mocks.requestCreate.mockImplementation(async (input) => ({
+      id: 'req-link',
+      ...input,
+    }));
+
+    const result = (await call(
+      'sendAgreementRequest',
+      { templateId: 'tpl-1', signerName: 'Test Signer', deliveryMethod: 'link' },
+      ORIGINS,
+    )) as { request: { signingToken: string; emailSentAt?: Date } };
+
+    expect(mocks.requestCreate.mock.calls[0][0]).toMatchObject({
+      signerEmail: '',
+      deliveryMethod: 'link',
+      status: 'pending',
+    });
+    expect(result.request.signingToken).toMatch(/^[0-9a-f]{64}$/);
+    expect(result.request.emailSentAt).toBeUndefined();
+    expect(mocks.mailAdd).not.toHaveBeenCalled();
+    expect(mocks.requestMarkEmailSent).not.toHaveBeenCalled();
+  });
+
   it("links a request to the instructor whose contractor agreement it is", async () => {
     mocks.templateFindById.mockResolvedValue(template);
     mocks.instructorFindById.mockResolvedValue({ id: 'inst-1' });
@@ -428,6 +452,11 @@ describe('requests', () => {
       'an expired request',
       { ...pending, expiresAt: new Date('2026-09-01T00:00:00Z') },
       /expired/,
+    ],
+    [
+      'a link-only request with no email',
+      { ...pending, signerEmail: '', deliveryMethod: 'link' },
+      /Copy its signing link/,
     ],
   ])('refuses to resend %s', async (_label, request, error) => {
     vi.useFakeTimers();

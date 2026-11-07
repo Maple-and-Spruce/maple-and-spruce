@@ -392,6 +392,34 @@ describe('agreements router', () => {
     expect(record?.['userAgent']).not.toBe('captured-by-cloud-function');
   });
 
+  it('creates a link-only request with no email, which signs like any other', async () => {
+    const before = (await listFirestoreDocs('mail')).length;
+    const sent = await call<unknown, SendAgreementRequestResponse>('sendAgreementRequest', {
+      templateId,
+      signerName: 'Robin Ashfield',
+      deliveryMethod: 'link',
+    });
+    expect(sent.status).toBe(200);
+    expect(await listFirestoreDocs('mail')).toHaveLength(before);
+    const stored = await getFirestoreDoc('agreementRequests', sent.data!.request.id);
+    expect(stored?.['deliveryMethod']).toBe('link');
+    expect(stored?.['emailSentAt']).toBeUndefined();
+
+    const resend = await call('resendAgreementRequest', { id: sent.data!.request.id });
+    expect(resend.status).toBe(400);
+    expect(message(resend)).toMatch(/Copy its signing link/);
+
+    const signed = await callFunction<unknown, SubmitSignedAgreementResponse>({
+      functionName: 'submitSignedAgreement',
+      data: {
+        token: sent.data!.request.signingToken,
+        printedName: 'Robin Ashfield',
+        signatureData: `data:image/png;base64,${ONE_PIXEL_PNG}`,
+      },
+    });
+    expect(signed.status).toBe(200);
+  });
+
   it('refuses to resend a request that is no longer pending', async () => {
     await setFirestoreDoc('agreementRequests', 'req-signed', {
       templateId,

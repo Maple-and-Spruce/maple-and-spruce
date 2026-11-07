@@ -15,9 +15,12 @@
   instructor's rate (the first contract instructor is on 75%; the template said 80%).
 - Signed records now store the signer's real IP and browser (they stored a placeholder string).
 - Instructor page: "View signed copy". Payment setup: Square Payroll guidance, no data collected.
-- **After merge, edit the live template (v3):** put the five WV statements in section 1's
-  "Checkbox statements", change "the box" to "each box", and replace 80% / 20% with the
-  placeholders. Do it only after the deploy, or signers see raw `{{...}}`.
+- No email needed: "Create signing link" makes a request that sends nothing; Katie copies the
+  link into Messenger or a text. "Print paper copy" prints the agreement with the instructor's
+  split and an initial line per statement.
+- **After merge, edit the live template (v3):** move the five WV statements out of section 1's
+  list and into its "Checkbox statements" (or they show twice), change "the box" to "each box",
+  and replace 80% / 20% with the placeholders. Do it only after the deploy, or signers see raw `{{...}}`.
 - That instructor has no email on file, so they sign a one-page paper copy before their Nov 8
   class (saved in the workspace under `_business_context/`).
 

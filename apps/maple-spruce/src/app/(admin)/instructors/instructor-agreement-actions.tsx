@@ -78,6 +78,31 @@ export function InstructorAgreementActions({
     [instructor, sendRequest]
   );
 
+  // Shared by staff over text or Messenger: no email is sent.
+  const handleCreateLink = useCallback(
+    async (templateId: string) => {
+      await sendRequest({
+        templateId,
+        signerEmail: instructor.email || undefined,
+        signerName: instructor.name,
+        deliveryMethod: 'link',
+        instructorId: instructor.id,
+      });
+    },
+    [instructor, sendRequest]
+  );
+
+  const handlePrint = useCallback(
+    (templateId: string) => {
+      window.open(
+        `/instructors/${instructor.id}/agreement?template=${encodeURIComponent(templateId)}`,
+        '_blank',
+        'noopener'
+      );
+    },
+    [instructor.id]
+  );
+
   return (
     <>
       <InstructorAgreementPanel
@@ -88,6 +113,8 @@ export function InstructorAgreementActions({
         onSend={handleSend}
         onResend={resendRequest}
         onViewSigned={handleViewSigned}
+        onCreateLink={handleCreateLink}
+        onPrint={handlePrint}
       />
       <SignedAgreementDetailDialog
         open={isSignedCopyOpen}

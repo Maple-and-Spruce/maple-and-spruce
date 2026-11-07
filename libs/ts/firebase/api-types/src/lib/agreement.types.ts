@@ -92,7 +92,8 @@ export interface GetAgreementRequestsResponse {
 
 export interface SendAgreementRequestRequest {
   templateId: string;
-  signerEmail: string;
+  /** Required unless `deliveryMethod` is 'link', which sends no email. */
+  signerEmail?: string;
   signerName: string;
   signerPhone?: string;
   deliveryMethod: AgreementDeliveryMethod;
