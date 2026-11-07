@@ -20,6 +20,8 @@ import { ADMIN_USER } from '@maple/firebase/integration-test-utils';
 import type {
   CreateRegistrationRequest,
   CreateRegistrationResponse,
+  UpdateClassRequest,
+  UpdateClassResponse,
 } from '@maple/ts/firebase/api-types';
 
 /** Future date for test classes */
@@ -1034,6 +1036,98 @@ describe('createRegistration', () => {
         groupSize: 13,
       });
       expect(tooBig.status).not.toBe(200);
+    });
+  });
+
+  describe('Private hours with different start times per date', () => {
+    const PER_DATE_CLASS_ID = 'test-reg-private-hours-per-date';
+    // Day 1 offers 15:00 and 16:30 UTC; day 2, a week later, only 19:00.
+    const at = (offsetDays: number, hourUtc: number, minute = 0): string => {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() + 7 + offsetDays);
+      d.setUTCHours(hourUtc, minute, 0, 0);
+      return d.toISOString();
+    };
+    const day1Early = at(0, 15);
+    const day1Late = at(0, 16, 30);
+    const day2Only = at(7, 19);
+    const sessionsOf = (starts: string[]) => starts.map((dateTime) => ({ dateTime }));
+
+    beforeAll(async () => {
+      await setFirestoreDoc('classes', PER_DATE_CLASS_ID, {
+        ...TEST_CLASS,
+        name: 'Ornament Party Per Date Test',
+        // A published class needs an instructor for updateClass to accept an edit.
+        instructorId: 'test-per-date-instructor',
+        format: 'privateHours',
+        sessions: sessionsOf([day1Early, day1Late, day2Only]),
+        durationMinutes: 60,
+        capacity: 12,
+        priceCents: 6000,
+      });
+    });
+
+    const book = (overrides: Partial<CreateRegistrationRequest>) =>
+      callFunction<CreateRegistrationRequest, CreateRegistrationResponse>({
+        functionName: 'createRegistration',
+        data: {
+          classId: PER_DATE_CLASS_ID,
+          customerEmail: 'per-date-host-a@test.com',
+          customerName: 'Per Date Host A',
+          quantity: 1,
+          slotStart: day2Only,
+          groupSize: 6,
+          paymentNonce: 'cnon:card-nonce-ok',
+          ...overrides,
+        },
+      });
+
+    const updateSessions = (starts: string[]) =>
+      callFunction<UpdateClassRequest, UpdateClassResponse>({
+        functionName: 'updateClass',
+        data: {
+          id: PER_DATE_CLASS_ID,
+          sessions: starts.map((dateTime) => ({ dateTime: new Date(dateTime) })),
+        },
+        idToken: adminUser.idToken,
+      });
+
+    it('books the hour only the second date offers', async () => {
+      const result = await book({});
+      expect(result.status).toBe(200);
+
+      const persisted = await getFirestoreDoc(
+        'registrations',
+        result.data?.registration.id as string
+      );
+      expect(new Date(persisted?.['slotStart'] as string).toISOString()).toBe(day2Only);
+    });
+
+    it("refuses the second date at a time only the first date offers", async () => {
+      const result = await book({
+        customerEmail: 'per-date-host-b@test.com',
+        customerName: 'Per Date Host B',
+        slotStart: at(7, 15),
+      });
+      expect(result.status).not.toBe(200);
+      expect(JSON.stringify(result.error)).toMatch(/no longer available/i);
+    });
+
+    it("won't let an edit drop the booked hour on the second date", async () => {
+      const result = await updateSessions([day1Early, day1Late]);
+      expect(result.status).not.toBe(200);
+      expect(JSON.stringify(result.error)).toMatch(/booked and can't be removed/i);
+    });
+
+    it("lets an edit drop an unbooked hour on the first date", async () => {
+      const result = await updateSessions([day1Early, day2Only]);
+      expect(result.status).toBe(200);
+
+      const stored = await getFirestoreDoc('classes', PER_DATE_CLASS_ID);
+      const starts = (stored?.['sessions'] as Array<{ dateTime: string }>).map((s) =>
+        new Date(s.dateTime).toISOString()
+      );
+      expect(starts.sort()).toEqual([day1Early, day2Only].sort());
     });
   });
 });

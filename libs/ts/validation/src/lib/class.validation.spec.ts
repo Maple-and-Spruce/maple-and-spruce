@@ -850,6 +850,21 @@ describe('classValidation', () => {
       );
     });
 
+    it('accepts dates that each offer their own start times', () => {
+      const on = (day: number, h: number) => ({
+        dateTime: new Date(Date.UTC(2030, 11, day, h)),
+      });
+      const result = classValidation({
+        ...validClass,
+        format: 'privateHours',
+        durationMinutes: 60,
+        // Dec 5 at 15:00 and 16:00; Dec 12 at 15:00 only (same clock time,
+        // different day, so no overlap) and 19:00.
+        sessions: [on(5, 15), on(5, 16), on(12, 15), on(12, 19)],
+      });
+      expect(result.hasErrors('sessions')).toBe(false);
+    });
+
     it('leaves overlapping seat sessions alone', () => {
       const result = classValidation({
         ...validClass,
