@@ -407,17 +407,17 @@ describe('mapClassToFieldData: private hours', () => {
   it('counts open hours, not seats', () => {
     const result = map(2);
     expect(result['spots-remaining']).toBe(3);
-    expect(result['spots-display']).toBe('3 hours open');
+    expect(result['spots-display']).toBe('3 slots open');
     expect(result['is-full']).toBe(false);
   });
 
   it('treats every hour as open when there are no registrations', () => {
     expect(map()['spots-remaining']).toBe(5);
-    expect(map()['spots-display']).toBe('5 hours open');
+    expect(map()['spots-display']).toBe('5 slots open');
   });
 
-  it('says "1 hour open" for the last hour', () => {
-    expect(map(4)['spots-display']).toBe('1 hour open');
+  it('says "1 slot open" for the last slot', () => {
+    expect(map(4)['spots-display']).toBe('1 slot open');
   });
 
   it('is full with a waitlist when every hour is taken', () => {

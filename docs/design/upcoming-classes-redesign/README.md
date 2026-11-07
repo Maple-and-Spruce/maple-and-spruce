@@ -12,6 +12,7 @@ built natively in Webflow (see [Implementation](#implementation)).
 | `Phone.dc.html` | iPhone 16 artboard (393 x 852): photo rows, featured Studio Series card, bottom-sheet date picker, sticky next-class bar |
 | `webflow-embed.html` | The CSS + script live on the Webflow page (see [Webflow implementation](#webflow-implementation)) |
 | `webflow-sections-embed.html` | Page-scoped CSS for the header, self-care and Policies sections |
+| `class-page-embed.html` | The CSS + script live on the Classes template page (HtmlEmbed `394a4c75-d78a-bced-106f-25cc8e9e83af`, page `69d0fb7572d9e153c22ce48f`). It reads CMS values from `data-*` attributes on `.cls-hero-content` |
 
 The two `.dc.html` files are Design-canvas artboard sources, copied verbatim. Images
 are referenced as `/_blob/<id>` URLs, which resolve **only inside the canvas
@@ -70,7 +71,7 @@ The redesign is built on the live /upcoming-classes page (Webflow page
 - **Listing:** a native Classes Collection List, sorted by `date-time` ascending and
   filtered to `is-dev-environment` off and `date-time` on or after today. Each item
   (DynamoItem) carries CMS-bound data attributes: `data-date`, `data-category`,
-  `data-sessions`, `data-spots`, `data-time`, `data-duration`. It also holds an empty
+  `data-sessions`, `data-spots`, `data-time`, `data-duration`, `data-spots-display`. It also holds an empty
   `[data-msx-featured]` marker div whose visibility is bound to `is-featured`.
 - **Restyle:** the HtmlEmbed `669fad2a-29f5-7aac-40a7-5c949c2d33d5` inside the class
   list section holds the CSS and script in `webflow-embed.html`. At runtime it turns the
@@ -110,7 +111,14 @@ The redesign is built on the live /upcoming-classes page (Webflow page
 - The Designer canvas still shows the old card grid, because the restyle is runtime
   CSS/JS. Check changes on the staging or live site.
 
-**Editing either embed means editing it in Webflow and keeping its file here in
+**Private-hours classes** (one group books an hour) are told apart by `data-spots-display`, the
+sync's own wording: when it mentions slots ("17 slots open", or "hours" from before the rename), both
+scripts show "N slots open" instead of a seat count, because `spots-remaining` counts open booking
+slots and `capacity` is the group size. The listing's
+date tile shows a time only when `data-time` holds a clock time, so "Choose your hour" and
+"Varies" stay under the title.
+
+**Editing any embed means editing it in Webflow and keeping its file here in
 sync.** These files are the source of truth the embeds point to.
 
 ## Featured card

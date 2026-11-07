@@ -167,7 +167,7 @@ export function mapClassToFieldData(
     ? `${baseDuration} each`
     : baseDuration;
 
-  const unit = privateHours ? 'hour' : 'spot';
+  const unit = privateHours ? 'slot' : 'spot';
   const spotsDisplay = spotsRemaining <= 0
     ? 'Waitlist Available'
     : `${spotsRemaining} ${unit}${spotsRemaining === 1 ? '' : 's'} ${privateHours ? 'open' : 'remaining'}`;
