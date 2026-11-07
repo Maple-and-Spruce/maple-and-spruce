@@ -1984,3 +1984,36 @@ reminder all name the booked hour, and an edit that removes a booked hour is ref
   read as unpaid.
 - `syncClassToSquare` gives a private-hours class no POS item, so the register can't book an hour.
   Hours are booked online through the class page.
+
+---
+
+## ADR-039: Security Fixes Merge and Deploy Themselves When the Change Is Mechanical
+
+**Status:** Accepted
+**Date:** 2026-11-07
+
+### Context
+The Dependabot-alert-to-`@claude`-issue loop had been dead since the repo moved to the org: its
+PAT and Claude token secrets were never recreated, and Dependabot reports zero alerts here anyway
+because it cannot read the pnpm 11+ lockfile. Meanwhile the PR `Security Audit` job failed any
+PR whenever a new advisory was published against something already on `main`.
+
+### Decision
+- `pnpm audit` is the source of truth, not Dependabot.
+- The PR job fails only on advisories the PR adds (`tools/security-autofix.ts pr-check`).
+- A daily workflow (`security-autofix.yml`) fixes high/critical advisories: a targeted
+  `pnpm update <pkg> -r`; then Claude, following `docs/guides/dependency-overrides.md`, for
+  anything a parent pins; then `pnpm audit --fix override` if no Claude token is configured.
+- It merges its own PR, and dispatches the deploy, only when CI is green and the change is
+  mechanical: dependency manifests only, fixes at least one advisory, adds none, and no package
+  crosses a major version (direct or transitive). Everything else waits for a human.
+
+### Consequences
+- Merging to `main` deploys to prod, so an eligible fix reaches prod with no person in the loop.
+  The gate plus the full PR suite (unit, integration, four E2E suites) is the safety.
+- The workflow acts as GITHUB_TOKEN, which starts no `pull_request`/`push` workflows. It
+  dispatches `build-check.yml` on the PR branch and `firebase-functions-merge.yml` after merging.
+  That needs "Allow GitHub Actions to create and approve pull requests" on, at org and repo level.
+- `pnpm audit --fix update` was rejected as the first tier: it re-resolves the whole lockfile and
+  bumped ~20 direct dependencies to fix one transitive advisory.
+

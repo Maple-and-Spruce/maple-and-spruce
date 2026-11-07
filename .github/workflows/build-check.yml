@@ -4,6 +4,11 @@ on:
   pull_request:
     branches:
       - '**'
+  # The daily security-autofix workflow opens its PRs with GITHUB_TOKEN, and
+  # GitHub never starts `pull_request` workflows for those. It dispatches this
+  # workflow on the PR branch instead; the check runs land on the same head
+  # commit, so the PR shows them as usual.
+  workflow_dispatch:
 
 # One in-flight run per PR. This workflow fans out to 19 jobs (builds, unit +
 # Storybook coverage, four E2E suites, integration-test matrix), so every push
@@ -73,6 +78,8 @@ jobs:
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6.1.0
@@ -89,13 +96,15 @@ jobs:
           path: node_modules
           key: ${{ needs.install.outputs.cache_key }}
 
-      # Not `pnpm audit` inline: the npm advisories endpoint times out often
-      # enough to red-X unrelated PRs (it killed this job on legacy #801 after 4m42s),
-      # and `pnpm audit` exits 1 for that exactly as it does for a real CVE.
-      # The wrapper retries, keeps failing on genuine advisories, and downgrades
-      # a registry outage to a warning annotation. See the header comment there.
-      - name: Run pnpm audit
-        run: ./tools/run-security-audit.sh
+      # Fails only on high/critical advisories this PR ADDS. Ones already on
+      # the base branch show as warnings: a CVE published overnight used to
+      # fail whichever unrelated PR was open. The daily security-autofix
+      # workflow fixes those. A registry outage (exit 3) warns, never fails.
+      # Full local audit, same as before: ./tools/run-security-audit.sh
+      - name: Audit for advisories added by this change
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+        run: npx tsx tools/security-autofix.ts pr-check --base "$BASE" || [ $? -eq 3 ]
 
   firestore-indexes:
     name: Firestore Indexes
@@ -311,7 +320,8 @@ jobs:
             -- package.json pnpm-lock.yaml pnpm-workspace.yaml)"
           others="$(git diff --name-only "$NX_BASE" "$NX_HEAD" -- . \
             ':!package.json' ':!pnpm-lock.yaml' ':!pnpm-workspace.yaml')"
-          if [ -n "$manifests" ] && [ -z "$others" ]; then
+          # A dispatched run (the security autofix) has no PR base, so check it all.
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || { [ -n "$manifests" ] && [ -z "$others" ]; }; then
             echo "Dependency-only change — widening nx affected to the whole workspace."
             echo "NX_BASE=$(git rev-list --max-parents=0 HEAD | tail -1)" >> "$GITHUB_ENV"
           fi
@@ -396,7 +406,8 @@ jobs:
             -- package.json pnpm-lock.yaml pnpm-workspace.yaml)"
           others="$(git diff --name-only "$NX_BASE" "$NX_HEAD" -- . \
             ':!package.json' ':!pnpm-lock.yaml' ':!pnpm-workspace.yaml')"
-          if [ -n "$manifests" ] && [ -z "$others" ]; then
+          # A dispatched run (the security autofix) has no PR base, so check it all.
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || { [ -n "$manifests" ] && [ -z "$others" ]; }; then
             echo "Dependency-only change — widening nx affected to the whole workspace."
             echo "NX_BASE=$(git rev-list --max-parents=0 HEAD | tail -1)" >> "$GITHUB_ENV"
           fi
@@ -539,7 +550,8 @@ jobs:
             -- package.json pnpm-lock.yaml pnpm-workspace.yaml)"
           others="$(git diff --name-only "$NX_BASE" "$NX_HEAD" -- . \
             ':!package.json' ':!pnpm-lock.yaml' ':!pnpm-workspace.yaml')"
-          if [ -n "$manifests" ] && [ -z "$others" ]; then
+          # A dispatched run (the security autofix) has no PR base, so check it all.
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || { [ -n "$manifests" ] && [ -z "$others" ]; }; then
             echo "Dependency-only change — widening nx affected to the whole workspace."
             echo "NX_BASE=$(git rev-list --max-parents=0 HEAD | tail -1)" >> "$GITHUB_ENV"
           fi
@@ -1353,7 +1365,8 @@ jobs:
             -- package.json pnpm-lock.yaml pnpm-workspace.yaml)"
           others="$(git diff --name-only "$NX_BASE" "$NX_HEAD" -- . \
             ':!package.json' ':!pnpm-lock.yaml' ':!pnpm-workspace.yaml')"
-          if [ -n "$manifests" ] && [ -z "$others" ]; then
+          # A dispatched run (the security autofix) has no PR base, so check it all.
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || { [ -n "$manifests" ] && [ -z "$others" ]; }; then
             echo "Dependency-only change — widening nx affected to the whole workspace."
             echo "NX_BASE=$(git rev-list --max-parents=0 HEAD | tail -1)" >> "$GITHUB_ENV"
           fi

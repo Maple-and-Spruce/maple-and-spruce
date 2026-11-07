@@ -107,9 +107,10 @@ Overrides should be reviewed periodically (e.g., when updating Nx or other major
 
 ## Automation
 
-- **New vulnerabilities** — Dependabot alerts are enabled at the repo level. `.github/workflows/dependabot-alert-to-claude.yml` runs daily and files an `@claude`-tagged issue per new high+critical alert; `.github/workflows/claude.yml` picks the issue up and opens a draft PR following this guide.
+- **New vulnerabilities** — `.github/workflows/security-autofix.yml` runs daily (and on demand from the Actions tab). It audits with `pnpm audit`, fixes what it finds in three tiers (`pnpm update <pkg> -r`, then Claude following this guide for anything a parent pins, then `pnpm audit --fix override` if no Claude token is set), opens a PR labelled `security-autofix`, runs the full PR checks on it, and **merges and deploys it itself** when `tools/security-autofix.ts gate` allows: dependency manifests only, at least one advisory fixed, none added, and no major version jump anywhere in the lockfile. Otherwise the PR is labelled `needs-review` and the run fails, which emails you. While an autofix PR is open, later runs skip. ADR-039 has the reasoning.
+- **Why not Dependabot** — it reports zero alerts for this repo (it cannot read the pnpm 11+ lockfile), so `pnpm audit` is the source of truth. The old Dependabot-alert-to-`@claude`-issue workflow was removed.
 - **Stale overrides** — review **manually** using the steps under "Cleaning Up Overrides" above. A previous attempt at an automated `mfranzke/check-pnpm-overrides` workflow was removed because its in-action audit didn't match our CI audit and it proposed removing currently-load-bearing entries (including a critical-severity fix).
-- **CI belt-and-suspenders** — the `security` job in `build-check.yml` keeps running `pnpm audit --audit-level=high` on every PR so a regression can't merge unnoticed.
+- **CI belt-and-suspenders** — the `security` job in `build-check.yml` runs `tools/security-autofix.ts pr-check` on every PR. It fails only on high/critical advisories the PR **adds** (when it changes a manifest, base and head are both audited and compared); ones already on `main` show as warnings, since a CVE published overnight should not fail an unrelated PR. `./tools/run-security-audit.sh` is still the full local audit.
 
 ## Notes
 
