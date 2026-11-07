@@ -23,6 +23,7 @@ import {
 } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import {
+  isWebflowNotFound,
   Webflow,
   WEBFLOW_SECRET_NAMES,
   WEBFLOW_STRING_NAMES,
@@ -104,6 +105,28 @@ export function isCountRelevantChange(
   return COUNT_RELEVANT_FIELDS.some(
     (field) => beforeData[field] !== afterData[field]
   );
+}
+
+/**
+ * Whether a failed sync lost a race with the section being removed.
+ *
+ * Deleting or hiding a section removes its Webflow item. When registrations
+ * change at the same moment (a family cancelling as Katie pulls the section,
+ * or the E2E teardown deleting registrations and then the section), this
+ * sync can confirm the item exists and then get a 404 updating it. The card
+ * is meant to be gone, so that is not a failure worth an email.
+ *
+ * Only a 404 qualifies, and only once a fresh read shows the section really
+ * is deleted or hidden. A 404 on a section that is still public is a real
+ * failure and still alerts.
+ */
+export async function sectionWasRemoved(
+  error: unknown,
+  sectionId: string
+): Promise<boolean> {
+  if (!isWebflowNotFound(error)) return false;
+  const current = await MusicTogetherSectionRepository.findById(sectionId);
+  return !current || !current.visible;
 }
 
 /**
@@ -215,6 +238,13 @@ export const syncMusicTogetherRegistrationCount = onDocumentWritten(
         console.log('Updated Firestore with Webflow item ID');
       }
     } catch (error) {
+      if (await sectionWasRemoved(error, sectionId)) {
+        console.log(
+          'MT section was deleted or hidden mid-sync, skipping spot count:',
+          { sectionId }
+        );
+        return;
+      }
       console.error('Webflow sync error (MT registration count):', error);
       await reportSyncFailure({
         source: 'syncMusicTogetherRegistrationCount',

@@ -18,6 +18,7 @@
 import { WebflowClient } from 'webflow-api';
 import type { CollectionItem } from 'webflow-api/api';
 import type { PublishableClass } from '@maple/ts/domain';
+import { isWebflowNotFound } from './webflow-errors';
 import {
   getBookableCapacity,
   getFirstSession,
@@ -100,21 +101,6 @@ interface WebflowItemWithId extends CollectionItem {
 function extractSlug(item: CollectionItem | undefined): string {
   const fieldData = item?.fieldData as { slug?: unknown } | undefined;
   return typeof fieldData?.slug === 'string' ? fieldData.slug : '';
-}
-
-/**
- * A confirmed "this item does not exist" — the ONLY error safe to create on.
- *
- * Anything else (429, 5xx, a socket timeout) means "I could not tell", and
- * treating that as absence is what turns one flaky request into a permanent
- * duplicate CMS item that no later sync will ever reconcile.
- */
-function isNotFound(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (error as { statusCode?: number }).statusCode === 404
-  );
 }
 
 /**
@@ -550,7 +536,7 @@ export class ClassService {
           extra.id
         );
       } catch (error) {
-        if (!isNotFound(error)) throw error;
+        if (!isWebflowNotFound(error)) throw error;
       }
       try {
         await this.client.collections.items.deleteItem(
@@ -558,7 +544,7 @@ export class ClassService {
           extra.id
         );
       } catch (error) {
-        if (!isNotFound(error)) throw error;
+        if (!isWebflowNotFound(error)) throw error;
       }
     }
     return keeper.id;
@@ -582,7 +568,7 @@ export class ClassService {
       );
       return item?.id ? (item as WebflowItemWithId) : null;
     } catch (error) {
-      if (!isNotFound(error)) {
+      if (!isWebflowNotFound(error)) {
         throw error;
       }
       console.warn('Webflow item is gone (404), falling back to scan:', {
