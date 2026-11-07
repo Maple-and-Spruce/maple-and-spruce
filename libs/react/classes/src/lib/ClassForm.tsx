@@ -7,7 +7,7 @@
  * with either one shared time or per-date unique times.
  */
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -53,9 +53,12 @@ import type {
 import {
   ROOMS,
   buildPrivateHourSessions,
+  buildPrivateHourSessionsByDate,
   describeMissingReadiness,
   getClassFormat,
+  getPrivateHourDates,
   getSessionStartTimes,
+  privateHourDatesShareStartTimes,
   getRoomLabel,
   instructorReadiness,
 } from '@maple/ts/domain';
@@ -173,6 +176,89 @@ function MultiSelectDay(
   );
 }
 
+/** Minutes since midnight, for comparing and sorting start times. */
+function minuteOfDay(t: Date): number {
+  return t.getHours() * 60 + t.getMinutes();
+}
+
+function sortStartTimes(times: Date[]): Date[] {
+  return [...times].sort((a, b) => minuteOfDay(a) - minuteOfDay(b));
+}
+
+/** A time-of-day Date for a clock time, as the start-time signals hold them. */
+function clockToDate(t: { hours: number; minutes: number }): Date {
+  const d = new Date();
+  d.setHours(t.hours, t.minutes, 0, 0);
+  return d;
+}
+
+// ---------------------------------------------------------------------------
+// Start times for a private-hours class: a picker, an add button, and a chip
+// per start time. Used once for every date, or once per date.
+// ---------------------------------------------------------------------------
+function StartTimeEditor({
+  times,
+  onChange,
+  disabled,
+  testId,
+}: {
+  times: Date[];
+  onChange: (next: Date[]) => void;
+  disabled: boolean;
+  testId?: string;
+}) {
+  const [pending, setPending] = useState<Date | null>(null);
+  const sorted = sortStartTimes(times);
+
+  const add = (): void => {
+    if (!pending || isNaN(pending.getTime())) return;
+    if (!times.some((t) => minuteOfDay(t) === minuteOfDay(pending))) {
+      onChange([...times, pending]);
+    }
+    setPending(null);
+  };
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <TimePicker
+          label="Start time"
+          value={pending}
+          onChange={(v) => setPending(v)}
+          disabled={disabled}
+          slotProps={{ textField: { size: 'small', sx: { width: 180 } } }}
+        />
+        <Button variant="outlined" onClick={add} disabled={disabled || !pending}>
+          Add start time
+        </Button>
+      </Box>
+      {sorted.length > 0 && (
+        <Box
+          sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}
+          data-testid={testId}
+        >
+          {sorted.map((t) => (
+            <Chip
+              key={minuteOfDay(t)}
+              label={t.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+              onDelete={
+                disabled
+                  ? undefined
+                  : () =>
+                      onChange(times.filter((o) => minuteOfDay(o) !== minuteOfDay(t)))
+              }
+              size="small"
+            />
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
 /**
  * Starting values for a new class in each format. A private hour is one hour
  * for a group at the group price; a seat class keeps the long-standing
@@ -210,7 +296,10 @@ export function ClassForm({
   // Private hours only: start times offered on every selected date. Stored
   // as Dates whose hours/minutes are the time of day.
   const startTimes = useSignal<Date[]>([]);
-  const pendingStartTime = useSignal<Date | null>(null);
+  // Private hours only: when on, each date has its own start times. A date
+  // with no entry yet offers the shared start times above.
+  const useDifferentStartTimes = useSignal(false);
+  const perDateStartTimes = useSignal<Map<string, Date[]>>(new Map());
   const description = useSignal('');
   const shortDescription = useSignal('');
   const instructorId = useSignal('');
@@ -274,6 +363,17 @@ export function ClassForm({
       (a, b) => a.getTime() - b.getTime()
     );
     if (dates.length === 0) return [];
+
+    if (format.value === 'privateHours' && useDifferentStartTimes.value) {
+      return buildPrivateHourSessionsByDate(
+        dates.map((date) => ({
+          date,
+          startTimes: (
+            perDateStartTimes.value.get(toDateKey(date)) ?? startTimes.value
+          ).map((t) => ({ hours: t.getHours(), minutes: t.getMinutes() })),
+        }))
+      );
+    }
 
     if (format.value === 'privateHours') {
       return buildPrivateHourSessions(
@@ -452,11 +552,16 @@ export function ClassForm({
                 sessionDates.findIndex((o) => isSameDay(o, d)) === i
             )
           : sessionDates;
-      const hourStarts = getSessionStartTimes(classItem.sessions).map((t) => {
-        const d = new Date();
-        d.setHours(t.hours, t.minutes, 0, 0);
-        return d;
-      });
+      const hourStarts = getSessionStartTimes(classItem.sessions).map(clockToDate);
+      // Private hours whose dates differ load into the per-date lists.
+      const hourDates =
+        classFormat === 'privateHours' ? getPrivateHourDates(classItem.sessions) : [];
+      const hoursDifferByDate = !privateHourDatesShareStartTimes(hourDates);
+      const perDateHourMap = new Map<string, Date[]>(
+        hoursDifferByDate
+          ? hourDates.map((d) => [toDateKey(d.date), d.startTimes.map(clockToDate)])
+          : []
+      );
 
       // Detect shared vs different times
       const times = dates.map((d) => `${d.getHours()}:${d.getMinutes()}`);
@@ -475,7 +580,8 @@ export function ClassForm({
         name.value = classItem.name;
         format.value = classFormat;
         startTimes.value = classFormat === 'privateHours' ? hourStarts : [];
-        pendingStartTime.value = null;
+        useDifferentStartTimes.value = hoursDifferByDate;
+        perDateStartTimes.value = perDateHourMap;
         description.value = classItem.description;
         shortDescription.value = classItem.shortDescription ?? '';
         instructorId.value = classItem.instructorId ?? '';
@@ -543,7 +649,8 @@ export function ClassForm({
         name.value = '';
         format.value = 'seats';
         startTimes.value = [];
-        pendingStartTime.value = null;
+        useDifferentStartTimes.value = false;
+        perDateStartTimes.value = new Map();
         description.value = '';
         shortDescription.value = '';
         instructorId.value = '';
@@ -611,26 +718,15 @@ export function ClassForm({
     const newMap = new Map(perDateTimes.value);
     newMap.delete(key);
     perDateTimes.value = newMap;
+    const newStartMap = new Map(perDateStartTimes.value);
+    newStartMap.delete(key);
+    perDateStartTimes.value = newStartMap;
   }, []);
 
-  const addStartTime = useCallback(() => {
-    const t = pendingStartTime.value;
-    if (!t || isNaN(t.getTime())) return;
-    const minute = t.getHours() * 60 + t.getMinutes();
-    const exists = startTimes.value.some(
-      (s) => s.getHours() * 60 + s.getMinutes() === minute
-    );
-    if (!exists) {
-      startTimes.value = [...startTimes.value, t];
-    }
-    pendingStartTime.value = null;
-  }, []);
-
-  const removeStartTime = useCallback((t: Date) => {
-    const minute = t.getHours() * 60 + t.getMinutes();
-    startTimes.value = startTimes.value.filter(
-      (s) => s.getHours() * 60 + s.getMinutes() !== minute
-    );
+  const setStartTimesForDate = useCallback((key: string, next: Date[]) => {
+    const newMap = new Map(perDateStartTimes.value);
+    newMap.set(key, next);
+    perDateStartTimes.value = newMap;
   }, []);
 
   // ============================================================
@@ -836,10 +932,10 @@ export function ClassForm({
     [selectedDates.value]
   );
 
-  const sortedStartTimes = [...startTimes.value].sort(
-    (a, b) =>
-      a.getHours() * 60 + a.getMinutes() - (b.getHours() * 60 + b.getMinutes())
-  );
+  // Start times a date offers in per-date mode: its own, or the shared list
+  // until it gets its own.
+  const startTimesForDate = (key: string): Date[] =>
+    perDateStartTimes.value.get(key) ?? startTimes.value;
 
   // ============================================================
   // RENDER
@@ -1103,51 +1199,65 @@ export function ClassForm({
                 </FormHelperText>
               )}
 
-              {/* Private hours: start times shared by every date */}
+              {/* Private hours: start times for every date, or per date */}
               {isPrivateHours.value && (
                 <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <TimePicker
-                      label="Start time"
-                      value={pendingStartTime.value}
-                      onChange={(v) => (pendingStartTime.value = v)}
-                      disabled={hasRegistrations}
-                      slotProps={{
-                        textField: { size: 'small', sx: { width: 180 } },
-                      }}
-                    />
-                    <Button
-                      variant="outlined"
-                      onClick={addStartTime}
-                      disabled={hasRegistrations || !pendingStartTime.value}
-                    >
-                      Add start time
-                    </Button>
-                  </Box>
-                  {sortedStartTimes.length > 0 && (
-                    <Box
-                      sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}
-                      data-testid="private-hour-start-times"
-                    >
-                      {sortedStartTimes.map((t) => (
-                        <Chip
-                          key={`${t.getHours()}:${t.getMinutes()}`}
-                          label={t.toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })}
-                          onDelete={
-                            hasRegistrations ? undefined : () => removeStartTime(t)
+                  {(sortedDates.length > 1 || useDifferentStartTimes.value) && (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={useDifferentStartTimes.value}
+                          onChange={(e) =>
+                            (useDifferentStartTimes.value = e.target.checked)
                           }
                           size="small"
+                          disabled={hasRegistrations}
                         />
-                      ))}
-                    </Box>
+                      }
+                      label="Use different start times for each date"
+                    />
                   )}
+
+                  {!useDifferentStartTimes.value ? (
+                    <StartTimeEditor
+                      times={startTimes.value}
+                      onChange={(next) => (startTimes.value = next)}
+                      disabled={hasRegistrations}
+                      testId="private-hour-start-times"
+                    />
+                  ) : (
+                    sortedDates.map((d) => {
+                      const key = toDateKey(d);
+                      const dayLabel = d.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                      });
+                      return (
+                        <Box
+                          key={key}
+                          sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {dayLabel}
+                          </Typography>
+                          <StartTimeEditor
+                            times={startTimesForDate(key)}
+                            onChange={(next) => setStartTimesForDate(key, next)}
+                            disabled={hasRegistrations}
+                            testId={`private-hour-start-times-${key}`}
+                          />
+                        </Box>
+                      );
+                    })
+                  )}
+
                   <Typography variant="caption" color="textSecondary">
                     {composedSessions.value.length > 0
-                      ? `${composedSessions.value.length} bookable ${composedSessions.value.length === 1 ? 'hour' : 'hours'}: the same start times on every date. Each one holds the room for its group.`
-                      : 'Pick dates and add start times. Every start time is offered on every date.'}
+                      ? `${composedSessions.value.length} bookable ${composedSessions.value.length === 1 ? 'hour' : 'hours'}${useDifferentStartTimes.value ? '' : ': the same start times on every date'}. Each one holds the room for its group.`
+                      : useDifferentStartTimes.value
+                        ? 'Pick dates and add start times to each one.'
+                        : 'Pick dates and add start times. Every start time is offered on every date.'}
                   </Typography>
                 </Box>
               )}

@@ -14,6 +14,9 @@ import {
   isPrivateHoursClass,
   buildPrivateHourSessions,
   getSessionStartTimes,
+  buildPrivateHourSessionsByDate,
+  getPrivateHourDates,
+  privateHourDatesShareStartTimes,
   sessionsOverlap,
   getBookableCapacity,
   isPrivateHourBookable,
@@ -511,6 +514,75 @@ describe('Class domain helpers', () => {
       ];
       const sessions = buildPrivateHourSessions([day1, day2], times);
       expect(getSessionStartTimes(sessions)).toEqual(times);
+    });
+  });
+
+  describe('per-date private hours', () => {
+    const day1 = new Date(2030, 11, 5);
+    const day2 = new Date(2030, 11, 12);
+
+    it('gives each date only its own start times, earliest first', () => {
+      const sessions = buildPrivateHourSessionsByDate([
+        { date: day2, startTimes: [{ hours: 14, minutes: 0 }] },
+        {
+          date: day1,
+          startTimes: [
+            { hours: 11, minutes: 0 },
+            { hours: 10, minutes: 0 },
+          ],
+        },
+      ]);
+      expect(sessions.map((s) => s.dateTime)).toEqual([
+        new Date(2030, 11, 5, 10, 0),
+        new Date(2030, 11, 5, 11, 0),
+        new Date(2030, 11, 12, 14, 0),
+      ]);
+    });
+
+    it('adds nothing for a date with no start times', () => {
+      expect(
+        buildPrivateHourSessionsByDate([{ date: day1, startTimes: [] }])
+      ).toEqual([]);
+    });
+
+    it('round-trips through getPrivateHourDates', () => {
+      const dates = [
+        {
+          date: day1,
+          startTimes: [
+            { hours: 10, minutes: 0 },
+            { hours: 11, minutes: 30 },
+          ],
+        },
+        { date: day2, startTimes: [{ hours: 13, minutes: 0 }] },
+      ];
+      const sessions = buildPrivateHourSessionsByDate(dates);
+      expect(getPrivateHourDates(sessions)).toEqual(dates);
+    });
+
+    it('reads ISO strings from a serialized class', () => {
+      const dates = getPrivateHourDates([
+        { dateTime: new Date(2030, 11, 5, 10, 0).toISOString() as unknown as Date },
+      ]);
+      expect(dates).toEqual([{ date: day1, startTimes: [{ hours: 10, minutes: 0 }] }]);
+    });
+
+    it('tells shared start times from per-date ones', () => {
+      const ten = { hours: 10, minutes: 0 };
+      const two = { hours: 14, minutes: 0 };
+      expect(
+        privateHourDatesShareStartTimes([
+          { date: day1, startTimes: [ten, two] },
+          { date: day2, startTimes: [ten, two] },
+        ])
+      ).toBe(true);
+      expect(
+        privateHourDatesShareStartTimes([
+          { date: day1, startTimes: [ten, two] },
+          { date: day2, startTimes: [ten] },
+        ])
+      ).toBe(false);
+      expect(privateHourDatesShareStartTimes([])).toBe(true);
     });
   });
 

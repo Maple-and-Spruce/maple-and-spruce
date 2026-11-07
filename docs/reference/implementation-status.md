@@ -167,6 +167,7 @@ A class can be booked as private hours: one group per hour, a flat price per gro
 | 2. Booking an hour | **In Review** (#274) | Day and time picker + group size in the widget, `slotStart`/`groupSize`, one group per hour in checkout, hour on receipts/emails/reminders, Webflow "hours open" |
 | 3. Admin by hour | **In Review** (#275) | Roster grouped by hour, hour on registrations, dashboard and payouts count hours |
 | 4. Waitlist by hour | **In Review** | Waitlist per hour; when an hour reopens, everyone waiting on it is emailed |
+| 5. Start times per date | **In Review** | Class form switch "Use different start times for each date"; each date keeps its own hours, and editing loads them back per date |
 
 ### Image2Pages Widget (PR pending)
 

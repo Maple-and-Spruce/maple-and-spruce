@@ -436,4 +436,116 @@ describe('Class Functions', () => {
       expect(update.status).not.toBe(200);
     });
   });
+
+  describe('Private hours with different start times per date', () => {
+    // Two days a week apart. The first offers two hours, the second one
+    // hour at a time the first day does not offer.
+    const day = (offsetDays: number, hourUtc: number, minute = 0): string => {
+      const d = futureDate();
+      d.setUTCDate(d.getUTCDate() + offsetDays);
+      d.setUTCHours(hourUtc, minute, 0, 0);
+      return d.toISOString();
+    };
+    const day1Early = day(0, 15);
+    const day1Late = day(0, 16, 30);
+    const day2Only = day(7, 19);
+
+    const PRIVATE_HOURS_CLASS: CreateClassRequest = {
+      ...SAMPLE_CLASS,
+      name: 'Ornament Party Per Date',
+      format: 'privateHours',
+      durationMinutes: 60,
+      capacity: 12,
+      priceCents: 6000,
+      sessions: [day1Early, day1Late, day2Only].map((dateTime) => ({
+        dateTime: new Date(dateTime),
+      })),
+    };
+
+    const startsOf = (sessions: Array<{ dateTime: Date | string }> | undefined) =>
+      (sessions ?? []).map((s) => new Date(s.dateTime).toISOString()).sort();
+
+    let id: string;
+
+    it('stores each date with only its own hours', async () => {
+      const created = await callFunction<CreateClassRequest, CreateClassResponse>({
+        functionName: 'createClass',
+        data: PRIVATE_HOURS_CLASS,
+        idToken: adminUser.idToken,
+      });
+      expect(created.status).toBe(200);
+      id = created.data!.class.id;
+
+      const fetched = await callFunction<GetClassRequest, GetClassResponse>({
+        functionName: 'getClass',
+        data: { id },
+        idToken: adminUser.idToken,
+      });
+      expect(fetched.data?.class.format).toBe('privateHours');
+      expect(startsOf(fetched.data?.class.sessions)).toEqual(
+        [day1Early, day1Late, day2Only].sort()
+      );
+    });
+
+    it('offers exactly those hours on the public class', async () => {
+      const published = await callFunction<UpdateClassRequest, UpdateClassResponse>({
+        functionName: 'updateClass',
+        data: { id, status: 'published', instructorId },
+        idToken: adminUser.idToken,
+      });
+      expect(published.status).toBe(200);
+
+      const result = await callFunction<GetPublicClassRequest, GetPublicClassResponse>({
+        functionName: 'publicSite/getPublicClass',
+        data: { id },
+      });
+      expect(result.status).toBe(200);
+      expect(result.data?.class.format).toBe('privateHours');
+      expect(startsOf(result.data?.class.sessions)).toEqual(
+        [day1Early, day1Late, day2Only].sort()
+      );
+      // One group per hour: three hours open.
+      expect(result.data?.class.spotsRemaining).toBe(3);
+    });
+
+    it("changes one date's hours without touching the other's", async () => {
+      const day2Morning = day(7, 14);
+      const updated = await callFunction<UpdateClassRequest, UpdateClassResponse>({
+        functionName: 'updateClass',
+        data: {
+          id,
+          sessions: [day1Early, day1Late, day2Morning, day2Only].map((dateTime) => ({
+            dateTime: new Date(dateTime),
+          })),
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(updated.status).toBe(200);
+
+      const fetched = await callFunction<GetClassRequest, GetClassResponse>({
+        functionName: 'getClass',
+        data: { id },
+        idToken: adminUser.idToken,
+      });
+      expect(startsOf(fetched.data?.class.sessions)).toEqual(
+        [day1Early, day1Late, day2Morning, day2Only].sort()
+      );
+    });
+
+    it('still refuses two hours that overlap on the same date', async () => {
+      const result = await callFunction<Partial<CreateClassRequest>>({
+        functionName: 'createClass',
+        data: {
+          ...PRIVATE_HOURS_CLASS,
+          name: 'Overlapping Per Date',
+          sessions: [day1Early, day(0, 15, 30), day2Only].map((dateTime) => ({
+            dateTime: new Date(dateTime),
+          })),
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).not.toBe(200);
+      expect(JSON.stringify(result.error)).toMatch(/at least one session length apart/i);
+    });
+  });
 });
