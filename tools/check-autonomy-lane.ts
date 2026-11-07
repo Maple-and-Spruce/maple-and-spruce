@@ -37,7 +37,7 @@ const PROTECTED: RegExp[] = [
   /^\.claude\//,
   /^\.githooks\//,
   /^AGENTS\.md$/,
-  /^docs\/process\//,
+  /^docs\/process\/(?!retros\/)/, // retros are a log, not the rules
   /^firestore\.rules$/,
   /^storage\.rules$/,
   /^firebase\.json$/,

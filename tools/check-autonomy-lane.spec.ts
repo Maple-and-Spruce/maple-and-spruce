@@ -35,6 +35,7 @@ describe('classifyFile', () => {
       'invisible',
     ],
     ['firestore.indexes.json', 'invisible'],
+    ['docs/process/retros/2026-11-09.md', 'invisible'],
   ])('%s is %s', (path, lane) => {
     expect(classifyFile(m(path)).lane).toBe(lane);
   });
