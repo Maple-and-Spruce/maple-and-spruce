@@ -159,7 +159,10 @@
       var featured = !!flag && !flag.classList.contains('w-condition-invisible');
       return { item: item, name: name.trim(), date: d, spots: spots, series: series, workshop: workshop,
         craft: craft ? craft.id : 'other', full: full, big: featured && !full,
-        time: item.getAttribute('data-time') || '' };
+        time: item.getAttribute('data-time') || '',
+        // A private-hours class counts open booking slots, not seats. The sync's wording marks it
+        // ("17 slots open"; "hours" before the 2026-11 rename).
+        hours: /hour|slot/i.test(item.getAttribute('data-spots-display') || '') ? (spots === 1 ? '1 slot open' : spots + ' slots open') : '' };
     });
 
     var next = rows.filter(function (r) { return !r.full; })[0];
@@ -179,7 +182,7 @@
         block.appendChild(el('span', null, part(r.date, { weekday: 'short' })));
         block.appendChild(el('b', null, part(r.date, { day: 'numeric' })));
         block.appendChild(el('span', null, part(r.date, { month: 'short' })));
-        if (r.time && !/varies/i.test(r.time)) block.appendChild(el('i', null, r.time.replace(':00', '')));
+        if (/\d/.test(r.time)) block.appendChild(el('i', null, r.time.replace(':00', '')));
         link.insertBefore(block, link.firstChild);
       }
 
@@ -207,7 +210,7 @@
         var price = footer.querySelector('.cls-card-price');
         if (price) priceWrap.appendChild(price);
         if (r.spots != null) {
-          var txt = r.full ? 'Full' : r.spots === 1 ? 'Only 1 seat left' : r.spots <= 3 ? r.spots + ' seats left' : r.spots + ' seats open';
+          var txt = r.full ? 'Full' : r.hours ? r.hours : r.spots === 1 ? 'Only 1 seat left' : r.spots <= 3 ? r.spots + ' seats left' : r.spots + ' seats open';
           priceWrap.appendChild(el('span', 'msx-status' + (r.full ? ' is-full' : r.spots <= 3 ? ' is-few' : ''), txt));
         } else {
           var spotsEl = footer.querySelector('.cls-card-spots');
@@ -300,7 +303,7 @@
       var link = next.item.querySelector('.cls-card-link');
       var nb = el('div', 'msx-bar');
       var t = el('div', 'msx-bar-text');
-      var seats = next.spots == null ? '' : ' · ' + (next.spots === 1 ? '1 seat left' : next.spots + (next.spots <= 3 ? ' seats left' : ' seats open'));
+      var seats = next.hours ? ' · ' + next.hours : next.spots == null ? '' : ' · ' + (next.spots === 1 ? '1 seat left' : next.spots + (next.spots <= 3 ? ' seats left' : ' seats open'));
       t.appendChild(el('small', null, 'Next class · ' + part(next.date, { weekday: 'short', month: 'short', day: 'numeric' }) + seats));
       t.appendChild(el('span', null, next.name));
       var a = el('a', null, 'Reserve');
