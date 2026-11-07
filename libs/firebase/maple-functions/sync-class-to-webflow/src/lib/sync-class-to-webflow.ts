@@ -216,6 +216,42 @@ function extractClass(
 }
 
 /**
+ * After a failed publish sync, check whether the class was deleted or
+ * unpublished while the sync ran, and if so make sure it has no Webflow card.
+ *
+ * The sync is slow (enrichment reads, then several Webflow calls), so a
+ * delete or unpublish can land in the middle of it. The E2E teardown does
+ * this every run. The sync then fails on its last step, saving the item ID
+ * back onto a class that is gone ("No document to update"), or on a Webflow
+ * 404. Worse, if the delete trigger looked for the card before this sync
+ * created it, the new card is left behind with nothing to remove it.
+ *
+ * Returns true when the class is no longer published and the cleanup worked,
+ * so the failure is expected and needs no alert. Returns false when the
+ * class is still published (a real failure). A failed cleanup throws, and
+ * the caller alerts on that error instead.
+ */
+export async function cleanUpAfterRemovedClass(
+  webflow: Webflow,
+  classId: string,
+  shouldPublish: boolean
+): Promise<boolean> {
+  const current = await ClassRepository.findById(classId);
+  if (current?.status === 'published') return false;
+
+  const removed = await webflow.classService.removeClass(
+    classId,
+    shouldPublish,
+    current?.webflowItemId
+  );
+  console.log(
+    'Class was deleted or unpublished mid-sync; skipping alert:',
+    { classId, removedStrayItem: removed }
+  );
+  return true;
+}
+
+/**
  * Sync Class to Webflow CMS
  *
  * Firestore trigger that runs when a class document is created, updated, or deleted.
@@ -389,14 +425,32 @@ export const syncClassToWebflow = onDocumentWritten(
         console.log('Updated Firestore with Webflow item ID and slug');
       }
     } catch (error) {
-      console.error('Webflow sync error:', error);
+      let failure = error;
+      // Only a publish sync can race a removal; the delete and unpublish
+      // paths are the removal, so their errors always alert.
+      if (afterClass?.status === 'published') {
+        try {
+          if (
+            await cleanUpAfterRemovedClass(
+              webflow,
+              event.params.classId,
+              shouldPublish
+            )
+          ) {
+            return;
+          }
+        } catch (cleanupError) {
+          failure = cleanupError;
+        }
+      }
+      console.error('Webflow sync error:', failure);
       await reportSyncFailure({
         source: 'syncClassToWebflow',
         destination: 'Webflow',
         entityType: 'class',
         entityId: event.params.classId,
         entityLabel: (afterClass ?? beforeClass)?.name,
-        error,
+        error: failure,
       });
       // Don't throw — prevent retry loops for Webflow API errors
     }

@@ -31,6 +31,7 @@ import type { Class } from '@maple/ts/domain';
 
 const mocks = vi.hoisted(() => ({
   classUpdateWebflowSync: vi.fn(),
+  classFindById: vi.fn(),
   instructorFindById: vi.fn(),
   categoryFindById: vi.fn(),
   registrationCountByClassId: vi.fn(),
@@ -44,6 +45,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@maple/firebase/database', () => ({
   ClassRepository: {
     updateWebflowSync: mocks.classUpdateWebflowSync,
+    findById: mocks.classFindById,
   },
   InstructorRepository: {
     findById: mocks.instructorFindById,
@@ -194,5 +196,94 @@ describe('syncClassToWebflow — relevant-change guard', () => {
     );
 
     expect(mocks.syncClass).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('syncClassToWebflow — racing a class removal', () => {
+  const noDocument = Object.assign(
+    new Error('No document to update: projects/p/databases/(default)/documents/classes/class-001'),
+    { code: 5 }
+  );
+  const publishEvent = makeEvent(
+    makeSnapshot(true, makeClassData({ status: 'draft' })),
+    makeSnapshot(true, makeClassData())
+  );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isDev = false;
+    mocks.instructorFindById.mockResolvedValue(null);
+    mocks.categoryFindById.mockResolvedValue(null);
+    mocks.registrationCountByClassId.mockResolvedValue(0);
+    mocks.syncClass.mockResolvedValue({
+      success: true,
+      webflowItemId: 'wf-new',
+      webflowSlug: 'pottery-101',
+      isNew: true,
+    });
+    mocks.removeClass.mockResolvedValue(true);
+  });
+
+  it('removes the stray card and does not alert when the class was deleted', async () => {
+    mocks.classUpdateWebflowSync.mockRejectedValue(noDocument);
+    mocks.classFindById.mockResolvedValue(undefined);
+
+    await handler(publishEvent);
+
+    expect(mocks.removeClass).toHaveBeenCalledWith('class-001', true, undefined);
+    expect(reportSyncFailureMock).not.toHaveBeenCalled();
+  });
+
+  it('does not alert when the class was unpublished mid-sync', async () => {
+    mocks.syncClass.mockRejectedValue(
+      Object.assign(new Error('Requested resource not found'), {
+        statusCode: 404,
+      })
+    );
+    mocks.classFindById.mockResolvedValue({
+      ...makeClassData({ status: 'draft' }),
+      webflowItemId: 'wf-old',
+    });
+
+    await handler(publishEvent);
+
+    expect(mocks.removeClass).toHaveBeenCalledWith('class-001', true, 'wf-old');
+    expect(reportSyncFailureMock).not.toHaveBeenCalled();
+  });
+
+  it('still alerts when the class is still published', async () => {
+    mocks.syncClass.mockRejectedValue(new Error('Webflow API rate limited'));
+    mocks.classFindById.mockResolvedValue(makeClassData());
+
+    await handler(publishEvent);
+
+    expect(mocks.removeClass).not.toHaveBeenCalled();
+    expect(reportSyncFailureMock).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'syncClassToWebflow' })
+    );
+  });
+
+  it('alerts with the cleanup error when removing the stray card fails', async () => {
+    const cleanupError = new Error('Webflow delete failed');
+    mocks.classUpdateWebflowSync.mockRejectedValue(noDocument);
+    mocks.classFindById.mockResolvedValue(undefined);
+    mocks.removeClass.mockRejectedValue(cleanupError);
+
+    await handler(publishEvent);
+
+    expect(reportSyncFailureMock).toHaveBeenCalledWith(
+      expect.objectContaining({ error: cleanupError })
+    );
+  });
+
+  it('does not re-check when the delete path itself fails', async () => {
+    mocks.removeClass.mockRejectedValue(new Error('Webflow delete failed'));
+
+    await handler(
+      makeEvent(makeSnapshot(true, makeClassData()), makeSnapshot(false))
+    );
+
+    expect(mocks.classFindById).not.toHaveBeenCalled();
+    expect(reportSyncFailureMock).toHaveBeenCalled();
   });
 });
