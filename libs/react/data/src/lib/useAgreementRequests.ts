@@ -60,7 +60,8 @@ export function useAgreementRequests(filters?: UseAgreementRequestsFilters) {
   const sendRequest = useCallback(
     async (input: {
       templateId: string;
-      signerEmail: string;
+      /** Required unless deliveryMethod is 'link'. */
+      signerEmail?: string;
       signerName: string;
       signerPhone?: string;
       deliveryMethod: AgreementDeliveryMethod;

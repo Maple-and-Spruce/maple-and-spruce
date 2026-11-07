@@ -106,6 +106,10 @@ export const Pending: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(/sent oct 10, 2026 to robin@example.com/i)).toBeInTheDocument();
+    // An emailed request can still be shared by hand.
+    await expect(
+      (canvas.getByLabelText(/signing link/i) as HTMLInputElement).value
+    ).toMatch(/\/sign\/tok$/);
     await expect(canvas.getByText(/expires nov 9, 2026/i)).toBeInTheDocument();
     await expect(
       canvas.queryByRole('button', { name: /send for signature/i })
@@ -152,6 +156,71 @@ export const Signed: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(/signed online oct 12, 2026/i)).toBeInTheDocument();
     await expect(canvas.queryByRole('button')).not.toBeInTheDocument();
+  },
+};
+
+/** Signed, on the instructor page: the signed copy is one click away. */
+export const SignedWithCopy: Story = {
+  args: {
+    ...Signed.args,
+    onViewSigned: fn(),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: /view signed copy/i }));
+    await expect(args.onViewSigned).toHaveBeenCalledWith('sa-1');
+  },
+};
+
+/**
+ * No email on file, as on the instructor page: create a link to share by text
+ * or Messenger, or print a paper copy. No email send is offered.
+ */
+export const NoEmailCreateLink: Story = {
+  args: {
+    signerEmail: undefined,
+    templatesState: { status: 'success', data: [contract] },
+    onCreateLink: fn(async () => undefined),
+    onPrint: fn(),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/no email on file for robin ashfield/i)).toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: /send for signature/i })
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('button', { name: /print paper copy/i }));
+    await expect(args.onPrint).toHaveBeenCalledWith(contract.id);
+
+    await userEvent.click(canvas.getByRole('button', { name: /create signing link/i }));
+    await waitFor(() => expect(args.onCreateLink).toHaveBeenCalledWith(contract.id));
+  },
+};
+
+/** A link-only request waiting: show the link to copy, and no email resend. */
+export const PendingLink: Story = {
+  args: {
+    signerEmail: undefined,
+    requestsState: {
+      status: 'success',
+      data: [sent({ signerEmail: '', deliveryMethod: 'link', emailSentAt: undefined })],
+    },
+    signingUrlFor: (token: string) => `https://business.example.com/sign/${token}`,
+    onPrint: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByText(/signing link created oct 10, 2026\. send it to them by text or messenger/i)
+    ).toBeInTheDocument();
+    await expect(canvas.getByLabelText(/signing link/i)).toHaveValue(
+      'https://business.example.com/sign/tok'
+    );
+    await expect(
+      canvas.queryByRole('button', { name: /resend email/i })
+    ).not.toBeInTheDocument();
+    await expect(canvas.getByRole('button', { name: /copy link/i })).toBeInTheDocument();
   },
 };
 

@@ -6,7 +6,7 @@
  * instructor signs, the server records the agreement date on their readiness,
  * so nobody has to come back and enter it.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FocusEvent } from 'react';
 import {
   Alert,
   Box,
@@ -17,6 +17,7 @@ import {
   MenuItem,
   Select,
   Skeleton,
+  TextField,
   Typography,
 } from '@mui/material';
 import {
@@ -36,6 +37,17 @@ export interface InstructorAgreementPanelProps {
   templatesState: RequestState<AgreementTemplate[]>;
   onSend: (templateId: string) => Promise<void>;
   onResend: (requestId: string) => Promise<void>;
+  /**
+   * Creates a signing request with no email, for staff to share the link
+   * themselves (text, Messenger). Without it, only email sending is offered.
+   */
+  onCreateLink?: (templateId: string) => Promise<void>;
+  /** Opens a printable copy to sign on paper. Without it, no print button. */
+  onPrint?: (templateId: string) => void;
+  /** The public signing URL for a token. Defaults to this site's /sign page. */
+  signingUrlFor?: (token: string) => string;
+  /** Opens the signed copy. Without it, no link is shown. */
+  onViewSigned?: (signedAgreementId: string) => void;
   /** For stories and tests; defaults to the current time. */
   now?: Date;
 }
@@ -49,6 +61,11 @@ function formatDay(value: Date | string): string {
   });
 }
 
+function defaultSigningUrl(token: string): string {
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+  return `${origin}/sign/${token}`;
+}
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong';
 }
@@ -60,9 +77,14 @@ export function InstructorAgreementPanel({
   templatesState,
   onSend,
   onResend,
+  onViewSigned,
+  onCreateLink,
+  onPrint,
+  signingUrlFor = defaultSigningUrl,
   now,
 }: InstructorAgreementPanelProps) {
   const [templateId, setTemplateId] = useState('');
+  const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -118,46 +140,83 @@ export function InstructorAgreementPanel({
     );
   }
 
+  const copyLink = async (url: string) => {
+    setActionError(null);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      setActionError('Couldn\'t copy. Select the link and copy it by hand.');
+    }
+  };
+
+  const printButton = (forTemplateId: string | undefined) =>
+    onPrint && forTemplateId ? (
+      <Button size="small" onClick={() => onPrint(forTemplateId)}>
+        Print paper copy
+      </Button>
+    ) : null;
+
   const sendForm = (label: string) => {
-    if (!signerEmail) {
+    if (templatesState.status === 'error') {
+      return (
+        <Alert severity="error">Couldn't load the agreement templates.</Alert>
+      );
+    }
+    if (!signerEmail && !onCreateLink) {
       return (
         <Typography variant="body2" color="textSecondary">
           Add an email for {signerName} to send the agreement for signature.
         </Typography>
       );
     }
-    if (templatesState.status === 'error') {
-      return (
-        <Alert severity="error">Couldn't load the agreement templates.</Alert>
-      );
-    }
     const templatesLoading = templatesState.status !== 'success';
     return (
-      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
-        <FormControl size="small" sx={{ flex: '1 1 240px' }} disabled={templatesLoading}>
-          <InputLabel id="instructor-agreement-template-label">Agreement</InputLabel>
-          <Select
-            labelId="instructor-agreement-template-label"
-            id="instructor-agreement-template"
-            value={templateId}
-            label="Agreement"
-            onChange={(e) => setTemplateId(e.target.value)}
-          >
-            {templates.map((t) => (
-              <MenuItem key={t.id} value={t.id}>
-                {t.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Button
-          variant="outlined"
-          disabled={!templateId || busy}
-          onClick={() => run(() => onSend(templateId))}
-        >
-          {busy ? <CircularProgress size={20} /> : label}
-        </Button>
-      </Box>
+      <>
+        {!signerEmail && (
+          <Typography variant="body2" color="textSecondary">
+            No email on file for {signerName}. Create a signing link to send
+            by text or Messenger, or print a paper copy.
+          </Typography>
+        )}
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+          <FormControl size="small" sx={{ flex: '1 1 240px' }} disabled={templatesLoading}>
+            <InputLabel id="instructor-agreement-template-label">Agreement</InputLabel>
+            <Select
+              labelId="instructor-agreement-template-label"
+              id="instructor-agreement-template"
+              value={templateId}
+              label="Agreement"
+              onChange={(e) => setTemplateId(e.target.value)}
+            >
+              {templates.map((t) => (
+                <MenuItem key={t.id} value={t.id}>
+                  {t.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {signerEmail && (
+            <Button
+              variant="outlined"
+              disabled={!templateId || busy}
+              onClick={() => run(() => onSend(templateId))}
+            >
+              {busy ? <CircularProgress size={20} /> : label}
+            </Button>
+          )}
+          {onCreateLink && (
+            <Button
+              variant={signerEmail ? 'text' : 'outlined'}
+              disabled={!templateId || busy}
+              onClick={() => run(() => onCreateLink(templateId))}
+            >
+              Create signing link
+            </Button>
+          )}
+          {printButton(templateId || undefined)}
+        </Box>
+      </>
     );
   };
 
@@ -165,34 +224,74 @@ export function InstructorAgreementPanel({
   switch (state.kind) {
     case 'signed':
       body = (
-        <Alert severity="success">
+        <Alert
+          severity="success"
+          action={
+            onViewSigned && state.request.signedAgreementId ? (
+              <Button
+                color="inherit"
+                size="small"
+                sx={{ whiteSpace: 'nowrap' }}
+                onClick={() =>
+                  onViewSigned(state.request.signedAgreementId as string)
+                }
+              >
+                View signed copy
+              </Button>
+            ) : undefined
+          }
+        >
           Signed online{' '}
           {formatDay(state.request.updatedAt)}.
         </Alert>
       );
       break;
-    case 'pending':
+    case 'pending': {
+      const { request } = state;
+      const url = signingUrlFor(request.signingToken);
       body = (
-        <Alert
-          severity="info"
-          action={
-            <Button
-              color="inherit"
+        <>
+          <Alert
+            severity="info"
+            action={
+              request.signerEmail ? (
+                <Button
+                  color="inherit"
+                  size="small"
+                  sx={{ whiteSpace: 'nowrap' }}
+                  disabled={busy}
+                  onClick={() => run(() => onResend(request.id))}
+                >
+                  {busy ? <CircularProgress size={16} /> : 'Resend email'}
+                </Button>
+              ) : undefined
+            }
+          >
+            {request.emailSentAt && request.signerEmail
+              ? `Sent ${formatDay(request.emailSentAt ?? request.createdAt)} to ${request.signerEmail}.`
+              : `Signing link created ${formatDay(request.createdAt)}. Send it to them by text or Messenger.`}{' '}
+            Waiting for their signature; the link expires{' '}
+            {formatDay(request.expiresAt)}.
+          </Alert>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <TextField
               size="small"
-              sx={{ whiteSpace: 'nowrap' }}
-              disabled={busy}
-              onClick={() => run(() => onResend(state.request.id))}
-            >
-              {busy ? <CircularProgress size={16} /> : 'Resend email'}
+              label="Signing link"
+              value={url}
+              sx={{ flex: '1 1 260px' }}
+              slotProps={{
+                htmlInput: { readOnly: true, onFocus: (e: FocusEvent<HTMLInputElement>) => e.target.select() },
+              }}
+            />
+            <Button variant="outlined" size="small" onClick={() => copyLink(url)}>
+              {copied ? 'Copied' : 'Copy link'}
             </Button>
-          }
-        >
-          Sent {formatDay(state.request.emailSentAt ?? state.request.createdAt)}{' '}
-          to {state.request.signerEmail}. Waiting for their signature; the
-          link expires {formatDay(state.request.expiresAt)}.
-        </Alert>
+            {printButton(request.templateId)}
+          </Box>
+        </>
       );
       break;
+    }
     case 'expired':
       body = (
         <>
@@ -207,9 +306,11 @@ export function InstructorAgreementPanel({
     case 'not-sent':
       body = (
         <>
-          <Typography variant="body2" color="textSecondary">
-            Send it to sign online, or record a paper copy below.
-          </Typography>
+          {signerEmail && (
+            <Typography variant="body2" color="textSecondary">
+              Send it to sign online, or record a paper copy below.
+            </Typography>
+          )}
           {sendForm('Send for signature')}
         </>
       );

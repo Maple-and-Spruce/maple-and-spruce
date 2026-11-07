@@ -70,6 +70,7 @@ export * from './lib/room-conflict';
 export * from './lib/agreement-template';
 export * from './lib/agreement-request';
 export * from './lib/signed-agreement';
+export * from './lib/agreement-acknowledgments';
 
 // Craft Club (recurring studio-access membership)
 export * from './lib/craft-club-member';

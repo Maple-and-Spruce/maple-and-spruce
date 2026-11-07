@@ -29,7 +29,8 @@ export type AgreementDeliveryMethod =
   | 'email' // Admin sent directly to email
   | 'registration' // Auto-attached during class registration
   | 'kiosk' // Signed on-premises on iPad/laptop
-  | 'sms'; // Future: sent via text message
+  | 'sms' // Future: sent via text message
+  | 'link'; // Admin copies the signing link and shares it themselves (text, Messenger)
 
 /**
  * Agreement Request entity
@@ -40,7 +41,7 @@ export interface AgreementRequest {
   templateId: string;
   /** Snapshot of template version at time of request creation */
   templateVersion: number;
-  /** Signer's email address */
+  /** Signer's email address. Empty for a 'link' request made without one. */
   signerEmail: string;
   /** Signer's name */
   signerName: string;

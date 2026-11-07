@@ -173,6 +173,23 @@ function SignedAgreementContent({
             </>
           )}
 
+          {/* Acknowledgments ticked one by one */}
+          {agreement.acknowledgments && agreement.acknowledgments.length > 0 && (
+            <>
+              <Typography variant="subtitle2" color="textSecondary">
+                Acknowledged
+              </Typography>
+              <Box component="ul" sx={{ pl: 3, my: 0 }}>
+                {agreement.acknowledgments.map((a, i) => (
+                  <Typography component="li" variant="body2" key={`${a.sectionId}-${i}`}>
+                    {a.text}
+                  </Typography>
+                ))}
+              </Box>
+              <Divider />
+            </>
+          )}
+
           {/* Minor Info */}
           {agreement.isMinor && (
             <>
@@ -242,6 +259,12 @@ function SignedAgreementContent({
             )}
           </Box>
         </>
+      )}
+      {tab === 0 && (
+        <Typography variant="caption" color="textSecondary">
+          Signed from IP {agreement.ipAddress || 'unknown'}
+          {agreement.userAgent ? ` using ${agreement.userAgent}` : ''}
+        </Typography>
       )}
       {tab === 1 && (
         <Box

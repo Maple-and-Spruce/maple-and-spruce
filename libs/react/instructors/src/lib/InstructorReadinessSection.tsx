@@ -18,6 +18,7 @@ import {
   Switch,
   TextField,
   Typography,
+  Link,
 } from '@mui/material';
 import {
   INSTRUCTOR_PAYMENT_SETUP_METHODS,
@@ -32,6 +33,9 @@ import {
   readinessFromFormValues,
   type ReadinessFormValues,
 } from './readiness-form';
+
+/** Square's payroll dashboard, where contractors are added. */
+const SQUARE_PAYROLL_URL = 'https://app.squareup.com/dashboard/payroll';
 
 export interface InstructorReadinessSectionProps {
   values: ReadinessFormValues;
@@ -166,6 +170,27 @@ export function InstructorReadinessSection({
           />
 
           <ItemHeading>Payment setup</ItemHeading>
+          {!values.paymentSetupCompletedOn && (
+            <Typography
+              variant="body2"
+              color="textSecondary"
+              sx={{ mb: 1.5 }}
+              data-testid="readiness-payment-guidance"
+            >
+              Add them in{' '}
+              <Link
+                href={SQUARE_PAYROLL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Square Payroll
+              </Link>{' '}
+              as a contractor (Team, then Add contractor). Square emails them
+              to enter their own tax and bank details and files their 1099. Record
+              the date here once they've finished. Never collect bank or tax
+              numbers in this app.
+            </Typography>
+          )}
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <TextField
               label="Date completed"

@@ -48,6 +48,8 @@ interface SectionFormData {
   title: string;
   content: string;
   responseType: AgreementSectionResponseType | '';
+  /** One checkbox statement per line */
+  acknowledgmentItems: string;
 }
 
 interface AgreementTemplateFormProps {
@@ -124,6 +126,7 @@ export function AgreementTemplateForm({
           title: s.title,
           content: s.content,
           responseType: s.responseType ?? '',
+          acknowledgmentItems: (s.acknowledgmentItems ?? []).join('\n'),
         }));
         showValidationErrors.value = false;
         submitError.value = null;
@@ -146,7 +149,13 @@ export function AgreementTemplateForm({
   const addSection = useCallback(() => {
     sections.value = [
       ...sections.value,
-      { id: generateSectionId(), title: '', content: '', responseType: '' },
+      {
+        id: generateSectionId(),
+        title: '',
+        content: '',
+        responseType: '',
+        acknowledgmentItems: '',
+      },
     ];
   }, [sections]);
 
@@ -189,12 +198,22 @@ export function AgreementTemplateForm({
       await onSubmit({
         name: name.value.trim(),
         description: description.value.trim() || undefined,
-        sections: sections.value.map((s) => ({
-          id: s.id,
-          title: s.title.trim(),
-          content: s.content.trim(),
-          responseType: (s.responseType || undefined) as AgreementSectionResponseType | undefined,
-        })),
+        sections: sections.value.map((s) => {
+          const items =
+            s.responseType === 'acknowledgment'
+              ? s.acknowledgmentItems
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .filter((line) => line.length > 0)
+              : [];
+          return {
+            id: s.id,
+            title: s.title.trim(),
+            content: s.content.trim(),
+            responseType: (s.responseType || undefined) as AgreementSectionResponseType | undefined,
+            ...(items.length > 0 ? { acknowledgmentItems: items } : {}),
+          };
+        }),
         classCategoryIds: classCategoryIds.value,
         autoAttach: autoAttach.value,
         signingRequirement: signingRequirement.value,
@@ -397,6 +416,23 @@ export function AgreementTemplateForm({
                   <MenuItem value="media-release">Media Release (3 radio options)</MenuItem>
                 </Select>
               </FormControl>
+
+              {section.responseType === 'acknowledgment' && (
+                <TextField
+                  label="Checkbox statements"
+                  value={section.acknowledgmentItems}
+                  onChange={(e) =>
+                    updateSection(index, 'acknowledgmentItems', e.target.value)
+                  }
+                  helperText="One per line. Each becomes its own required checkbox. Leave blank for a single 'I have read and agree to this section' box. {{instructorSharePercent}} and {{studioSharePercent}} fill in from the instructor's pay rate."
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  maxRows={10}
+                  size="small"
+                  sx={{ mt: 1.5 }}
+                />
+              )}
             </Paper>
           ))}
 

@@ -197,7 +197,11 @@ export const agreements = Functions.router('agreements', {
     .asRoute<SendAgreementRequestRequest, SendAgreementRequestResponse>(
       async (data, _context, _secrets, strings) => {
         if (!data.templateId) throwInvalidArgument('Template ID is required');
-        if (!data.signerEmail) throwInvalidArgument('Signer email is required');
+        // A 'link' request is shared by staff (text, Messenger), so needs no email.
+        const linkOnly = data.deliveryMethod === 'link';
+        if (!linkOnly && !data.signerEmail) {
+          throwInvalidArgument('Signer email is required');
+        }
         if (!data.signerName) throwInvalidArgument('Signer name is required');
 
         const template = await AgreementTemplateRepository.findById(
@@ -219,7 +223,7 @@ export const agreements = Functions.router('agreements', {
         const request = await AgreementRequestRepository.create({
           templateId: data.templateId,
           templateVersion: template.version,
-          signerEmail: data.signerEmail,
+          signerEmail: data.signerEmail ?? '',
           signerName: data.signerName,
           signerPhone: data.signerPhone,
           deliveryMethod: (data.deliveryMethod ||
@@ -232,9 +236,11 @@ export const agreements = Functions.router('agreements', {
           status: 'pending',
         });
 
+        if (linkOnly) return { request };
+
         const signingUrl = `${getAppUrl(strings.ALLOWED_ORIGINS)}/sign/${signingToken}`;
         await queueSigningEmail(
-          data.signerEmail,
+          data.signerEmail as string,
           data.signerName,
           template.name,
           signingUrl,
@@ -260,6 +266,11 @@ export const agreements = Functions.router('agreements', {
         }
         if (new Date() >= request.expiresAt) {
           throwInvalidArgument('This signing request has expired');
+        }
+        if (!request.signerEmail) {
+          throwInvalidArgument(
+            'This request has no email to send to. Copy its signing link instead.'
+          );
         }
 
         const template = await AgreementTemplateRepository.findById(

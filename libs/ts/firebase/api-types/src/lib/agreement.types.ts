@@ -92,7 +92,8 @@ export interface GetAgreementRequestsResponse {
 
 export interface SendAgreementRequestRequest {
   templateId: string;
-  signerEmail: string;
+  /** Required unless `deliveryMethod` is 'link', which sends no email. */
+  signerEmail?: string;
   signerName: string;
   signerPhone?: string;
   deliveryMethod: AgreementDeliveryMethod;
@@ -165,6 +166,8 @@ export interface SubmitSignedAgreementRequest {
   /** Base64-encoded PNG of the signature canvas */
   signatureData: string;
   printedName: string;
+  /** Keys of the acknowledgment checkboxes ticked (see `requiredAcknowledgments`) */
+  acknowledgments?: string[];
   /** Section responses (keyed by section id) */
   mediaReleaseChoice?: MediaReleaseChoice;
   /** Minor fields */

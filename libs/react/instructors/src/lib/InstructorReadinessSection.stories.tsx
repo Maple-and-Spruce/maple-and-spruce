@@ -64,6 +64,11 @@ export const NothingRecorded: Story = {
     ).toBeInTheDocument();
     await expect(canvas.getByTestId('readiness-pay-rate')).toHaveTextContent(/not set/i);
     await expect(canvas.getByRole('switch', { name: /paid contractor/i })).toBeChecked();
+    // Payment setup points to Square instead of collecting anything here.
+    await expect(canvas.getByRole('link', { name: /square payroll/i })).toHaveAttribute(
+      'href',
+      'https://app.squareup.com/dashboard/payroll'
+    );
   },
 };
 

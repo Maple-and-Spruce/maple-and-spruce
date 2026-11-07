@@ -72,6 +72,7 @@ export default function SignAgreementPage() {
     async (data: {
       signatureData: string;
       printedName: string;
+      acknowledgments: string[];
       mediaReleaseChoice?: MediaReleaseChoice;
       isMinor: boolean;
       minorName?: string;
@@ -88,6 +89,7 @@ export default function SignAgreementPage() {
         token,
         signatureData: data.signatureData,
         printedName: data.printedName,
+        acknowledgments: data.acknowledgments,
         mediaReleaseChoice: data.mediaReleaseChoice,
         isMinor: data.isMinor,
         minorName: data.minorName,

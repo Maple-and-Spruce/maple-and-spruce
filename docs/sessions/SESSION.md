@@ -6,6 +6,24 @@
 
 ## Current Status
 
+### Contractor agreement: real checkboxes, per-instructor pay, audit trail (2026-11-07)
+
+- The live "Class Instructor Agreement (1099)" said "by checking the box below" but the signing
+  page never rendered a box. Sections can now list `acknowledgmentItems`, each its own required
+  checkbox; the server refuses a signature with any unticked and records each statement.
+- Templates can say `{{instructorSharePercent}}%` / `{{studioSharePercent}}%`, filled from the
+  instructor's rate (the first contract instructor is on 75%; the template said 80%).
+- Signed records now store the signer's real IP and browser (they stored a placeholder string).
+- Instructor page: "View signed copy". Payment setup: Square Payroll guidance, no data collected.
+- No email needed: "Create signing link" makes a request that sends nothing; Katie copies the
+  link into Messenger or a text. "Print paper copy" prints the agreement with the instructor's
+  split and an initial line per statement.
+- **After merge, edit the live template (v3):** move the five WV statements out of section 1's
+  list and into its "Checkbox statements" (or they show twice), change "the box" to "each box",
+  and replace 80% / 20% with the placeholders. Do it only after the deploy, or signers see raw `{{...}}`.
+- That instructor has no email on file, so they sign a one-page paper copy before their Nov 8
+  class (saved in the workspace under `_business_context/`).
+
 ### Private group hours: holiday ornament parties (2026-10-25, #272)
 
 - A class can now be `format: 'privateHours'`: each session is one bookable hour (dates × start

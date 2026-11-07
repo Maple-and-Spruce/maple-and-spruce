@@ -9,3 +9,7 @@ export {
   InstructorAgreementPanel,
   type InstructorAgreementPanelProps,
 } from './lib/InstructorAgreementPanel';
+export {
+  PrintableAgreement,
+  type PrintableAgreementProps,
+} from './lib/PrintableAgreement';
