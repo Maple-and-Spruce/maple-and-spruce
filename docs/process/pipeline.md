@@ -19,14 +19,14 @@ decides how far an agent may take it alone.
 
 ## Who does what
 
-| Who | Does |
-|---|---|
-| **David** | Sets direction. Approves lanes, process changes, anything with money. Merges approval PRs. |
-| **Katie** | Says yes or no to anything she or customers will see: turning a flag on, copy, prices, emails, how a screen works. |
-| **Groomer** (daily routine) | Triages, scores and specs issues. Picks `up-next`. Closes what is already done. |
-| **Builder** (daily routine) | Builds one `up-next` issue, opens the PR, merges it only through `tools/agent-merge.sh`. |
-| **Retro** (weekly routine) | Writes the weekly retro and the Decisions page for David and Katie. |
-| **Claude review** (`claude-review.yml`) | Second reader on every agent-built PR. |
+| Who                                     | Does                                                                                                               |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **David**                               | Sets direction. Approves lanes, process changes, anything with money. Merges approval PRs.                         |
+| **Katie**                               | Says yes or no to anything she or customers will see: turning a flag on, copy, prices, emails, how a screen works. |
+| **Groomer** (daily routine)             | Triages, scores and specs issues. Picks `up-next`. Closes what is already done.                                    |
+| **Builder** (daily routine)             | Builds one `up-next` issue, opens the PR, merges it only through `tools/agent-merge.sh`.                           |
+| **Retro** (weekly routine)              | Writes the weekly retro and the Decisions page for David and Katie.                                                |
+| **Claude review** (`claude-review.yml`) | Second reader on every agent-built PR.                                                                             |
 
 Interactive Claude Code sessions follow the same rules when they pick up backlog
 work on their own. When David asks for something directly in a session, his ask
@@ -34,12 +34,12 @@ wins and the lanes do not apply.
 
 ## Lanes
 
-| Lane | What fits | The agent may |
-|---|---|---|
-| `lane:invisible` | CI, guards, tests, stories, mock servers, docs, `tools/` scripts, Firestore indexes | Build, review, merge |
-| `lane:dark` | New behaviour in the admin app, widgets or functions, shipped **off** behind a Remote Config flag | Build, review, merge. Turning the flag on is a decision for David and Katie |
-| `lane:approval` | Money, prices, copy people already read, emails, changes to how existing screens work, deleting product code, dependencies, CI and rules files, deploy shape | Build and open the PR, then stop. David merges |
-| Never | See below | Nothing. File it as a `for:david` issue |
+| Lane             | What fits                                                                                                                                                    | The agent may                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `lane:invisible` | CI, guards, tests, stories, mock servers, docs, `tools/` scripts, Firestore indexes                                                                          | Build, review, merge                                                        |
+| `lane:dark`      | New behaviour in the admin app, widgets or functions, shipped **off** behind a Remote Config flag                                                            | Build, review, merge. Turning the flag on is a decision for David and Katie |
+| `lane:approval`  | Money, prices, copy people already read, emails, changes to how existing screens work, deleting product code, dependencies, CI and rules files, deploy shape | Build and open the PR, then stop. David merges                              |
+| Never            | See below                                                                                                                                                    | Nothing. File it as a `for:david` issue                                     |
 
 `tools/check-autonomy-lane.ts` (the **Autonomy lane** check) reads the diff and
 fails an agent-built PR whose label is weaker than what it touches. It reads
@@ -87,31 +87,31 @@ subscriptions, prices or Hope. However small, however well flagged.
 
 ## Labels
 
-| Label | Meaning |
-|---|---|
-| `idea` | Triaged, not yet scored |
-| `up-next` | Specced and ready for the Builder. At most 3 at once |
-| `in-progress` | Claimed. The claim comment says who and when |
-| `blocked` | Waiting on something; a comment says what |
-| `for:david` | Needs David: a decision, an approval, a login, a contact |
-| `for:katie` | Needs Katie's yes. Shows on the Decisions page |
-| `agent-built` | A PR an agent opened on its own |
-| `lane:invisible`, `lane:dark`, `lane:approval` | The lane (issues and PRs) |
-| `stale-check` | The Groomer thinks this may be done or obsolete; David confirms |
-| `type:process` | A change to how we work. Always `for:david` |
+| Label                                          | Meaning                                                         |
+| ---------------------------------------------- | --------------------------------------------------------------- |
+| `idea`                                         | Triaged, not yet scored                                         |
+| `up-next`                                      | Specced and ready for the Builder. At most 3 at once            |
+| `in-progress`                                  | Claimed. The claim comment says who and when                    |
+| `blocked`                                      | Waiting on something; a comment says what                       |
+| `for:david`                                    | Needs David: a decision, an approval, a login, a contact        |
+| `for:katie`                                    | Needs Katie's yes. Shows on the Decisions page                  |
+| `agent-built`                                  | A PR an agent opened on its own                                 |
+| `lane:invisible`, `lane:dark`, `lane:approval` | The lane (issues and PRs)                                       |
+| `stale-check`                                  | The Groomer thinks this may be done or obsolete; David confirms |
+| `type:process`                                 | A change to how we work. Always `for:david`                     |
 
 ## The stages
 
-| # | Stage | Who | Output | Gate to move on |
-|---|---|---|---|---|
-| 1 | Intake | Anyone | An issue | Searched for duplicates first |
-| 2 | Triage and score | Groomer | Score comment, lane label | Scored. Never-list items go to `for:david` instead |
-| 3 | Spec | Groomer | "Done looks like" comment | All five parts below |
-| 4 | Build | Builder | Branch, PR with `agent-built` and a lane | Local checks pass |
-| 5 | Review | Autonomy lane + Claude review | Two check results | Both green |
-| 6 | Ship | Builder, via `tools/agent-merge.sh` | Squash merge, which deploys | Only invisible and dark lanes |
-| 7 | Turn on | David and Katie | A flag on in dev, then prod | Their yes on the Decisions page |
-| 8 | Look back | Retro | Retro file, Decisions page | Proposals go to David |
+| #   | Stage            | Who                                 | Output                                   | Gate to move on                                    |
+| --- | ---------------- | ----------------------------------- | ---------------------------------------- | -------------------------------------------------- |
+| 1   | Intake           | Anyone                              | An issue                                 | Searched for duplicates first                      |
+| 2   | Triage and score | Groomer                             | Score comment, lane label                | Scored. Never-list items go to `for:david` instead |
+| 3   | Spec             | Groomer                             | "Done looks like" comment                | All five parts below                               |
+| 4   | Build            | Builder                             | Branch, PR with `agent-built` and a lane | Local checks pass                                  |
+| 5   | Review           | Autonomy lane + Claude review       | Two check results                        | Both green                                         |
+| 6   | Ship             | Builder, via `tools/agent-merge.sh` | Squash merge, which deploys              | Only invisible and dark lanes                      |
+| 7   | Turn on          | David and Katie                     | A flag on in dev, then prod              | Their yes on the Decisions page                    |
+| 8   | Look back        | Retro                               | Retro file, Decisions page               | Proposals go to David                              |
 
 ### 2. Triage and score
 
@@ -128,13 +128,13 @@ Why: one or two sentences.
 
 Each factor is 1 to 5, higher is better:
 
-| Factor | 1 | 3 | 5 |
-|---|---|---|---|
-| **Value** | Nice to have | Saves Katie or Nathan time weekly, or removes a customer annoyance | Brings in revenue, or stops money or data going wrong |
-| **Fit** with current goals | Unrelated to anything live | Supports a live program | Unblocks the current priority (see `docs/sessions/SESSION.md`) |
-| **Evidence** | A hunch | A real occurrence or a request | Repeated, measured, or asked for by Katie |
-| **Effort** (inverted) | Weeks, new infrastructure | A few days | One session |
-| **Risk** (inverted) | Money, customer data, or a screen in daily use | Normal product code with tests | Tests, docs, tooling |
+| Factor                     | 1                                              | 3                                                                  | 5                                                              |
+| -------------------------- | ---------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------- |
+| **Value**                  | Nice to have                                   | Saves Katie or Nathan time weekly, or removes a customer annoyance | Brings in revenue, or stops money or data going wrong          |
+| **Fit** with current goals | Unrelated to anything live                     | Supports a live program                                            | Unblocks the current priority (see `docs/sessions/SESSION.md`) |
+| **Evidence**               | A hunch                                        | A real occurrence or a request                                     | Repeated, measured, or asked for by Katie                      |
+| **Effort** (inverted)      | Weeks, new infrastructure                      | A few days                                                         | One session                                                    |
+| **Risk** (inverted)        | Money, customer data, or a screen in daily use | Normal product code with tests                                     | Tests, docs, tooling                                           |
 
 **Score = (2 × Value + 2 × Fit + Evidence + Effort + Risk) / 7**, to one decimal.
 

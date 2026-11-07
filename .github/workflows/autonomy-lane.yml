@@ -10,7 +10,16 @@ name: Autonomy lane
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled, edited, ready_for_review]
+    types:
+      [
+        opened,
+        synchronize,
+        reopened,
+        labeled,
+        unlabeled,
+        edited,
+        ready_for_review,
+      ]
 
 permissions:
   contents: read

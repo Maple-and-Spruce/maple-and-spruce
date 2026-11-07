@@ -94,7 +94,11 @@ export interface FileVerdict {
 export function classifyFile(file: ChangedFile): FileVerdict {
   const { path, status } = file;
   if (PROTECTED.some((re) => re.test(path))) {
-    return { path, lane: 'approval', reason: 'rules, CI, settings or dependencies' };
+    return {
+      path,
+      lane: 'approval',
+      reason: 'rules, CI, settings or dependencies',
+    };
   }
   const isTest = TEST_CODE.some((re) => re.test(path));
   if (!isTest && MONEY.test(path)) {
@@ -109,7 +113,9 @@ export function classifyFile(file: ChangedFile): FileVerdict {
   return {
     path,
     lane: 'dark',
-    reason: status.startsWith('A') ? 'new product code' : 'changes product code',
+    reason: status.startsWith('A')
+      ? 'new product code'
+      : 'changes product code',
   };
 }
 
@@ -155,7 +161,9 @@ export function evaluateLane(input: LaneInput): LaneResult {
   const laneLabels = input.labels
     .filter((l) => l.startsWith('lane:'))
     .map((l) => l.slice('lane:'.length));
-  const valid = laneLabels.filter((l): l is Lane => (LANE_ORDER as string[]).includes(l));
+  const valid = laneLabels.filter((l): l is Lane =>
+    (LANE_ORDER as string[]).includes(l),
+  );
 
   if (valid.length !== 1 || laneLabels.length !== 1) {
     problems.push(
@@ -182,15 +190,29 @@ export function evaluateLane(input: LaneInput): LaneResult {
         'lane:dark needs the flag named in the PR body, on its own line: Flag: `agent_<issue>_<name>`.',
       );
     } else if (!input.addedLines.some((line) => line.includes(flag))) {
-      problems.push(`The PR declares flag \`${flag}\`, but no added line reads it.`);
+      problems.push(
+        `The PR declares flag \`${flag}\`, but no added line reads it.`,
+      );
     }
   }
 
-  return { ok: problems.length === 0, checked: true, declared, required, problems, files };
+  return {
+    ok: problems.length === 0,
+    checked: true,
+    declared,
+    required,
+    problems,
+    files,
+  };
 }
 
 function git(args: string[]): string {
-  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  // A CI and dev tool: `git` from the runner's own PATH is the point.
+  // eslint-disable-next-line sonarjs/no-os-command-from-path
+  return execFileSync('git', args, {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
 }
 
 export function parseNameStatus(out: string): ChangedFile[] {
@@ -216,9 +238,13 @@ function main(): void {
     .map((l) => l.trim())
     .filter(Boolean);
   const bodyFile = arg('body-file');
-  const body = bodyFile ? readFileSync(bodyFile, 'utf8') : (process.env['PR_BODY'] ?? '');
+  const body = bodyFile
+    ? readFileSync(bodyFile, 'utf8')
+    : (process.env['PR_BODY'] ?? '');
 
-  const files = parseNameStatus(git(['diff', '--name-status', `${base}...HEAD`]));
+  const files = parseNameStatus(
+    git(['diff', '--name-status', `${base}...HEAD`]),
+  );
   const addedLines = git(['diff', '-U0', `${base}...HEAD`])
     .split('\n')
     .filter((l) => l.startsWith('+') && !l.startsWith('+++'));
@@ -226,13 +252,19 @@ function main(): void {
   const result = evaluateLane({ labels, body, files, addedLines });
 
   if (!result.checked) {
-    console.log(`Not an ${AGENT_LABEL} PR, so no lane is required. (This diff would need lane:${result.required}.)`);
+    console.log(
+      `Not an ${AGENT_LABEL} PR, so no lane is required. (This diff would need lane:${result.required}.)`,
+    );
     return;
   }
-  console.log(`Declared lane:${result.declared ?? '?'} · diff needs lane:${result.required}`);
-  for (const f of result.files) console.log(`  ${f.lane.padEnd(9)} ${f.path} (${f.reason})`);
+  console.log(
+    `Declared lane:${result.declared ?? '?'} · diff needs lane:${result.required}`,
+  );
+  for (const f of result.files)
+    console.log(`  ${f.lane.padEnd(9)} ${f.path} (${f.reason})`);
   if (!result.ok) {
-    for (const p of result.problems) console.error(`::error title=Autonomy lane::${p.replace(/\n/g, '%0A')}`);
+    for (const p of result.problems)
+      console.error(`::error title=Autonomy lane::${p.replace(/\n/g, '%0A')}`);
     process.exit(1);
   }
   console.log('Lane OK.');

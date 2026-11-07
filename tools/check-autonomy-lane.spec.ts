@@ -11,7 +11,13 @@ const m = (path: string) => ({ path, status: 'M' });
 const a = (path: string) => ({ path, status: 'A' });
 
 function input(over: Partial<LaneInput>): LaneInput {
-  return { labels: ['agent-built'], body: '', files: [], addedLines: [], ...over };
+  return {
+    labels: ['agent-built'],
+    body: '',
+    files: [],
+    addedLines: [],
+    ...over,
+  };
 }
 
 describe('classifyFile', () => {
@@ -19,9 +25,15 @@ describe('classifyFile', () => {
     ['tools/check-function-count.ts', 'invisible'],
     ['docs/reference/BACKLOG.md', 'invisible'],
     ['libs/react/lessons/src/lib/MyWeek.stories.tsx', 'invisible'],
-    ['libs/firebase/maple-functions/run-lesson-billing/src/lib/run.spec.ts', 'invisible'],
+    [
+      'libs/firebase/maple-functions/run-lesson-billing/src/lib/run.spec.ts',
+      'invisible',
+    ],
     ['apps/functions-integration-tests-class/src/x.spec.ts', 'invisible'],
-    ['libs/firebase/square-test-mock-server/src/lib/routes/orders.ts', 'invisible'],
+    [
+      'libs/firebase/square-test-mock-server/src/lib/routes/orders.ts',
+      'invisible',
+    ],
     ['firestore.indexes.json', 'invisible'],
   ])('%s is %s', (path, lane) => {
     expect(classifyFile(m(path)).lane).toBe(lane);
@@ -50,20 +62,31 @@ describe('classifyFile', () => {
     'libs/firebase/maple-functions/create-registration-checkout-link/src/index.ts',
     'apps/functions-square/src/index.ts',
   ])('%s is a money path', (path) => {
-    expect(classifyFile(a(path))).toMatchObject({ lane: 'approval', reason: 'money path' });
+    expect(classifyFile(a(path))).toMatchObject({
+      lane: 'approval',
+      reason: 'money path',
+    });
   });
 
   it('product code is dark, deleting it needs approval', () => {
     const path = 'libs/react/lessons/src/lib/MyWeek.tsx';
-    expect(classifyFile(a(path))).toMatchObject({ lane: 'dark', reason: 'new product code' });
-    expect(classifyFile(m(path))).toMatchObject({ lane: 'dark', reason: 'changes product code' });
+    expect(classifyFile(a(path))).toMatchObject({
+      lane: 'dark',
+      reason: 'new product code',
+    });
+    expect(classifyFile(m(path))).toMatchObject({
+      lane: 'dark',
+      reason: 'changes product code',
+    });
     expect(classifyFile({ path, status: 'D' }).lane).toBe('approval');
   });
 });
 
 describe('declaredFlag', () => {
   it('reads the flag line with or without backticks', () => {
-    expect(declaredFlag('Summary\n\nFlag: `agent_60_week_view`\n')).toBe('agent_60_week_view');
+    expect(declaredFlag('Summary\n\nFlag: `agent_60_week_view`\n')).toBe(
+      'agent_60_week_view',
+    );
     expect(declaredFlag('flag: agent_60_week_view')).toBe('agent_60_week_view');
     expect(declaredFlag('No flag here')).toBeUndefined();
   });
@@ -79,19 +102,34 @@ describe('evaluateLane', () => {
     expect(evaluateLane(input({ files: [m('tools/x.ts')] })).ok).toBe(false);
     expect(
       evaluateLane(
-        input({ labels: ['agent-built', 'lane:invisible', 'lane:dark'], files: [m('tools/x.ts')] }),
+        input({
+          labels: ['agent-built', 'lane:invisible', 'lane:dark'],
+          files: [m('tools/x.ts')],
+        }),
       ).ok,
     ).toBe(false);
     expect(
-      evaluateLane(input({ labels: ['agent-built', 'lane:sideways'], files: [m('tools/x.ts')] })).ok,
+      evaluateLane(
+        input({
+          labels: ['agent-built', 'lane:sideways'],
+          files: [m('tools/x.ts')],
+        }),
+      ).ok,
     ).toBe(false);
   });
 
   it('passes an invisible PR that only touches tooling', () => {
     const r = evaluateLane(
-      input({ labels: ['agent-built', 'lane:invisible'], files: [m('tools/x.ts'), m('docs/a.md')] }),
+      input({
+        labels: ['agent-built', 'lane:invisible'],
+        files: [m('tools/x.ts'), m('docs/a.md')],
+      }),
     );
-    expect(r).toMatchObject({ ok: true, declared: 'invisible', required: 'invisible' });
+    expect(r).toMatchObject({
+      ok: true,
+      declared: 'invisible',
+      required: 'invisible',
+    });
   });
 
   it('fails an invisible PR that touches product code, naming the file', () => {
@@ -108,9 +146,12 @@ describe('evaluateLane', () => {
   it('a dark PR needs a declared flag that the diff reads', () => {
     const files = [m('libs/react/lessons/src/lib/MyWeek.tsx')];
     const labels = ['agent-built', 'lane:dark'];
-    expect(evaluateLane(input({ labels, files })).problems[0]).toContain('needs the flag named');
+    expect(evaluateLane(input({ labels, files })).problems[0]).toContain(
+      'needs the flag named',
+    );
     expect(
-      evaluateLane(input({ labels, files, body: 'Flag: `agent_60_week_view`' })).problems[0],
+      evaluateLane(input({ labels, files, body: 'Flag: `agent_60_week_view`' }))
+        .problems[0],
     ).toContain('no added line reads it');
     expect(
       evaluateLane(
@@ -138,7 +179,10 @@ describe('evaluateLane', () => {
 
   it('an approval PR passes: saying it needs a human is the honest answer', () => {
     const r = evaluateLane(
-      input({ labels: ['agent-built', 'lane:approval'], files: [m('package.json')] }),
+      input({
+        labels: ['agent-built', 'lane:approval'],
+        files: [m('package.json')],
+      }),
     );
     expect(r).toMatchObject({ ok: true, declared: 'approval' });
   });
