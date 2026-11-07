@@ -12,6 +12,7 @@ import {
   mockClassFeatured,
   mockClassCategoriesWithPool,
   mockClassPrivateHours,
+  mockClassPrivateHoursPerDate,
 } from '@maple/react/storybook-fixtures';
 import {
   mockActiveInstructors,
@@ -887,5 +888,89 @@ export const SwitchToPrivateHours: Story = {
     expect(canvas.queryByLabelText(/minimum enrollment/i)).toBeNull();
     expect(canvas.getByRole('button', { name: /add start time/i })).toBeDisabled();
     expect(canvas.getByText(/pick dates and add start times/i)).toBeInTheDocument();
+  },
+};
+
+/** Chips in one start-time list, by its test id. */
+const startTimeChips = (canvas: ReturnType<typeof within>, testId: string) =>
+  within(canvas.getByTestId(testId)).getAllByRole('button');
+
+/**
+ * A private-hours class whose dates have different start times loads with
+ * the per-date switch on and each date's own times, and saves them unchanged.
+ */
+export const EditPrivateHoursPerDate: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: mockClassPrivateHoursPerDate,
+    onSubmit: fn(),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    expect(
+      canvas.getByRole('switch', { name: /different start times for each date/i })
+    ).toBeChecked();
+    expect(canvas.queryByTestId('private-hour-start-times')).toBeNull();
+    expect(startTimeChips(canvas, 'private-hour-start-times-2030-12-07')).toHaveLength(2);
+    expect(startTimeChips(canvas, 'private-hour-start-times-2030-12-14')).toHaveLength(1);
+    expect(canvas.getByText(/3 bookable hours/i)).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: 'privateHours',
+          sessions: mockClassPrivateHoursPerDate.sessions,
+        })
+      );
+    });
+  },
+};
+
+/**
+ * Turning on per-date start times starts every date from the shared times;
+ * removing a time from one date drops only that date's hour.
+ */
+export const SwitchToPerDateStartTimes: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: mockClassPrivateHours,
+    onSubmit: fn(),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    await userEvent.click(
+      canvas.getByRole('switch', { name: /different start times for each date/i })
+    );
+
+    const firstDay = 'private-hour-start-times-2030-12-07';
+    await waitFor(() => {
+      expect(startTimeChips(canvas, firstDay)).toHaveLength(2);
+    });
+    expect(startTimeChips(canvas, 'private-hour-start-times-2030-12-21')).toHaveLength(2);
+
+    // Remove the later start time on the first date only.
+    const deleteIcons = within(canvas.getByTestId(firstDay)).getAllByTestId('CancelIcon');
+    await userEvent.click(deleteIcons[1]);
+
+    await waitFor(() => {
+      expect(startTimeChips(canvas, firstDay)).toHaveLength(1);
+    });
+    expect(canvas.getByText(/5 bookable hours/i)).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessions: mockClassPrivateHours.sessions.filter(
+            (s) => s.dateTime.getTime() !== new Date('2030-12-07T18:00:00Z').getTime()
+          ),
+        })
+      );
+    });
   },
 };

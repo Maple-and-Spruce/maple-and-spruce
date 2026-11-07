@@ -101,6 +101,17 @@ export const mockClassPrivateHours: Class = {
   materialsIncluded: 'Ornaments are $10 each plus tax, paid at the studio.',
 };
 
+/** A private-hours class whose dates offer different start times. */
+export const mockClassPrivateHoursPerDate: Class = {
+  ...mockClassPrivateHours,
+  id: 'class-private-hours-002',
+  sessions: [
+    { dateTime: new Date('2030-12-07T15:00:00Z') },
+    { dateTime: new Date('2030-12-07T16:00:00Z') },
+    { dateTime: new Date('2030-12-14T18:00:00Z') },
+  ],
+};
+
 export const mockClassWithReferral: Class = {
   ...mockClass,
   id: 'class-005',

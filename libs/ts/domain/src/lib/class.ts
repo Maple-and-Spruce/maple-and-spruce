@@ -348,6 +348,56 @@ export function getSessionStartTimes(sessions: ClassSession[]): ClockTime[] {
   return [...byMinute.entries()].sort((a, b) => a[0] - b[0]).map(([, t]) => t);
 }
 
+/** One date of a private-hours class and the start times offered on it. */
+export interface PrivateHourDate {
+  date: Date;
+  startTimes: ClockTime[];
+}
+
+/**
+ * Build the sessions of a private-hours class whose dates each have their own
+ * start times, sorted earliest-first. A date with no start times adds nothing.
+ */
+export function buildPrivateHourSessionsByDate(
+  dates: PrivateHourDate[]
+): ClassSession[] {
+  return dates
+    .flatMap(({ date, startTimes }) => buildPrivateHourSessions([date], startTimes))
+    .filter(
+      (s, i, all) =>
+        all.findIndex((o) => o.dateTime.getTime() === s.dateTime.getTime()) === i
+    )
+    .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+}
+
+/**
+ * Split a private-hours class's sessions back into its dates and each date's
+ * start times, earliest date first. The inverse of
+ * `buildPrivateHourSessionsByDate`, in the runtime's local zone.
+ */
+export function getPrivateHourDates(sessions: ClassSession[]): PrivateHourDate[] {
+  const byDay = new Map<string, ClassSession[]>();
+  for (const s of sessions) {
+    const d = ensureDate(s.dateTime);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    byDay.set(key, [...(byDay.get(key) ?? []), s]);
+  }
+  return [...byDay.values()]
+    .map((daySessions) => {
+      const first = ensureDate(daySessions[0].dateTime);
+      const date = new Date(first.getFullYear(), first.getMonth(), first.getDate());
+      return { date, startTimes: getSessionStartTimes(daySessions) };
+    })
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+}
+
+/** Whether every date offers exactly the same start times. */
+export function privateHourDatesShareStartTimes(dates: PrivateHourDate[]): boolean {
+  const key = (times: ClockTime[]): string =>
+    times.map((t) => `${t.hours}:${t.minutes}`).join(',');
+  return dates.every((d) => key(d.startTimes) === key(dates[0].startTimes));
+}
+
 /**
  * Whether any two sessions overlap, given every session lasts
  * `durationMinutes`. A private hour that overlaps another would let two
