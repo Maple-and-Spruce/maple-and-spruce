@@ -263,12 +263,12 @@ The Groomer, Builder and Retro are Claude Code routines on David's account
   anything else becomes a question on the Decisions issue.
 - **End with a short recap**: what was done, links, and anything stuck.
 
-| Routine                      | When (Eastern)   | Model  |
-| ---------------------------- | ---------------- | ------ |
-| Groomer                      | Daily, 5:00am    | Sonnet |
-| Builder                      | Weekdays, 6:00am | Opus   |
-| Retro                        | Mondays, 5:30am  | Sonnet |
-| Decisions copy (David's Mac) | Mondays, 8:30am  | —      |
+| Routine                      | When (Eastern)                                        | Model  |
+| ---------------------------- | ----------------------------------------------------- | ------ |
+| Groomer                      | Daily, 5:00am                                         | Sonnet |
+| Builder                      | Weekdays, 6:00am                                      | Opus   |
+| Retro                        | Sundays, 8:00pm (its PR merges with Monday's Builder) | Sonnet |
+| Decisions copy (David's Mac) | Mondays, 8:30am                                       | —      |
 
 ## Budget
 
