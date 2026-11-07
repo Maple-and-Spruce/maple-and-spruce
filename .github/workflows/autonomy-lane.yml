@@ -1,0 +1,41 @@
+name: Autonomy lane
+
+# May an agent merge this PR on its own? Merging to main deploys to prod, so an
+# agent-built PR must declare a lane (invisible, dark or approval) at least as
+# strong as what its diff touches. People's PRs pass without a lane.
+# See tools/check-autonomy-lane.ts and docs/process/pipeline.md → Lanes.
+#
+# Re-runs on label and body edits, because the lane is a label and the dark
+# lane's flag is named in the body.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: autonomy-lane-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  lane:
+    name: Autonomy lane
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # Only node built-ins are imported, so no install is needed.
+      - name: Check the lane
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: npx -y tsx@4.19.2 tools/check-autonomy-lane.ts --base "$BASE"

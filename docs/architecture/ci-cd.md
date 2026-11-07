@@ -28,6 +28,8 @@ All CI workflows use `pnpm/action-setup@v6.1.0` (the first release that can inst
 
 **Advisories already on `main` don't fail PRs.** The PR job compares against the base branch and only fails on advisories the PR introduces. Existing ones are fixed by the daily `security-autofix.yml` workflow, which opens a PR and approves this workflow's run on it (GitHub holds runs on GITHUB_TOKEN-created PRs for approval). If GitHub refuses the approval, it dispatches this workflow on the branch instead, which is why `build-check.yml` also accepts `workflow_dispatch` (checking the whole workspace there), and mirrors the result onto the PR as a commit status, and merges and dispatches `Deploy on merge` when the fix is manifest-only with no major jumps. See ADR-039 and `docs/guides/dependency-overrides.md`.
 
+**Agent-built PRs get two more checks.** `autonomy-lane.yml` (Autonomy lane) fails an `agent-built` PR whose `lane:*` label is weaker than what its diff touches, and `claude-review.yml` (Claude review) has Claude read the diff, comment once, and go red on a blocker. People's PRs pass the first instantly and skip the second. An agent merges only through `tools/agent-merge.sh`, which needs both green. See `docs/process/pipeline.md`.
+
 **Affected detection in PRs**: `nrwl/nx-set-shas@v4` derives the base/head SHAs from the PR event so `nx affected` only rebuilds projects whose source (or transitively a dependency) changed since the merge base. Jobs needing affected detection use `fetch-depth: 0` so the full git history is available.
 
 ## Functions Deploy

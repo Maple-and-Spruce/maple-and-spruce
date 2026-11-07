@@ -14,7 +14,7 @@
 6. **Use feature branches** -- Never commit directly to main. Local `main`/worktrees can lag `origin/main`; `git fetch` and branch/verify off `origin/main`, and instruct spawned subagents to do the same. See `git-workflow` skill.
 7. **Always write tests** -- Unit tests for new functions/utilities. Run `pnpm test` before PRs. Use `vi.mock()` for Cloud Functions (ADR-017). Aim for **~85% coverage on new code** — the 80% CI threshold is a floor, not a target. See `docs/reference/code-standards.md` for per-file-type guidance.
 8. **Use GitHub issues for tracking** -- Reference issues in PRs (`Closes #XX`).
-9. **Never deploy manually** -- CI/CD deploys on merge to main. Claude writes code and creates PRs.
+9. **Never deploy manually** -- CI/CD deploys on merge to main. Claude writes code and creates PRs. Merging is shipping: an agent working the backlog on its own merges only through `tools/agent-merge.sh`, and only `lane:invisible` or `lane:dark` work (`docs/process/pipeline.md`).
 10. **No package.json in libs** -- Root `package.json` and `tsconfig.base.json` manage all dependencies.
 11. **Function naming convention** -- `firebase-maple-functions-{name}`. See `create-cloud-function` skill.
 12. **gcloud commands OK** -- Run gcloud after user logs in via `gcloud auth login`.
@@ -99,6 +99,7 @@ Local: `/Users/$USER/GitHub/platform`
 | `docs/guides/environment-setup.md` | Secrets, env detection, webhooks |
 | `docs/guides/worktree-setup.md` | Running in a git worktree w/ port-isolated emulators |
 | `docs/reference/BACKLOG.md` | Future feature ideas |
+| `docs/process/pipeline.md` | Backlog pipeline: lanes, scoring, what agents may merge alone |
 
 ## Skills (`.claude/skills/`)
 

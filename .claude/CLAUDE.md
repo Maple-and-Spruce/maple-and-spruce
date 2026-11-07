@@ -56,6 +56,7 @@ By task type:
 | How-to guides | `docs/guides/` |
 | Status/tracking/specs | `docs/reference/` |
 | Session context | `docs/sessions/` |
+| Backlog pipeline, lanes, what agents may merge | `docs/process/pipeline.md` |
 
 ### UPDATE (during and after coding)
 
