@@ -17,7 +17,7 @@ All CI workflows use `pnpm/action-setup@v6.1.0` (the first release that can inst
 - Layer 2: `node_modules` — cached via `actions/cache`, avoids install/linking entirely on cache hit
 
 **Jobs** (all depend on `install`):
-- Security audit (`./tools/run-security-audit.sh`)
+- Security audit (`tools/security-autofix.ts pr-check`: fails only on advisories the PR adds)
 - TypeScript typecheck — `nx affected -t typecheck`
 - Build — `nx affected -t build`
 - Unit tests with coverage
@@ -25,6 +25,8 @@ All CI workflows use `pnpm/action-setup@v6.1.0` (the first release that can inst
 - Integration tests (always builds the 4 functions codebases — affected conversion deferred until module boundary tags land)
 
 **Security audit is not a bare `pnpm audit`**: `pnpm audit` POSTs the whole dependency tree to npm's `/-/npm/v1/security/advisories/bulk` endpoint, which times out often enough to fail unrelated PRs — and it exits 1 for that exactly as it does for a real CVE. `tools/run-security-audit.sh` passes pnpm's own `--ignore-registry-errors` (which wraps only the *fetch*, so genuine advisories still fail), retries, and downgrades a sustained outage to a warning annotation rather than a red X. Accepted advisories and version pins live in `pnpm-workspace.yaml` (`auditConfig.ignoreGhsas` and `overrides`).
+
+**Advisories already on `main` don't fail PRs.** The PR job compares against the base branch and only fails on advisories the PR introduces. Existing ones are fixed by the daily `security-autofix.yml` workflow, which opens a PR, dispatches this workflow on it (GITHUB_TOKEN-created PRs start no `pull_request` runs, so `build-check.yml` also accepts `workflow_dispatch`, where it checks the whole workspace), and merges and dispatches `Deploy on merge` when the fix is manifest-only with no major jumps. See ADR-039 and `docs/guides/dependency-overrides.md`.
 
 **Affected detection in PRs**: `nrwl/nx-set-shas@v4` derives the base/head SHAs from the PR event so `nx affected` only rebuilds projects whose source (or transitively a dependency) changed since the merge base. Jobs needing affected detection use `fetch-depth: 0` so the full git history is available.
 

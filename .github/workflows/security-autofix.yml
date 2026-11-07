@@ -1,0 +1,279 @@
+name: Security autofix
+
+# Daily: find high/critical advisories with `pnpm audit`, fix them, open a PR,
+# run the full PR checks on it, and merge + deploy it when it is safe to.
+#
+#   audit ─ none? done
+#     └ fix: 1. `pnpm update <vulnerable pkgs> -r`   (in-range bump, tiny diff)
+#            2. Claude, for what a parent pins       (parent bump or scoped override,
+#                                                     per docs/guides/dependency-overrides.md)
+#            3. `pnpm audit --fix override`          (only if no Claude token)
+#     └ gate (tools/security-autofix.ts): manifests only, fixes >=1 advisory,
+#       adds none, no major version jump anywhere in the lockfile
+#     └ PR → dispatch "Check builds on PR" on its branch → wait
+#         ├ green + gate passed → squash-merge → dispatch "Deploy on merge"
+#         └ otherwise           → leave the PR open and fail this run (emails you)
+#
+# Why the dispatches: everything here acts as GITHUB_TOKEN, and GitHub starts
+# no `pull_request` or `push` workflows for GITHUB_TOKEN events. Dispatching is
+# the one exception, so CI and the deploy are started explicitly.
+#
+# Dependabot is not used: it reports zero alerts for this repo because it
+# cannot read the pnpm 11+ lockfile. See ADR-039.
+
+on:
+  schedule:
+    # 12:30 UTC = 8:30am Eastern (7:30 in winter): after the e2e smoke run,
+    # early enough that a merge deploys before the shop's busy hours.
+    - cron: '30 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write # labels
+  actions: write # dispatch CI and the deploy
+
+concurrency:
+  group: security-autofix
+  cancel-in-progress: false
+
+env:
+  NX_DAEMON: 'false'
+  CLAUDE_CODE_VERSION: '2.1.311'
+  LABEL: security-autofix
+
+jobs:
+  # The Claude token from `claude setup-token` lasts a year and cannot be
+  # renewed by a machine (it needs a browser login). Its expiry date lives in
+  # the CLAUDE_CODE_OAUTH_TOKEN_EXPIRES repo variable; from 30 days out this
+  # job fails, so every daily run emails a reminder until it is replaced.
+  # Separate job so an expiring token never stops the fixes themselves.
+  # To rotate:  claude setup-token
+  #             gh secret set CLAUDE_CODE_OAUTH_TOKEN
+  #             gh variable set CLAUDE_CODE_OAUTH_TOKEN_EXPIRES --body <today + 1 year>
+  token-expiry:
+    name: Claude token expiry
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    env:
+      EXPIRES: ${{ vars.CLAUDE_CODE_OAUTH_TOKEN_EXPIRES }}
+    steps:
+      - name: Check
+        run: |
+          if [ -z "$EXPIRES" ]; then
+            echo "::warning::CLAUDE_CODE_OAUTH_TOKEN_EXPIRES is not set, so token expiry is not tracked."
+            exit 0
+          fi
+          days=$(( ($(date -d "$EXPIRES" +%s) - $(date +%s)) / 86400 ))
+          echo "Claude token expires $EXPIRES ($days days)."
+          if [ "$days" -le 30 ]; then
+            echo "::error title=Rotate the Claude token::CLAUDE_CODE_OAUTH_TOKEN expires $EXPIRES ($days days). Run: claude setup-token; gh secret set CLAUDE_CODE_OAUTH_TOKEN; gh variable set CLAUDE_CODE_OAUTH_TOKEN_EXPIRES --body <today + 1 year>"
+            exit 1
+          fi
+
+  autofix:
+    name: Audit, fix, verify, merge
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    timeout-minutes: 240
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Claude runs in this checkout; it gets no push credentials.
+          persist-credentials: false
+
+      - name: Skip while an earlier autofix PR is open
+        id: open
+        run: |
+          pr=$(gh pr list --label "$LABEL" --state open --json url --jq '.[0].url // ""')
+          if [ -n "$pr" ]; then
+            echo "::notice title=Autofix PR still open::$pr needs a look before another one is opened."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup pnpm
+        if: steps.open.outputs.skip != 'true'
+        uses: pnpm/action-setup@v6.1.0
+
+      - name: Setup Node.js
+        if: steps.open.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        if: steps.open.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit
+        id: before
+        if: steps.open.outputs.skip != 'true'
+        run: |
+          npx tsx tools/security-autofix.ts audit --out "$RUNNER_TEMP/before.json" || {
+            [ $? -eq 3 ] && echo "count=0" >> "$GITHUB_OUTPUT"   # registry outage: try tomorrow
+          }
+
+      - name: 'Fix 1: in-range update of the vulnerable packages'
+        if: steps.before.outputs.count > 0
+        env:
+          MODULES: ${{ steps.before.outputs.modules }}
+        run: |
+          # shellcheck disable=SC2086 # one argument per package
+          CI=true pnpm update $MODULES -r
+
+      - name: Re-audit
+        id: mid
+        if: steps.before.outputs.count > 0
+        run: npx tsx tools/security-autofix.ts audit --out "$RUNNER_TEMP/mid.json"
+
+      - name: 'Fix 2: Claude, for advisories a parent package pins'
+        id: claude
+        if: steps.mid.outputs.count > 0
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ''
+        run: |
+          if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "::warning::CLAUDE_CODE_OAUTH_TOKEN is not set; falling back to pnpm audit --fix override."
+            echo "ran=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          cat > "$RUNNER_TEMP/prompt.md" <<'EOF'
+          You are fixing security advisories in this pnpm workspace, unattended in CI.
+          A targeted `pnpm update <pkg> -r` already ran and did not clear these,
+          so a parent package pins the vulnerable range.
+
+          Advisories still open (from `pnpm audit`):
+          EOF
+          cat "$RUNNER_TEMP/mid.json" >> "$RUNNER_TEMP/prompt.md"
+          cat >> "$RUNNER_TEMP/prompt.md" <<'EOF'
+
+          Read docs/guides/dependency-overrides.md first and follow it. In order of preference:
+          1. Bump the parent that pins it, within its current major: `pnpm why <pkg> -r`,
+             then `CI=true pnpm update <parent> -r`.
+          2. Otherwise add a scoped override in pnpm-workspace.yaml (`parent>pkg`), with the
+             inline comment the guide describes (GHSA id, parent, today's date), then
+             `CI=true pnpm install --config.confirm-modules-purge=false`.
+
+          Rules:
+          - Change only package.json files, pnpm-workspace.yaml and pnpm-lock.yaml.
+          - Do NOT delete and rebuild the whole lockfile; keep the diff small.
+          - Never cross a major version of any package. If the only fix is a major bump,
+            leave that advisory and say so.
+          - Verify with `npx tsx tools/security-autofix.ts audit`.
+          - Do not commit; the workflow does that.
+          Finish with a short summary of what you changed and anything you could not fix.
+          EOF
+          npx -y "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" -p "$(cat "$RUNNER_TEMP/prompt.md")" \
+            --max-turns 60 \
+            --allowedTools "Read,Grep,Glob,Edit,Bash(pnpm:*),Bash(npx tsx tools/security-autofix.ts:*),Bash(git diff:*),Bash(git status:*)" \
+            | tee "$RUNNER_TEMP/claude.md"
+          echo "ran=true" >> "$GITHUB_OUTPUT"
+
+      - name: 'Fix 3: pnpm overrides (no Claude token)'
+        if: steps.claude.outputs.ran == 'false'
+        run: CI=true pnpm audit --fix override --audit-level high -y
+
+      - name: Gate
+        id: gate
+        if: steps.before.outputs.count > 0
+        run: |
+          # Only dependency manifests ship. Drop anything else a fixer touched.
+          stray=$(git diff --name-only | grep -vE '(^|/)(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml)$' || true)
+          if [ -n "$stray" ]; then
+            echo "::warning::Discarding changes outside dependency manifests: $stray"
+            echo "$stray" | xargs git checkout --
+          fi
+          npx tsx tools/security-autofix.ts audit --out "$RUNNER_TEMP/after.json"
+          if git diff --quiet; then
+            echo "::error title=Could not fix advisories::Nothing changed. See the audit output above; these need a hand-made fix."
+            exit 1
+          fi
+          npx tsx tools/security-autofix.ts gate --base HEAD \
+            --before "$RUNNER_TEMP/before.json" --after "$RUNNER_TEMP/after.json"
+
+      - name: Open PR
+        id: pr
+        if: steps.gate.outcome == 'success'
+        env:
+          BODY: ${{ steps.gate.outputs.body }}
+          AUTOMERGE: ${{ steps.gate.outputs.automerge }}
+          FIXED: ${{ steps.gate.outputs.fixed_count }}
+        run: |
+          branch="security/autofix-${GITHUB_RUN_ID}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$branch"
+          git add -A -- '*package.json' pnpm-lock.yaml pnpm-workspace.yaml
+          # pnpm install turned on the repo's git hooks; CI runs the same checks.
+          git -c core.hooksPath=/dev/null commit -q -m "fix(deps): resolve ${FIXED} security advisor$([ "$FIXED" = 1 ] && echo y || echo ies)" \
+            -m "Automated by the security-autofix workflow."
+          git push -q "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${branch}"
+
+          { printf '%s\n' "$BODY"
+            if [ -f "$RUNNER_TEMP/claude.md" ]; then
+              printf '\n<details><summary>Claude'"'"'s notes</summary>\n\n%s\n\n</details>\n' "$(cat "$RUNNER_TEMP/claude.md")"
+            fi
+            printf '\nRun: %s/%s/actions/runs/%s\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/body.md"
+
+          gh label create "$LABEL" --color B60205 --description "Opened by the security-autofix workflow" --force >/dev/null
+          gh label create needs-review --color FBCA04 --description "Automation could not merge this on its own" --force >/dev/null
+          labels="$LABEL"
+          [ "$AUTOMERGE" = true ] || labels="$labels,needs-review"
+          url=$(gh pr create --base main --head "$branch" --label "$labels" \
+            --title "fix(deps): resolve ${FIXED} security advisor$([ "$FIXED" = 1 ] && echo y || echo ies)" \
+            --body-file "$RUNNER_TEMP/body.md")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "Opened $url"
+
+      - name: Run the PR checks
+        id: ci
+        if: steps.pr.outcome == 'success'
+        env:
+          BRANCH: ${{ steps.pr.outputs.branch }}
+        run: |
+          gh workflow run build-check.yml --ref "$BRANCH"
+          for _ in $(seq 1 30); do
+            run=$(gh run list --workflow build-check.yml --branch "$BRANCH" --event workflow_dispatch \
+              --json databaseId --jq '.[0].databaseId // ""')
+            [ -n "$run" ] && break
+            sleep 10
+          done
+          [ -n "$run" ] || { echo "::error::The dispatched check run never appeared."; exit 1; }
+          echo "Watching $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$run"
+          gh run watch "$run" --exit-status --interval 60 > /dev/null
+
+      - name: Merge and deploy
+        if: steps.ci.outcome == 'success' && steps.gate.outputs.automerge == 'true'
+        env:
+          URL: ${{ steps.pr.outputs.url }}
+          SHA: ${{ steps.pr.outputs.sha }}
+        run: |
+          gh pr merge "$URL" --squash --delete-branch --match-head-commit "$SHA"
+          # A merge made by GITHUB_TOKEN starts no push workflow, so deploy explicitly.
+          gh workflow run firebase-functions-merge.yml --ref main
+          echo "::notice title=Merged and deploying::$URL"
+
+      - name: Hand it to a human
+        if: failure() && steps.pr.outputs.url != ''
+        env:
+          URL: ${{ steps.pr.outputs.url }}
+        run: |
+          gh pr edit "$URL" --add-label needs-review
+          gh pr comment "$URL" --body "Checks failed, so this was not merged. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Needs review
+        if: steps.ci.outcome == 'success' && steps.gate.outputs.automerge != 'true'
+        env:
+          URL: ${{ steps.pr.outputs.url }}
+        run: |
+          echo "::error title=Security fix needs review::$URL passed CI but is not eligible to merge itself (see its description)."
+          exit 1
