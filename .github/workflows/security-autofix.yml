@@ -44,6 +44,34 @@ env:
   LABEL: security-autofix
 
 jobs:
+  # The Claude token from `claude setup-token` lasts a year and cannot be
+  # renewed by a machine (it needs a browser login). Its expiry date lives in
+  # the CLAUDE_CODE_OAUTH_TOKEN_EXPIRES repo variable; from 30 days out this
+  # job fails, so every daily run emails a reminder until it is replaced.
+  # Separate job so an expiring token never stops the fixes themselves.
+  # To rotate:  claude setup-token
+  #             gh secret set CLAUDE_CODE_OAUTH_TOKEN
+  #             gh variable set CLAUDE_CODE_OAUTH_TOKEN_EXPIRES --body <today + 1 year>
+  token-expiry:
+    name: Claude token expiry
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    env:
+      EXPIRES: ${{ vars.CLAUDE_CODE_OAUTH_TOKEN_EXPIRES }}
+    steps:
+      - name: Check
+        run: |
+          if [ -z "$EXPIRES" ]; then
+            echo "::warning::CLAUDE_CODE_OAUTH_TOKEN_EXPIRES is not set, so token expiry is not tracked."
+            exit 0
+          fi
+          days=$(( ($(date -d "$EXPIRES" +%s) - $(date +%s)) / 86400 ))
+          echo "Claude token expires $EXPIRES ($days days)."
+          if [ "$days" -le 30 ]; then
+            echo "::error title=Rotate the Claude token::CLAUDE_CODE_OAUTH_TOKEN expires $EXPIRES ($days days). Run: claude setup-token; gh secret set CLAUDE_CODE_OAUTH_TOKEN; gh variable set CLAUDE_CODE_OAUTH_TOKEN_EXPIRES --body <today + 1 year>"
+            exit 1
+          fi
+
   autofix:
     name: Audit, fix, verify, merge
     runs-on: ubuntu-latest
