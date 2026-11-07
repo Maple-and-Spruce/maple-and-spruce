@@ -223,10 +223,12 @@ carries it until then.
 5. Top 10 backlog by score
 6. At most three process changes to propose, each as its own `type:process` PR
 
-**The Decisions page.** The same run writes one page for David and Katie in the
-Maple and Spruce Notion workspace, "Decisions — week of <date>", and a weekly
-Apple reminder points David to it. Plain language, no jargon, no customer data,
-grouped as:
+**The Decisions page.** The same run adds one page for David and Katie under
+Notion → Claude Ops →
+[M&S Decisions](https://app.notion.com/p/41117805570781249870d61fc75509b2),
+titled "Decisions — week of <date>", newest first. A recurring Monday 9am
+reminder in David's Claude Review list points there. Plain language, no jargon,
+no customer data, grouped as:
 
 - **Try these** (flags ready to turn on in dev, with what Katie will see)
 - **Turn these on** (flags Katie has tried, ready for prod)
