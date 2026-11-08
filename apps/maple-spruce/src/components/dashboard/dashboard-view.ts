@@ -15,6 +15,7 @@ import { getBookableCapacity, isPrivateHoursClass } from '@maple/ts/domain';
 import type { StudioDayLesson } from '@maple/ts/firebase/api-types';
 
 const HOUR_MS = 60 * 60 * 1000;
+// eslint-disable-next-line no-restricted-syntax -- rolling windows ("the last 7 days"), not calendar days
 const DAY_MS = 24 * HOUR_MS;
 
 /** How many upcoming items the Today card shows. */

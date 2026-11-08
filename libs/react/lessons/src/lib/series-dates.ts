@@ -7,6 +7,8 @@
  * as-is, so holiday exceptions never exist server-side.
  */
 
+import { addWeeksOnWallClock } from '@maple/ts/domain';
+
 export type SeriesCadence = 'weekly' | 'biweekly';
 
 export interface GenerateWeeklyDatesArgs {
@@ -22,8 +24,9 @@ export interface GenerateWeeklyDatesArgs {
 
 /**
  * Generate an ordered list of session start times stepping forward from
- * `start` by the given cadence. Preserves `start`'s time-of-day on each
- * generated date.
+ * `start` by the given cadence. Keeps `start`'s wall-clock time in the
+ * studio's timezone, so a 4:00 PM series stays at 4:00 PM across a clock
+ * change (stepping by 7 * 24h moved it to 3:00 PM after the fall-back).
  */
 export function generateWeeklyDates({
   start,
@@ -35,8 +38,7 @@ export function generateWeeklyDates({
     return [];
   }
 
-  const stepDays = cadence === 'biweekly' ? 14 : 7;
-  const stepMs = stepDays * 24 * 60 * 60 * 1000;
+  const stepWeeks = cadence === 'biweekly' ? 2 : 1;
 
   const hardMax = 260; // ~5 years of weekly lessons, safety cap
   const softCap = count !== undefined ? Math.max(0, Math.floor(count)) : hardMax;
@@ -44,7 +46,7 @@ export function generateWeeklyDates({
 
   const dates: Date[] = [];
   for (let i = 0; i < max; i++) {
-    const next = new Date(start.getTime() + stepMs * i);
+    const next = addWeeksOnWallClock(start, stepWeeks * i);
     if (end && next.getTime() > end.getTime()) {
       break;
     }
