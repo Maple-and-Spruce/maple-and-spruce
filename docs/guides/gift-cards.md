@@ -145,3 +145,81 @@ card dialog shows "Given free by the studio" with it.
 
 If Square cannot make or load the card, the dialog says nothing was given; trying again
 from the same dialog reuses the same card, so it never makes two.
+
+## Printed gift certificates (#314)
+
+A stack of certificates for the shop, printed from the admin page. Each one is a real
+Square gift card, **made and loaded when it is printed**, so it can be spent from the
+moment it comes off the printer. Katie sells one at the register like any other item;
+nothing happens on the admin page at the sale.
+
+### Printing a batch
+
+1. On **Money > Gift Cards**, click **Print gift certificates**.
+2. Choose the design (today: stained glass leaves), then **A dollar amount** ($5 to $500,
+   whole dollars) or **A class** (only class types with certificates switched on, at their
+   certificate price), and **How many** (1 to 50).
+3. Click **Make N and print**. Square makes and loads every card, then the print view opens.
+4. Click **Print**. Use US Letter paper at 100% scale with background graphics on. One
+   certificate per page: the amount (or "One Pottery class"), "Gift Card", the code in
+   groups of four, a barcode the register can scan, the logo, and a QR code to the
+   upcoming classes page.
+5. Keep the stack somewhere safe, like cash.
+
+If Square makes only some of a batch, the dialog says how many and offers **Try again for
+the rest** (the same batch: it never makes a card twice) or **Print the N ready**. A
+printed batch can be opened again from any of its cards on the Gift Cards page ("Open this
+batch to print it again"); each opening reads the codes from Square and is logged.
+
+**Theft caveat:** because the cards are loaded before they are sold, a certificate taken
+from the stack can be spent without anyone paying for it. If one goes missing, find it on
+the Gift Cards page by its last 4 digits, then deactivate it or clear its balance in the Square Dashboard (Gift Cards, search the last 4).
+
+### Selling one at the register
+
+Ring up the **Gift certificate** item, type the amount printed on the certificate, and leave
+tax off. Hand over the certificate. That is all.
+
+### Setting up the "Gift certificate" item in Square (once)
+
+In the Square Dashboard (Maple & Spruce account), **Items & services > Items > Create item**:
+
+1. **Name:** `Gift certificate`. Exactly that, capital letters optional, no other words. The
+   catalog sync and the POS sale worker recognise the item by this name.
+2. **Price:** leave it **variable** (no price), so the register asks for the amount.
+3. **Taxes:** turn **off** WV sales tax for this item. Gift cards are taxed when they are
+   spent, not when they are sold.
+4. **Category:** whatever Katie likes (for example "Gift cards"). It changes nothing here.
+5. Do not link it to an artist or a product in the admin app.
+6. Save. It shows on the register like the ad hoc music lesson item.
+
+**In the books** a certificate sale is gift card money: a liability (money owed in goods or
+classes), not shop income, and it pays no artist. Record it the same way as Square's own
+gift card sales. When the certificate is later spent on a piece, that sale is income and
+pays the artist their usual split.
+
+**What our system does with it:** the catalog sync (`process-catalog-sync-request`) skips any
+Square item named "Gift certificate", so it never becomes a draft product waiting for an
+artist, and the POS sale worker (`process-pos-sale`) ignores the line, so it is never treated
+as a lesson or a class registration. If the item was created before this shipped, the sync
+may already have made a draft "Gift certificate" product in the admin: delete that draft.
+
+### How the value moves and how it is counted
+
+- Each certificate is a digital card made with `createDigitalGiftCard` and loaded with an
+  `ACTIVATE` that has no order and no payment (reference `cert-<batch>-<n>`), the same Square
+  calls as a free card. The batch id and every Square key are derived from the dialog's key
+  and the certificate's place in the batch, so a retry reuses the same cards.
+- Each card's record is `giftCardPurchases/{giftCardId}` with `source: 'stock'`, `batchId`,
+  `batchIndex`, `design`, value, kind and class type. Codes are never stored.
+- On the Gift Cards page, a printed certificate still holding exactly what was loaded counts
+  under **Printed certificates not yet used**, not under "Owed to customers". Loading it is
+  not counted as sold. Once it is spent, what is left counts as owed like any card. Free cards
+  count under **Given free this month**, not "Sold this month". A certificate sold at the
+  register shows in Square's item sales as "Gift certificate", not in "Sold this month".
+
+### Logs
+
+`gift_certificates_printed` (batch id, count, value, who), `gift_certificate_print_failed`
+(batch id, place in batch, step), `gift_certificate_batch_revealed` (batch id, count, who)
+and `gift_certificate_batch_reveal_failed`. None contain a code.

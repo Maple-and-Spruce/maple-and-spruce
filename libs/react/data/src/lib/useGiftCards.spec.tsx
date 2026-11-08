@@ -14,7 +14,7 @@ vi.mock('@maple/ts/firebase/firebase-config', () => ({
   routerCallableUrl: (router: string, name: string) => `${router}/${name}`,
 }));
 
-import { useGiftCards } from './useGiftCards';
+import { useCertificateBatch, useGiftCards } from './useGiftCards';
 
 const overview = {
   totals: {
@@ -40,6 +40,12 @@ describe('useGiftCards', () => {
       'giftCards/issueGiftCard': vi
         .fn()
         .mockResolvedValue({ data: { giftCardId: 'gc-new', last4: '0001', recorded: true } }),
+      'giftCards/printGiftCertificates': vi
+        .fn()
+        .mockResolvedValue({ data: { batchId: 'cert-1', requested: 1, cards: [], valueCents: 2500 } }),
+      'giftCards/getCertificateBatch': vi
+        .fn()
+        .mockResolvedValue({ data: { batchId: 'cert-1', certificates: [] } }),
     };
   });
 
@@ -93,5 +99,49 @@ describe('useGiftCards', () => {
     expect(mocks.routes['giftCards/issueGiftCard']).toHaveBeenCalledWith(issueRequest);
     expect(marked).toEqual({ purchase: { giftCardId: 'gc', kind: 'class' } });
     expect(issued).toEqual({ giftCardId: 'gc-new', last4: '0001', recorded: true });
+  });
+
+  it('prints a batch through the giftCards router (#314)', async () => {
+    const { result } = renderHook(() => useGiftCards());
+    await waitFor(() => expect(result.current.giftCardsState.status).toBe('success'));
+    const request = {
+      kind: 'amount' as const,
+      amountCents: 2500,
+      quantity: 1,
+      design: 'stained-glass' as const,
+      idempotencyKey: 'print-abc12345',
+    };
+    let printed: unknown;
+    await act(async () => {
+      printed = await result.current.printGiftCertificates(request);
+    });
+    expect(mocks.routes['giftCards/printGiftCertificates']).toHaveBeenCalledWith(request);
+    expect(printed).toMatchObject({ batchId: 'cert-1' });
+  });
+});
+
+describe('useCertificateBatch (#314)', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  it('loads the batch by id', async () => {
+    mocks.routes['giftCards/getCertificateBatch'] = vi
+      .fn()
+      .mockResolvedValue({ data: { batchId: 'cert-1', certificates: [] } });
+    const { result } = renderHook(() => useCertificateBatch('cert-1'));
+    await waitFor(() => expect(result.current.batchState.status).toBe('success'));
+    expect(mocks.routes['giftCards/getCertificateBatch']).toHaveBeenCalledWith({ batchId: 'cert-1' });
+  });
+
+  it('reports a failed load as an error', async () => {
+    mocks.routes['giftCards/getCertificateBatch'] = vi.fn().mockRejectedValue(new Error('nope'));
+    const { result } = renderHook(() => useCertificateBatch('cert-1'));
+    await waitFor(() => expect(result.current.batchState).toEqual({ status: 'error', error: 'nope' }));
+  });
+
+  it('stays idle without a batch id', () => {
+    const { result } = renderHook(() => useCertificateBatch(''));
+    expect(result.current.batchState.status).toBe('idle');
   });
 });

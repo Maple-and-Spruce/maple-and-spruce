@@ -21,6 +21,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import {
   giftCardKindLabel,
   giftCardStateLabel,
+  type GiftCardListItem,
   type GiftCardSummary,
   type RequestState,
 } from '@maple/ts/domain';
@@ -28,8 +29,23 @@ import { fonts } from '@maple/react/theme';
 import { formatGiftCardDate, formatGiftCardMoney } from './format';
 
 interface GiftCardsTableProps {
-  cardsState: RequestState<GiftCardSummary[]>;
+  cardsState: RequestState<GiftCardListItem[]>;
   onSelect: (card: GiftCardSummary) => void;
+}
+
+/**
+ * How a card came about, when our records say (#314): a printed certificate
+ * names its batch by the batch id's last characters, which is enough to tell
+ * batches apart on the page.
+ */
+export function giftCardOriginNote(card: GiftCardListItem): string | undefined {
+  if (card.source === 'stock') {
+    return card.batchId
+      ? `Printed certificate (batch ${card.batchId.slice(-6)})`
+      : 'Printed certificate';
+  }
+  if (card.source === 'issued') return 'Given free';
+  return undefined;
 }
 
 const STATE_COLOR = {
@@ -124,7 +140,14 @@ export function GiftCardsTable({ cardsState, onSelect }: GiftCardsTableProps) {
                   <TableCell sx={{ fontFamily: fonts.mono }}>
                     •••• {card.last4}
                   </TableCell>
-                  <TableCell>{giftCardKindLabel(card.kind)}</TableCell>
+                  <TableCell>
+                    {giftCardKindLabel(card.kind)}
+                    {giftCardOriginNote(card) && (
+                      <Typography variant="caption" color="textSecondary" component="div">
+                        {giftCardOriginNote(card)}
+                      </Typography>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Chip
                       size="small"

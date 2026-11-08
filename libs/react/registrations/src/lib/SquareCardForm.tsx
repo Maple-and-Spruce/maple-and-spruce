@@ -719,15 +719,43 @@ export function SquareCardForm({
       // until it asks, so a family who never opens it costs nothing.
       if (enableGiftCardRef.current && payments.giftCard) {
         const createGiftCard = payments.giftCard.bind(payments);
+        // Creating a field is async, so two attach calls can overlap. React
+        // StrictMode runs the parent's attach effect twice: both calls saw no
+        // field yet, both created one, and the box showed two gift card
+        // fields. So steps run one at a time, and a second attach to the box
+        // already attached (or attaching) shares the first call, the way
+        // `initializedRef` keeps the card field to a single init.
+        let giftCardQueue: Promise<void> = Promise.resolve();
+        let giftCardEl: HTMLElement | null = null;
+        let giftCardAttach: Promise<void> = Promise.resolve();
+        const inTurn = (step: () => Promise<void>): Promise<void> => {
+          const run = giftCardQueue.then(step);
+          giftCardQueue = run.catch(() => undefined);
+          return run;
+        };
+        const destroyGiftCard = async (): Promise<void> => {
+          const giftCard = giftCardRef.current;
+          if (!giftCard) return;
+          giftCardRef.current = null;
+          await giftCard.destroy().catch(console.error);
+        };
         onGiftCardRefRef.current?.({
-          attach: async (el: HTMLElement) => {
-            if (giftCardRef.current) {
-              await giftCardRef.current.destroy().catch(console.error);
-              giftCardRef.current = null;
-            }
-            const giftCard = await createGiftCard();
-            await giftCard.attach(el);
-            giftCardRef.current = giftCard;
+          attach: (el: HTMLElement) => {
+            if (giftCardEl === el) return giftCardAttach;
+            giftCardEl = el;
+            giftCardAttach = inTurn(async () => {
+              await destroyGiftCard();
+              try {
+                const giftCard = await createGiftCard();
+                await giftCard.attach(el);
+                giftCardRef.current = giftCard;
+              } catch (error) {
+                // Let a later attach to this box try again.
+                if (giftCardEl === el) giftCardEl = null;
+                throw error;
+              }
+            });
+            return giftCardAttach;
           },
           tokenize: async () => {
             if (!giftCardRef.current) {
@@ -742,12 +770,9 @@ export function SquareCardForm({
             }
             return result.token;
           },
-          destroy: async () => {
-            if (giftCardRef.current) {
-              const giftCard = giftCardRef.current;
-              giftCardRef.current = null;
-              await giftCard.destroy().catch(console.error);
-            }
+          destroy: () => {
+            giftCardEl = null;
+            return inTurn(destroyGiftCard);
           },
         });
       }

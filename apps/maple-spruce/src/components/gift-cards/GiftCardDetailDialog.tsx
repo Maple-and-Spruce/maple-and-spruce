@@ -11,6 +11,7 @@ import {
   Divider,
   List,
   ListItem,
+  Link,
   ListItemText,
   Skeleton,
   Stack,
@@ -217,12 +218,14 @@ const RECORD_LABELS = {
   online: 'Bought online',
   register: 'Class certificate',
   issued: 'Given free by the studio',
+  stock: 'Printed certificate',
 } as const;
 
 const RECORD_HEADINGS = {
   online: 'Bought online',
   register: 'Made a class certificate',
   issued: 'Given free by the studio',
+  stock: 'Printed',
 } as const;
 
 /**
@@ -260,6 +263,25 @@ function CardRecord({ purchase }: { purchase: GiftCardPurchaseDetails }) {
             )}
           </>
         )}
+        {source === 'stock' && (
+          <>
+            <Typography variant="body2">
+              Printed certificate loaded with{' '}
+              {formatGiftCardMoney(purchase.valueCents)}
+              {purchase.batchId ? ` (batch ${purchase.batchId.slice(-6)})` : ''}. It
+              was spendable from the moment it was printed; it is sold at the
+              register as the Gift certificate item.
+            </Typography>
+            {purchase.batchId && (
+              <Link
+                href={`/gift-cards/print/${encodeURIComponent(purchase.batchId)}`}
+                variant="body2"
+              >
+                Open this batch to print it again
+              </Link>
+            )}
+          </>
+        )}
         {purchase.kind === 'class' &&
           (source === 'online' ? (
             <Typography variant="body2">
@@ -271,6 +293,7 @@ function CardRecord({ purchase }: { purchase: GiftCardPurchaseDetails }) {
               Class certificate for one {classType ?? ''} class, worth{' '}
               {formatGiftCardMoney(purchase.valueCents)}
               {source === 'register' ? ' (sold at the register)' : ''}
+              {source === 'stock' ? ' (printed)' : ''}
             </Typography>
           ))}
         {source === 'online' && purchase.buyerName && (

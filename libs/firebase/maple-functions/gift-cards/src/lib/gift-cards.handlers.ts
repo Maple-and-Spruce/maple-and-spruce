@@ -16,7 +16,12 @@ import {
   type SquareSecrets,
   type SquareStrings,
 } from '@maple/firebase/square';
-import { startOfMonthInTimeZone, summarizeGiftCards } from '@maple/ts/domain';
+import {
+  type GiftCardListItem,
+  type GiftCardPurchase,
+  startOfMonthInTimeZone,
+  summarizeGiftCards,
+} from '@maple/ts/domain';
 import type {
   GiftCardPurchaseDetails,
   GetGiftCardRequest,
@@ -26,6 +31,20 @@ import type {
   RevealGiftCardCodeRequest,
   RevealGiftCardCodeResponse,
 } from '@maple/ts/firebase/api-types';
+
+/**
+ * Free cards and printed stock, which change the totals and the list labels
+ * (#314). One query, not one per card. A failed read leaves the page working
+ * with every card counted as a sale, rather than failing it.
+ */
+async function readRecordsForTotals(): Promise<GiftCardPurchase[]> {
+  try {
+    return await GiftCardPurchaseRepository.findBySources(['issued', 'stock']);
+  } catch (error) {
+    console.error('[getGiftCards] could not read gift card records', error);
+    return [];
+  }
+}
 
 /** Every card plus this month's totals. */
 export async function getGiftCards(
@@ -38,14 +57,26 @@ export async function getGiftCards(
   const giftCards = new Square(secrets, strings).giftCardsService;
   const monthStart = startOfMonthInTimeZone(now);
 
-  const [cards, activitiesThisMonth] = await Promise.all([
+  const [cards, activitiesThisMonth, records] = await Promise.all([
     giftCards.listGiftCards(),
     giftCards.listActivities({ beginTime: monthStart, endTime: now }),
+    readRecordsForTotals(),
   ]);
 
+  const recordById = new Map(records.map((r) => [r.giftCardId, r]));
+  const listed: GiftCardListItem[] = cards.map((card) => {
+    const record = recordById.get(card.id);
+    if (!record?.source) return card;
+    return {
+      ...card,
+      source: record.source,
+      ...(record.batchId ? { batchId: record.batchId } : {}),
+    };
+  });
+
   return {
-    totals: summarizeGiftCards(cards, activitiesThisMonth),
-    cards,
+    totals: summarizeGiftCards(cards, activitiesThisMonth, records),
+    cards: listed,
     monthStartedAt: monthStart.toISOString(),
   };
 }

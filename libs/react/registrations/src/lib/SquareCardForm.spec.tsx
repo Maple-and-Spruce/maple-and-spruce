@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
+import { StrictMode, useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import {
@@ -610,6 +611,93 @@ describe('SquareCardForm gift card field (#301)', () => {
     await expect(api()!.tokenize()).rejects.toThrow(
       'Gift card number is not valid'
     );
+  });
+
+  /** Each `giftCard()` call hands back its own field, as the SDK does. */
+  function installFakeSquareWithGiftCardFields() {
+    const fields: Array<{
+      attach: ReturnType<typeof vi.fn>;
+      tokenize: ReturnType<typeof vi.fn>;
+      destroy: ReturnType<typeof vi.fn>;
+    }> = [];
+    const payments = {
+      card: vi.fn().mockResolvedValue({
+        attach: vi.fn().mockResolvedValue(undefined),
+        tokenize: vi.fn(),
+        destroy: vi.fn().mockResolvedValue(undefined),
+      }),
+      giftCard: vi.fn(async () => {
+        const n = fields.length + 1;
+        const field = {
+          attach: vi.fn().mockResolvedValue(undefined),
+          tokenize: vi.fn().mockResolvedValue({ status: 'OK', token: `gftok:${n}` }),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        };
+        fields.push(field);
+        return field;
+      }),
+    };
+    (window as unknown as { Square: unknown }).Square = {
+      payments: vi.fn().mockResolvedValue(payments),
+    };
+    return { fields, payments };
+  }
+
+  it('draws one gift card field under StrictMode, and tokenizes that one', async () => {
+    const { fields, payments } = installFakeSquareWithGiftCardFields();
+    let api: GiftCardFieldApi | undefined;
+    let ready = false;
+    const el = document.createElement('div');
+    // Attaches from an effect, as the checkout does. StrictMode runs it twice.
+    function GiftCardBox({ fieldApi }: { fieldApi: GiftCardFieldApi }) {
+      useEffect(() => {
+        void fieldApi.attach(el);
+      }, [fieldApi]);
+      return null;
+    }
+    const tree = (withBox: boolean) => (
+      <StrictMode>
+        <SquareCardForm
+          applicationId="sandbox-sq0idb-abc123"
+          locationId="LOC1"
+          totalCents={4500}
+          enableGiftCard
+          onTokenizeRef={() => (ready = true)}
+          onGiftCardRef={(a) => (api = a)}
+        />
+        {withBox && api && <GiftCardBox fieldApi={api} />}
+      </StrictMode>
+    );
+    const view = render(tree(false));
+    await waitFor(() => expect(ready).toBe(true));
+    view.rerender(tree(true));
+
+    await waitFor(() => expect(fields[0]?.attach).toHaveBeenCalledWith(el));
+    await api!.attach(el);
+    expect(payments.giftCard).toHaveBeenCalledTimes(1);
+    expect(fields).toHaveLength(1);
+    expect(fields[0].destroy).not.toHaveBeenCalled();
+    await expect(api!.tokenize()).resolves.toBe('gftok:1');
+  });
+
+  it('removes the old field before drawing one in a new box', async () => {
+    const { fields } = installFakeSquareWithGiftCardFields();
+    const { api } = await renderForGiftCard({ enableGiftCard: true });
+    const first = document.createElement('div');
+    const second = document.createElement('div');
+
+    // Not awaited in between: the second waits for the first to finish.
+    const a = api()!.attach(first);
+    const b = api()!.attach(second);
+    await Promise.all([a, b]);
+
+    expect(fields).toHaveLength(2);
+    expect(fields[0].destroy).toHaveBeenCalled();
+    expect(fields[0].destroy.mock.invocationCallOrder[0]).toBeLessThan(
+      fields[1].attach.mock.invocationCallOrder[0]
+    );
+    expect(fields[1].destroy).not.toHaveBeenCalled();
+    await expect(api()!.tokenize()).resolves.toBe('gftok:2');
   });
 
   it('hides the card field when cardHidden is set', async () => {

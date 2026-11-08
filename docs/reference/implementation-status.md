@@ -207,8 +207,8 @@ they are given has nothing to look it up with. #130 decides whether to finish or
 
 ## Gift cards for the holidays — Epic #295 (In Progress)
 
-Square owns every card; the admin reads it back live. Printed certificates are made in Canva
-with the code from the admin.
+Square owns every card; the admin reads it back live. Printed certificates are printed from
+the admin, pre-loaded (#314).
 
 | Piece | Status | Issue |
 |---|---|---|
@@ -220,6 +220,7 @@ with the code from the admin.
 | Own buy page with class certificates (`giftCards/purchaseGiftCard`, Webflow Gift Card component, admin "Bought online") | Done | #300 |
 | Admin: give a free card (`giftCards/issueGiftCard`), make a register card a class certificate (`giftCards/markClassCertificate`) | Done | #310 |
 | Amounts in Admin > Settings, gift certificates per class type, class-type picker on the buy page | Done | #309 |
+| Printed pre-loaded certificates (`giftCards/printGiftCertificates`, `getCertificateBatch`, print view after Katie's stained glass design), totals split (given free, printed not yet used), "Gift certificate" register item kept out of products and POS sales | Done (PR open) | #314 |
 
 ## Phase 4: Music Lessons - legacy Epic #10
 

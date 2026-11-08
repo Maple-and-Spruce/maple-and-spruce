@@ -13,6 +13,7 @@
  *                                   or, with no order, with `amount_money` and
  *                                   `buyer_payment_instrument_ids` (#310))
  * - GET  /v2/gift-cards/activities  (one card's history, newest first)
+ * - GET  /v2/gift-cards          (every card, newest first, one page)
  * - GET  /v2/gift-cards/:id
  * - POST /_mock/gift-cards/fail-next-activation
  * - GET  /_mock/gift-cards       (every card, for test assertions)
@@ -243,6 +244,12 @@ export function registerGiftCardRoutes(server: SquareMockServer): void {
     activities.push(created);
     return { status: 200, body: { gift_card_activity: created } };
   });
+
+  // Every card, newest first, in one page (#314: the admin page's list).
+  server.get('/v2/gift-cards', () => ({
+    status: 200,
+    body: { gift_cards: [...giftCards.values()].reverse() },
+  }));
 
   // Registered before `/v2/gift-cards/:id`, which would otherwise match it.
   server.get('/v2/gift-cards/activities', (req) => {

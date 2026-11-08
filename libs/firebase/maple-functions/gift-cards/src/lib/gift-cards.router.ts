@@ -6,9 +6,10 @@
  * request) a card's code back from Square for Katie. They are admin only: a
  * card's code is as good as cash.
  *
- * Two admin routes write (#310): `markClassCertificate` records that a card
- * sold at the register is a class certificate (no Square write), and
- * `issueGiftCard` makes and loads a free card in Square.
+ * Three admin routes write: `markClassCertificate` records that a card sold
+ * at the register is a class certificate (no Square write), `issueGiftCard`
+ * makes and loads a free card in Square (#310), and `printGiftCertificates`
+ * makes and loads a batch of printed certificates (#314).
  *
  * `purchaseGiftCard` is the one public route (#300): the Webflow buy page
  * sells a card through it. It is gated the way every public widget payment is
@@ -29,6 +30,8 @@ import {
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
 import type {
+  GetCertificateBatchRequest,
+  GetCertificateBatchResponse,
   GetGiftCardRequest,
   GetGiftCardResponse,
   GetGiftCardsRequest,
@@ -37,6 +40,8 @@ import type {
   IssueGiftCardResponse,
   MarkClassCertificateRequest,
   MarkClassCertificateResponse,
+  PrintGiftCertificatesRequest,
+  PrintGiftCertificatesResponse,
   PreviewGiftCardForClassRequest,
   PreviewGiftCardForClassResponse,
   PurchaseGiftCardRequest,
@@ -51,6 +56,10 @@ import {
 } from './gift-cards.handlers';
 import { previewGiftCardForClass } from './preview-gift-card-for-class';
 import { purchaseGiftCard } from './purchase-gift-card';
+import {
+  getCertificateBatch,
+  printGiftCertificates,
+} from './print-gift-certificates';
 import {
   issueGiftCard,
   markClassCertificate,
@@ -103,6 +112,30 @@ export const giftCards = Functions.router('giftCards', {
     .usingSecrets(...SQUARE_SECRET_NAMES)
     .usingStrings(...SQUARE_STRING_NAMES)
     .asRoute<IssueGiftCardRequest, IssueGiftCardResponse>(issueGiftCard),
+
+  /**
+   * Print a batch of certificates (#314): makes and loads each card in Square
+   * now, so they are spendable as soon as they are printed. Retry-safe.
+   */
+  printGiftCertificates: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .usingSecrets(...SQUARE_SECRET_NAMES)
+    .usingStrings(...SQUARE_STRING_NAMES)
+    .asRoute<PrintGiftCertificatesRequest, PrintGiftCertificatesResponse>(
+      printGiftCertificates
+    ),
+
+  /**
+   * Every full code in a printed batch, for the print view only (#314).
+   * Logged with who asked and how many, never with the codes.
+   */
+  getCertificateBatch: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .usingSecrets(...SQUARE_SECRET_NAMES)
+    .usingStrings(...SQUARE_STRING_NAMES)
+    .asRoute<GetCertificateBatchRequest, GetCertificateBatchResponse>(
+      getCertificateBatch
+    ),
 
   /**
    * Public (#301): what a gift card would pay toward a class at checkout.

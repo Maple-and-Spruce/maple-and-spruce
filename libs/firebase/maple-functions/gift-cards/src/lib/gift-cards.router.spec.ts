@@ -73,6 +73,11 @@ const adminActions = vi.hoisted(() => ({
   markClassCertificate: vi.fn(),
 }));
 vi.mock('./gift-card-admin-actions', () => adminActions);
+const printing = vi.hoisted(() => ({
+  printGiftCertificates: vi.fn(),
+  getCertificateBatch: vi.fn(),
+}));
+vi.mock('./print-gift-certificates', () => printing);
 
 import { giftCards } from './gift-cards.router';
 
@@ -87,13 +92,15 @@ type Route = {
 const routes = giftCards as unknown as Record<string, Route>;
 
 describe('giftCards router', () => {
-  it('has the three admin reads, the two admin actions, the checkout preview and the public purchase', () => {
+  it('has the admin reads, the admin actions, the checkout preview and the public purchase', () => {
     expect(Object.keys(routes).sort()).toEqual([
+      'getCertificateBatch',
       'getGiftCard',
       'getGiftCards',
       'issueGiftCard',
       'markClassCertificate',
       'previewGiftCardForClass',
+      'printGiftCertificates',
       'purchaseGiftCard',
       'revealGiftCardCode',
     ]);
@@ -132,6 +139,8 @@ describe('giftCards router', () => {
     'revealGiftCardCode',
     'markClassCertificate',
     'issueGiftCard',
+    'printGiftCertificates',
+    'getCertificateBatch',
   ])(
     '%s is admin only, with the Square credentials',
     (name) => {
@@ -148,10 +157,17 @@ describe('giftCards router', () => {
     expect(routes['revealGiftCardCode'].handler).toBe(handlers.revealGiftCardCode);
     expect(routes['markClassCertificate'].handler).toBe(adminActions.markClassCertificate);
     expect(routes['issueGiftCard'].handler).toBe(adminActions.issueGiftCard);
+    expect(routes['printGiftCertificates'].handler).toBe(printing.printGiftCertificates);
+    expect(routes['getCertificateBatch'].handler).toBe(printing.getCertificateBatch);
   });
 
   it('the admin actions are not public: no App Check bypass, no throttle', () => {
-    for (const name of ['markClassCertificate', 'issueGiftCard']) {
+    for (const name of [
+      'markClassCertificate',
+      'issueGiftCard',
+      'printGiftCertificates',
+      'getCertificateBatch',
+    ]) {
       expect(routes[name].appCheck).toBeUndefined();
       expect(routes[name].throttle).toBeUndefined();
     }

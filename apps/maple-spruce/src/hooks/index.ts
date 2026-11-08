@@ -29,6 +29,7 @@ export {
   useAgreementRequests,
   useSignedAgreement,
   useGiftCards,
+  useCertificateBatch,
   useUsers,
   useSales,
   useEtsyPush,

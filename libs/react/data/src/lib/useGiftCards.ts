@@ -8,6 +8,8 @@ import {
 } from '@maple/ts/firebase/firebase-config';
 import type { RequestState } from '@maple/ts/domain';
 import type {
+  GetCertificateBatchRequest,
+  GetCertificateBatchResponse,
   GetGiftCardRequest,
   GetGiftCardResponse,
   GetGiftCardsRequest,
@@ -16,6 +18,8 @@ import type {
   IssueGiftCardResponse,
   MarkClassCertificateRequest,
   MarkClassCertificateResponse,
+  PrintGiftCertificatesRequest,
+  PrintGiftCertificatesResponse,
   RevealGiftCardCodeRequest,
   RevealGiftCardCodeResponse,
 } from '@maple/ts/firebase/api-types';
@@ -102,6 +106,24 @@ export function useGiftCards() {
     []
   );
 
+  /**
+   * Print a batch of certificates (#314): makes and loads each card in Square.
+   * A partial batch comes back with `error` set, not as a throw.
+   */
+  const printGiftCertificates = useCallback(
+    async (
+      request: PrintGiftCertificatesRequest
+    ): Promise<PrintGiftCertificatesResponse> => {
+      const fn = httpsCallableFromURL<
+        PrintGiftCertificatesRequest,
+        PrintGiftCertificatesResponse
+      >(getMapleFunctions(), routerCallableUrl('giftCards', 'printGiftCertificates'));
+      const result = await fn(request);
+      return result.data;
+    },
+    []
+  );
+
   useEffect(() => {
     fetchGiftCards();
   }, [fetchGiftCards]);
@@ -113,5 +135,40 @@ export function useGiftCards() {
     revealGiftCardCode,
     markClassCertificate,
     issueGiftCard,
+    printGiftCertificates,
   };
+}
+
+/**
+ * One printed batch with every full code, for the print view only (#314).
+ * Each read is logged on the server with who asked.
+ */
+export function useCertificateBatch(batchId: string) {
+  const [batchState, setBatchState] = useState<
+    RequestState<GetCertificateBatchResponse>
+  >({ status: 'idle' });
+
+  const fetchBatch = useCallback(async () => {
+    setBatchState({ status: 'loading' });
+    try {
+      const fn = httpsCallableFromURL<
+        GetCertificateBatchRequest,
+        GetCertificateBatchResponse
+      >(getMapleFunctions(), routerCallableUrl('giftCards', 'getCertificateBatch'));
+      const result = await fn({ batchId });
+      setBatchState({ status: 'success', data: result.data });
+    } catch (error) {
+      console.error('Failed to load certificate batch:', error);
+      setBatchState({
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Failed to load the certificates',
+      });
+    }
+  }, [batchId]);
+
+  useEffect(() => {
+    if (batchId) fetchBatch();
+  }, [batchId, fetchBatch]);
+
+  return { batchState, fetchBatch };
 }

@@ -49,6 +49,7 @@ import { groupPrivateHoursByDay } from '@maple/ts/domain';
 import { PrivateHourPicker } from './PrivateHourPicker';
 import { HourWaitlistForm, type HourWaitlistStatus } from './HourWaitlistForm';
 import { formatPhoneNumber } from './formatPhoneNumber';
+import { customerFacingMessage } from './customer-facing-message';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -99,13 +100,16 @@ function extractErrorMessage(error: unknown): string {
 
   // Firebase FunctionsError (from httpsCallable)
   const fbError = error as FirebaseError;
-  if (fbError.message && !GENERIC_ERROR_CODES.has(fbError.message)) {
-    return fbError.message;
+  const fbMessage = customerFacingMessage(fbError.message ?? '');
+  if (fbMessage && !GENERIC_ERROR_CODES.has(fbMessage)) {
+    return fbMessage;
   }
 
   // Standard Error
-  if (error instanceof Error && !GENERIC_ERROR_CODES.has(error.message)) {
-    return error.message;
+  const errorMessage =
+    error instanceof Error ? customerFacingMessage(error.message) : '';
+  if (errorMessage && !GENERIC_ERROR_CODES.has(errorMessage)) {
+    return errorMessage;
   }
 
   return fallback;
@@ -120,7 +124,8 @@ function extractGiftCardErrorMessage(error: unknown): string {
   const message =
     (error as FirebaseError | undefined)?.message ??
     (error instanceof Error ? error.message : undefined);
-  if (message && !GENERIC_ERROR_CODES.has(message)) return message;
+  const text = message ? customerFacingMessage(message) : '';
+  if (text && !GENERIC_ERROR_CODES.has(text)) return text;
   return "We couldn't check that gift card. Please try again.";
 }
 

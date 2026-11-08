@@ -4,6 +4,7 @@
  */
 import type {
   GiftCardActivityEntry,
+  GiftCardListItem,
   GiftCardSummary,
   GiftCardTotals,
 } from '@maple/ts/domain';
@@ -43,11 +44,50 @@ export const mockGiftCards: GiftCardSummary[] = [
   },
 ];
 
+/** A printed certificate and a free card, as the list labels them (#314). */
+export const mockLabelledGiftCards: GiftCardListItem[] = [
+  {
+    id: 'gftc-stock-1',
+    last4: '5150',
+    kind: 'egift',
+    state: 'active',
+    balanceCents: 2500,
+    createdAt: '2026-11-22T15:00:00Z',
+    source: 'stock',
+    batchId: 'cert-0a1b2c3d4e5f6071',
+  },
+  {
+    id: 'gftc-free-1',
+    last4: '6262',
+    kind: 'egift',
+    state: 'active',
+    balanceCents: 1000,
+    createdAt: '2026-11-22T14:00:00Z',
+    source: 'issued',
+  },
+  ...mockGiftCards,
+];
+
+/** A printed batch with its codes, for the print view (#314). Invented codes. */
+export const mockCertificateBatch = {
+  batchId: 'cert-0a1b2c3d4e5f6071',
+  design: 'stained-glass' as const,
+  kind: 'amount' as const,
+  valueCents: 2500,
+  certificates: [
+    { giftCardId: 'gftc-stock-1', last4: '5150', code: '7783320000005150' },
+    { giftCardId: 'gftc-stock-2', last4: '5151', code: '7783320000005151' },
+  ],
+};
+
 export const mockGiftCardTotals: GiftCardTotals = {
   outstandingCents: 6250,
   cardsWithBalance: 2,
   loadedThisMonthCents: 12500,
   spentThisMonthCents: 4250,
+  givenFreeThisMonthCents: 2500,
+  printedUnusedCents: 25000,
+  printedUnusedCount: 10,
 };
 
 /** The full code of `gftc-holiday-1`, for the reveal story. */

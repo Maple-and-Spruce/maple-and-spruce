@@ -3,9 +3,11 @@
  */
 import type {
   GiftCardActivityEntry,
+  GiftCardListItem,
   GiftCardPurchaseKind,
   GiftCardSummary,
   GiftCardTotals,
+  GiftCertificateDesignId,
 } from '@maple/ts/domain';
 import type { GiftCardPurchaseDetails } from './gift-card-purchase.types';
 
@@ -13,8 +15,11 @@ export type GetGiftCardsRequest = Record<string, never>;
 
 export interface GetGiftCardsResponse {
   totals: GiftCardTotals;
-  /** Every card, newest first. Never includes a full code. */
-  cards: GiftCardSummary[];
+  /**
+   * Every card, newest first, with how it came about when we have a record
+   * (#314). Never includes a full code.
+   */
+  cards: GiftCardListItem[];
   /** Start of "this month" for the totals (ISO 8601), midnight on the 1st Eastern. */
   monthStartedAt: string;
 }
@@ -99,4 +104,71 @@ export interface IssueGiftCardResponse {
    * written. The card still works; it just shows no "Given free" box.
    */
   recorded: boolean;
+}
+
+/**
+ * `giftCards/printGiftCertificates` (#314): make and load a batch of printed
+ * certificates. Each is a real Square card, spendable as soon as it exists.
+ * A dollar amount ($5 to $500, whole dollars), or one class of a class type
+ * that has certificates switched on, at the type's certificate price.
+ */
+export type PrintGiftCertificatesRequest = (
+  | { kind: 'amount'; amountCents: number }
+  | { kind: 'class'; classCategoryId: string }
+) & {
+  /** 1 to 50. */
+  quantity: number;
+  design: GiftCertificateDesignId;
+  /**
+   * Made by the dialog once each time it opens. The batch id and every Square
+   * key are derived from it, so a retry finishes the same batch instead of
+   * starting a second one.
+   */
+  idempotencyKey: string;
+};
+
+export interface PrintedCertificateCard {
+  giftCardId: string;
+  last4: string;
+}
+
+export interface PrintGiftCertificatesResponse {
+  batchId: string;
+  /** How many were asked for. */
+  requested: number;
+  /** The certificates that exist, loaded and recorded, in batch order. */
+  cards: PrintedCertificateCard[];
+  /** What is on each, in cents. */
+  valueCents: number;
+  /**
+   * Set when some certificates could not be made. The ones in `cards` are
+   * loaded and fine; trying again with the same dialog makes the rest.
+   */
+  error?: string;
+}
+
+export interface GetCertificateBatchRequest {
+  batchId: string;
+}
+
+export interface PrintableCertificate {
+  giftCardId: string;
+  last4: string;
+  /** The full code, for printing only. Treat it like cash; never store it. */
+  code: string;
+}
+
+/**
+ * `giftCards/getCertificateBatch` (#314): one printed batch with every full
+ * code, for the print view only. Logged with who asked.
+ */
+export interface GetCertificateBatchResponse {
+  batchId: string;
+  design: GiftCertificateDesignId;
+  kind: GiftCardPurchaseKind;
+  valueCents: number;
+  /** For a class batch, the class type's name. */
+  className?: string;
+  /** In batch order. */
+  certificates: PrintableCertificate[];
 }

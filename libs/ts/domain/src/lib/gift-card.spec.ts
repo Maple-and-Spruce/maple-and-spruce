@@ -7,6 +7,7 @@ import {
   giftCardStateLabel,
   startOfMonthInTimeZone,
   summarizeGiftCards,
+  isUnusedPrintedCertificate,
   type GiftCardActivityEntry,
   type GiftCardSummary,
 } from './gift-card';
@@ -71,6 +72,88 @@ describe('summarizeGiftCards', () => {
       [activity({ type: 'refund', amountCents: 1000 })]
     );
     expect(totals.spentThisMonthCents).toBe(0);
+  });
+});
+
+describe('summarizeGiftCards with our records (#314)', () => {
+  const records = [
+    { giftCardId: 'free', source: 'issued' as const, valueCents: 2500 },
+    { giftCardId: 'stock-new', source: 'stock' as const, valueCents: 2500 },
+    { giftCardId: 'stock-used', source: 'stock' as const, valueCents: 2500 },
+    { giftCardId: 'online', source: 'online' as const, valueCents: 4000 },
+  ];
+
+  it('keeps unused printed certificates apart from what is owed', () => {
+    const totals = summarizeGiftCards(
+      [
+        card({ id: 'stock-new', balanceCents: 2500 }),
+        card({ id: 'stock-used', balanceCents: 1000 }),
+        card({ id: 'online', balanceCents: 4000 }),
+        card({ id: 'free', balanceCents: 2500 }),
+        card({ id: 'register', balanceCents: 500 }),
+      ],
+      [],
+      records
+    );
+    expect(totals.printedUnusedCents).toBe(2500);
+    expect(totals.printedUnusedCount).toBe(1);
+    expect(totals.outstandingCents).toBe(1000 + 4000 + 2500 + 500);
+    expect(totals.cardsWithBalance).toBe(4);
+  });
+
+  it('does not count a turned-off printed certificate as unused', () => {
+    const totals = summarizeGiftCards(
+      [card({ id: 'stock-new', balanceCents: 2500, state: 'deactivated' })],
+      [],
+      records
+    );
+    expect(totals.printedUnusedCount).toBe(0);
+    expect(totals.outstandingCents).toBe(0);
+  });
+
+  it('counts a free card as given, printed stock as neither, and sales as sold', () => {
+    const totals = summarizeGiftCards(
+      [],
+      [
+        activity({ id: '1', giftCardId: 'free', type: 'activate', amountCents: 2500 }),
+        activity({ id: '2', giftCardId: 'stock-new', type: 'activate', amountCents: 2500 }),
+        activity({ id: '3', giftCardId: 'online', type: 'activate', amountCents: 4000 }),
+        activity({ id: '4', giftCardId: 'register', type: 'activate', amountCents: 500 }),
+        // A top-up on a free or printed card is someone paying for it.
+        activity({ id: '5', giftCardId: 'free', type: 'load', amountCents: 1000 }),
+        activity({ id: '6', giftCardId: 'stock-used', type: 'load', amountCents: 700 }),
+      ],
+      records
+    );
+    expect(totals.givenFreeThisMonthCents).toBe(2500);
+    expect(totals.loadedThisMonthCents).toBe(4000 + 500 + 1000 + 700);
+  });
+
+  it('treats every card as a sale without records', () => {
+    const totals = summarizeGiftCards(
+      [card({ id: 'stock-new', balanceCents: 2500 })],
+      [activity({ giftCardId: 'free', type: 'activate', amountCents: 2500 })]
+    );
+    expect(totals.loadedThisMonthCents).toBe(2500);
+    expect(totals.givenFreeThisMonthCents).toBe(0);
+    expect(totals.printedUnusedCents).toBe(0);
+    expect(totals.outstandingCents).toBe(2500);
+  });
+});
+
+describe('isUnusedPrintedCertificate', () => {
+  const stock = { giftCardId: 'x', source: 'stock' as const, valueCents: 2500 };
+  it('is true only for an active stock card holding its loaded value', () => {
+    expect(isUnusedPrintedCertificate({ state: 'active', balanceCents: 2500 }, stock)).toBe(true);
+    expect(isUnusedPrintedCertificate({ state: 'active', balanceCents: 2400 }, stock)).toBe(false);
+    expect(isUnusedPrintedCertificate({ state: 'blocked', balanceCents: 2500 }, stock)).toBe(false);
+    expect(
+      isUnusedPrintedCertificate(
+        { state: 'active', balanceCents: 2500 },
+        { ...stock, source: 'issued' }
+      )
+    ).toBe(false);
+    expect(isUnusedPrintedCertificate({ state: 'active', balanceCents: 2500 }, undefined)).toBe(false);
   });
 });
 
