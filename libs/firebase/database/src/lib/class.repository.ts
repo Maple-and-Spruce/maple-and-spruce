@@ -99,6 +99,9 @@ function docToClass(
         ? data.minimumEnrollment
         : undefined,
     isFeatured: data.isFeatured === true ? true : undefined,
+    instructorNotesSentAt: data.instructorNotesSentAt
+      ? toDate(data.instructorNotesSentAt)
+      : undefined,
     underMinimumAlertSentAt: data.underMinimumAlertSentAt
       ? toDate(data.underMinimumAlertSentAt)
       : undefined,
@@ -437,6 +440,35 @@ export const ClassRepository = {
       .collection(COLLECTION)
       .doc(id)
       .update({ underMinimumAlertSentAt: null });
+  },
+
+  /**
+   * Claim the one instructor-notes email for a class (#325): returns `true`
+   * if this caller stamped `instructorNotesSentAt`, `false` if it was already
+   * stamped (or the class is gone). Transactional, so a rerun and the admin
+   * trigger cannot both send.
+   */
+  async claimInstructorNotesEmail(id: string, at: Date): Promise<boolean> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      if (!snap.exists || snap.data()?.instructorNotesSentAt) {
+        return false;
+      }
+      tx.update(docRef, { instructorNotesSentAt: at });
+      return true;
+    });
+  },
+
+  /**
+   * Undo `claimInstructorNotesEmail` when queuing the email failed, so the
+   * next run retries instead of the email being silently lost.
+   */
+  async releaseInstructorNotesEmail(id: string): Promise<void> {
+    await db
+      .collection(COLLECTION)
+      .doc(id)
+      .update({ instructorNotesSentAt: null });
   },
 
   /**

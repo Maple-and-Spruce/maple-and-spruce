@@ -62,6 +62,7 @@ const sourceClass: Class = {
   minimumAge: 12,
   minimumEnrollment: 4,
   underMinimumAlertSentAt: new Date('2026-04-02T12:00:00Z'),
+  instructorNotesSentAt: new Date('2026-04-03T12:00:00Z'),
   isFeatured: true,
   webflowItemId: 'webflow-original-id',
   createdAt: new Date('2026-01-01T00:00:00Z'),
@@ -125,6 +126,7 @@ describe('duplicateClass', () => {
     expect(created.minimumEnrollment).toBe(sourceClass.minimumEnrollment);
     // The copy is a new run of the class and gets its own alert.
     expect(created).not.toHaveProperty('underMinimumAlertSentAt');
+    expect(created).not.toHaveProperty('instructorNotesSentAt');
     // Featuring is a choice about one run; a copy would add a second large card.
     expect(created).not.toHaveProperty('isFeatured');
 

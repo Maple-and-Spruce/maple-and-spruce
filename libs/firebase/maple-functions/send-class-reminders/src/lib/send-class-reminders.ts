@@ -56,6 +56,11 @@ import {
   runUnderMinimumAlerts,
   type UnderMinimumAlertResult,
 } from './under-minimum-alert';
+import {
+  EMPTY_INSTRUCTOR_NOTES_RESULT,
+  runInstructorClassNotes,
+  type InstructorNotesResult,
+} from './instructor-class-notes';
 
 /**
  * Customer-visible default location. Falls back to this when a class doesn't
@@ -94,6 +99,8 @@ export interface SendClassRemindersResult {
   classesWithSessionToday: number;
   /** The staff "below minimum enrollment" check for classes 7 days out */
   underMinimum: UnderMinimumAlertResult;
+  /** Customer notes emailed to instructors for classes starting tomorrow */
+  instructorNotes: InstructorNotesResult;
 }
 
 /**
@@ -204,6 +211,16 @@ export async function runSendClassReminders(
     };
   }
 
+  // Customer notes to each instructor whose class starts tomorrow (#325).
+  // Fenced off like the alert above.
+  let instructorNotes: InstructorNotesResult;
+  try {
+    instructorNotes = await runInstructorClassNotes(publishedClasses, now);
+  } catch (error) {
+    console.error('[sendClassReminders] Instructor notes failed', error);
+    instructorNotes = { ...EMPTY_INSTRUCTOR_NOTES_RESULT };
+  }
+
   const todayClasses = publishedClasses
     .map((c) => ({ class: c, session: findSessionToday(c, start, end) }))
     .filter(
@@ -221,6 +238,7 @@ export async function runSendClassReminders(
       skippedNotPaid: 0,
       classesWithSessionToday: 0,
       underMinimum,
+      instructorNotes,
     };
   }
 
@@ -310,6 +328,7 @@ export async function runSendClassReminders(
     skippedNotPaid,
     classesWithSessionToday: todayClasses.length,
     underMinimum,
+    instructorNotes,
   };
 }
 
