@@ -140,16 +140,24 @@ export function GiftCardBreakdown({
   const leftOnCard = preview.balanceCents - preview.giftCardAmountCents;
   return (
     <div data-testid="gift-card-breakdown" style={{ marginTop: 8 }}>
+      {preview.classCertificateCoverCents > 0 && (
+        <>
+          {/* The cover comes off before tax, so the total above changes too:
+              show the new total so the lines add up. */}
+          <Line
+            label="Class certificate covers"
+            value={`−${formatCentsAsDollars(preview.classCertificateCoverCents)}`}
+          />
+          <Line
+            label="New total with tax"
+            value={formatCentsAsDollars(preview.totalCents)}
+          />
+        </>
+      )}
       <Line
         label={`Gift card ending ${preview.last4}`}
         value={`−${formatCentsAsDollars(preview.giftCardAmountCents)}`}
       />
-      {preview.classCertificateCoverCents > 0 && (
-        <Line
-          label="Class certificate covers"
-          value={`−${formatCentsAsDollars(preview.classCertificateCoverCents)}`}
-        />
-      )}
       <div
         style={{
           borderTop: `1px solid ${borders.default}`,
