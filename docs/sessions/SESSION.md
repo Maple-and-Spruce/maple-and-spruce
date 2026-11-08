@@ -27,6 +27,20 @@
 - **Before selling (Katie, #296):** turn on gift cards + "Sell eGift Cards in Store" in Square,
   terms, Canva template, decide who pays the class-certificate cushion.
 
+### Clock changes and test gates (2026-11-07, #294, #302, #304)
+
+- **#294 (merged):** the weekly-time dialog says the block sets the day and links to Lesson
+  Blocks. Katie could not see how to move a student from Tuesday to Thursday.
+- **#302:** My Week labelled two days "11/1" in the fall-back week (days stepped by 24h).
+  Fixed with `addLocalDays`. CI now runs the unit suite in New York time too, and stories
+  render in New York time.
+- **#304 (stacked on #302):** lesson series and "same time next week" stepped by 7 × 24h, so
+  times moved an hour across a clock change. ESLint now flags the shortcut in browser code. A
+  task story plays Katie's own "move him to Thursday 4:30".
+- **Checked prod (2026-11-08):** `tools/check-dst-shifted-series.ts --prod` found 0 of 19
+  series with lessons shifted by a clock change, so no existing lessons need fixing.
+- See "Dates and Clock Changes" in `docs/architecture/PATTERNS-AND-PRACTICES.md`.
+
 ### Contractor agreement: real checkboxes, per-instructor pay, audit trail (2026-11-07)
 
 - The live "Class Instructor Agreement (1099)" said "by checking the box below" but the signing

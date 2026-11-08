@@ -13,6 +13,7 @@ export const INBOX_ROW_CAP = 4;
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
+// eslint-disable-next-line no-restricted-syntax -- elapsed time ("3 days ago"), not calendar days
 const DAY_MS = 24 * HOUR_MS;
 
 function plural(n: number, one: string, many = `${one}s`): string {

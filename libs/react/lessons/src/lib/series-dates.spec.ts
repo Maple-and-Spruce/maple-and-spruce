@@ -75,4 +75,28 @@ describe('generateWeeklyDates', () => {
     });
     expect(dates).toEqual([]);
   });
+
+  // Clocks fall back on Sunday Nov 1 2026. A 4:00 PM Thursday series stays at
+  // 4:00 PM on the wall clock, so its UTC time moves an hour later.
+  it('keeps the wall-clock time across the fall-back clock change', () => {
+    const dates = generateWeeklyDates({
+      start: new Date('2026-10-22T20:00:00Z'), // Thu 4:00 PM EDT
+      cadence: 'weekly',
+      count: 3,
+    });
+    expect(dates.map((d) => d.toISOString())).toEqual([
+      '2026-10-22T20:00:00.000Z',
+      '2026-10-29T20:00:00.000Z',
+      '2026-11-05T21:00:00.000Z', // Thu 4:00 PM EST
+    ]);
+  });
+
+  it('keeps the wall-clock time across the spring-forward clock change', () => {
+    const dates = generateWeeklyDates({
+      start: new Date('2027-03-04T21:00:00Z'), // Thu 4:00 PM EST
+      cadence: 'biweekly',
+      count: 2,
+    });
+    expect(dates[1].toISOString()).toBe('2027-03-18T20:00:00.000Z'); // 4:00 PM EDT
+  });
 });

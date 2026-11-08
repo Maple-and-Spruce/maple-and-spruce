@@ -2,6 +2,37 @@ import nx from '@nx/eslint-plugin';
 import reactHooks from 'eslint-plugin-react-hooks';
 import sonarjs from 'eslint-plugin-sonarjs';
 
+// MUI 9: a component's `color` prop takes a name ('textSecondary',
+// 'error'), not a palette path. 'text.secondary' / 'error.main' match
+// nothing and render in the default colour, with no type error. Paths
+// belong in sx: sx={{ color: 'grey.600' }}.
+const MUI_COLOR_PATH = [
+  {
+    selector:
+      "JSXAttribute[name.name='color'] Literal[value=/^[a-zA-Z]+\\.[a-zA-Z0-9]+$/]",
+    message:
+      "MUI 9 ignores palette paths in the `color` prop. Use a name ('textSecondary', 'error') or move it to sx.",
+  },
+];
+
+const DAY_AS_24_HOURS_MESSAGE =
+  'A calendar day is not always 24 hours (clock changes). Step days with addLocalDays or weeks with addWeeksOnWallClock (@maple/ts/domain). For a true duration, disable this line and say why.';
+const DAY_AS_24_HOURS = [
+  {
+    selector:
+      "BinaryExpression[operator='*']:has(> Literal[value=1000]):has(Literal[value=24]):has(Literal[value=60])",
+    message: DAY_AS_24_HOURS_MESSAGE,
+  },
+  {
+    selector: "BinaryExpression[operator='*']:has(> Literal[value=24]):has(> Identifier[name=/HOUR/])",
+    message: DAY_AS_24_HOURS_MESSAGE,
+  },
+  {
+    selector: 'Literal[value=86400000], Literal[value=604800000]',
+    message: DAY_AS_24_HOURS_MESSAGE,
+  },
+];
+
 export default [
   ...nx.configs['flat/base'],
   ...nx.configs['flat/typescript'],
@@ -102,19 +133,25 @@ export default [
       'sonarjs/no-clear-text-protocols': 'warn',
       'sonarjs/assertions-in-tests': 'warn',
 
-      // MUI 9: a component's `color` prop takes a name ('textSecondary',
-      // 'error'), not a palette path. 'text.secondary' / 'error.main' match
-      // nothing and render in the default colour, with no type error. Paths
-      // belong in sx: sx={{ color: 'grey.600' }}.
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector:
-            "JSXAttribute[name.name='color'] Literal[value=/^[a-zA-Z]+\\.[a-zA-Z0-9]+$/]",
-          message:
-            "MUI 9 ignores palette paths in the `color` prop. Use a name ('textSecondary', 'error') or move it to sx.",
-        },
-      ],
+      // See MUI_COLOR_PATH above.
+      'no-restricted-syntax': ['error', ...MUI_COLOR_PATH],
+    },
+  },
+  {
+    // Browser code works in the viewer's local time. There, a day is not
+    // always 24 hours: adding 24h to a local midnight landed My Week's Monday
+    // on Sunday 11 PM in the Nov 1 2026 fall-back week, and stepping a lesson
+    // series by 7 * 24h moved 4:00 PM lessons to 3:00 PM. Step calendar days
+    // with addLocalDays / addWeeksOnWallClock from @maple/ts/domain.
+    // A real duration ("3 days ago") gets an eslint-disable with the reason.
+    files: [
+      'libs/react/**/*.{ts,tsx}',
+      'apps/maple-spruce/src/**/*.{ts,tsx}',
+      'apps/webflow-components/src/**/*.{ts,tsx}',
+    ],
+    ignores: ['**/*.spec.{ts,tsx}', '**/*.stories.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': ['error', ...MUI_COLOR_PATH, ...DAY_AS_24_HOURS],
     },
   },
   {
