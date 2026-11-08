@@ -102,6 +102,12 @@ export interface MyWeekStandingSlot {
   /** On the caller's own weekly lesson times only (#160). */
   studentId?: string;
   studentName?: string;
+  /**
+   * On the caller's own weekly lesson times only: the student has had no
+   * lesson in the last few weeks and has nothing booked ahead, so the time is
+   * probably free. Still shown, so Katie can check before giving it away.
+   */
+  lapsed?: boolean;
 }
 
 export interface GetMyWeekRequest {

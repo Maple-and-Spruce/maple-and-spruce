@@ -34,6 +34,7 @@ import {
   buildOtherBlocks,
   buildStandingSlots,
   startOfWeek,
+  studentsWithRecentLessons,
   withWeeklyTimes,
 } from './get-my-week';
 
@@ -584,6 +585,28 @@ describe('students on my lessons (#160)', () => {
       expect(ids).toEqual(['schedule-sched-1', 'z', 'y']);
     });
 
+    it('marks a weekly time lapsed when its student has no recent or booked lesson', () => {
+      const names2 = new Map([
+        ['stu-a', 'Student A'],
+        ['stu-b', 'Student B'],
+      ]);
+      const slots = withWeeklyTimes(
+        [],
+        [schedule(), schedule({ id: 'sched-2', studentId: 'stu-b', dayOfWeek: 3 })],
+        me,
+        names2,
+        new Set(['stu-a']),
+      );
+      expect(slots.map((s) => [s.studentId, s.lapsed])).toEqual([
+        ['stu-a', undefined],
+        ['stu-b', true],
+      ]);
+    });
+
+    it('marks nothing lapsed when it is not told who is recent', () => {
+      expect(withWeeklyTimes([], [schedule()], me, names)[0].lapsed).toBeUndefined();
+    });
+
     it('ignores ended weekly times and other teachers’', () => {
       expect(
         withWeeklyTimes(
@@ -597,6 +620,83 @@ describe('students on my lessons (#160)', () => {
         ),
       ).toEqual([]);
     });
+  });
+
+  describe('studentsWithRecentLessons', () => {
+    const since = new Date('2026-09-28T00:00:00Z');
+    const l = (studentId: string, iso: string, status = 'scheduled') => ({
+      studentId,
+      status,
+      scheduledAt: new Date(iso),
+    });
+
+    it('counts a recent lesson and one booked ahead, not an old or cancelled one', () => {
+      const recent = studentsWithRecentLessons(
+        [
+          l('taught-lately', '2026-10-20T16:00:00Z', 'rendered'),
+          l('booked-ahead', '2026-11-10T17:00:00Z'),
+          l('long-ago', '2026-09-22T16:00:00Z', 'rendered'),
+          l('only-cancelled', '2026-10-13T16:00:00Z', 'cancelled'),
+        ],
+        since,
+      );
+      expect([...recent].sort()).toEqual(['booked-ahead', 'taught-lately']);
+    });
+  });
+
+  it('the handler marks a weekly time lapsed, judged from today', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-26T12:00:00Z'));
+    try {
+      mocks.instructorIdForUser.mockResolvedValue(me);
+      mocks.findBlocks.mockResolvedValue([]);
+      mocks.findInstructors.mockResolvedValue([]);
+      mocks.findByStartInRange.mockResolvedValue([]);
+      mocks.findSchedules.mockResolvedValue([
+        { ...schedule2(), id: 'sched-a', studentId: 'stu-a' },
+        { ...schedule2(), id: 'sched-b', studentId: 'stu-b', dayOfWeek: 3 },
+      ]);
+      mocks.findStudents.mockResolvedValue([
+        { id: 'stu-a', name: 'Student A' },
+        { id: 'stu-b', name: 'Student B' },
+      ]);
+      mocks.findLessons.mockImplementation(async (filters: { to?: Date }) =>
+        filters.to
+          ? []
+          : [
+              {
+                id: 'les-a',
+                studentId: 'stu-a',
+                teacherId: me,
+                status: 'scheduled',
+                scheduledAt: new Date('2026-11-03T17:00:00Z'),
+                durationMinutes: 30,
+              },
+            ],
+      );
+
+      const res = await (
+        getMyWeek as unknown as (
+          d: unknown,
+          c: unknown,
+        ) => Promise<{ standing: Array<{ studentId?: string; lapsed?: boolean }> }>
+      )(
+        // Looking at a week in July must not change who has lapsed today.
+        { from: '2026-07-19T00:00:00', to: '2026-07-26T00:00:00' },
+        { uid: 'katie-uid' },
+      );
+
+      expect(res.standing.map((s) => [s.studentId, s.lapsed])).toEqual([
+        ['stu-a', undefined],
+        ['stu-b', true],
+      ]);
+      expect(mocks.findLessons).toHaveBeenCalledWith({
+        teacherId: me,
+        from: new Date('2026-09-28T12:00:00Z'),
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('the handler names my lesson and builds my typical week from weekly times', async () => {

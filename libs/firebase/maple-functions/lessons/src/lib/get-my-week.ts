@@ -57,6 +57,11 @@ const LOOKBACK_WEEKS = 4;
 const TZ = DEFAULT_LESSON_TIME_ZONE;
 /** A slot is "standing" once it recurs in at least this many distinct weeks. */
 const STANDING_MIN_WEEKS = 2;
+/**
+ * A weekly time is lapsed when its student has had no lesson in this many
+ * weeks and has nothing booked ahead.
+ */
+export const LAPSED_AFTER_WEEKS = 4;
 
 /** Server-local start-of-week (Sunday 00:00) for a given instant. */
 export function startOfWeek(d: Date): Date {
@@ -154,6 +159,27 @@ export function buildCommitments(
 }
 
 /**
+ * Students with a lesson from `since` on, past or booked ahead — anything not
+ * cancelled. A weekly time whose student is not here has lapsed: lessons are
+ * bought a few at a time, so a family that stopped buying leaves a weekly time
+ * behind that looks exactly like a standing slot.
+ */
+export function studentsWithRecentLessons(
+  lessons: Array<{ studentId: string; status: string; scheduledAt: Date }>,
+  since: Date,
+): Set<string> {
+  return new Set(
+    lessons
+      .filter(
+        (l) =>
+          l.status !== 'cancelled' &&
+          l.scheduledAt.getTime() >= since.getTime(),
+      )
+      .map((l) => l.studentId),
+  );
+}
+
+/**
  * The caller's own lessons in the typical week come from their students'
  * weekly times (#160), not from inferring recurrence out of past lessons:
  * lessons are booked a few at a time now (#157), so a weekly student between
@@ -167,6 +193,11 @@ export function withWeeklyTimes(
   schedules: StudentLessonSchedule[],
   myInstructorId: string,
   studentNameById: Map<string, string>,
+  /**
+   * Students with a recent or upcoming lesson (`studentsWithRecentLessons`).
+   * Omitted, nothing is marked lapsed.
+   */
+  recentStudentIds?: ReadonlySet<string>,
 ): MyWeekStandingSlot[] {
   const fromSchedules: MyWeekStandingSlot[] = schedules
     .filter((s) => s.status === 'active' && s.teacherId === myInstructorId)
@@ -182,6 +213,9 @@ export function withWeeklyTimes(
         title: name,
         studentId: s.studentId,
         studentName: name,
+        ...(recentStudentIds && !recentStudentIds.has(s.studentId)
+          ? { lapsed: true }
+          : {}),
       };
     });
   return [
@@ -326,18 +360,29 @@ export async function getMyWeek(
   // ALL teachers' blocks (mine anchor the layout; others mark room-taken
   // time), this week's lessons to flag unattributed ones (legacy #689), and
   // instructors for the other-block owner names.
-  const [events, allBlocks, lessons, instructors, schedules, students] =
-    await Promise.all([
-      CalendarEventRepository.findByStartInRange(lookbackStart, to),
-      LessonBlockRepository.findAll(),
-      LessonRepository.findAll({ teacherId: myInstructorId, from, to }),
-      InstructorRepository.findAll(),
-      StudentLessonScheduleRepository.findAll({
-        teacherId: myInstructorId,
-        status: 'active',
-      }),
-      StudentRepository.findAll(),
-    ]);
+  // Lapsed is judged from today, not from the week being looked at: it is about
+  // whether the family is still coming.
+  const lapsedSince = new Date(now.getTime() - LAPSED_AFTER_WEEKS * 7 * DAY_MS);
+  const [
+    events,
+    allBlocks,
+    lessons,
+    recentLessons,
+    instructors,
+    schedules,
+    students,
+  ] = await Promise.all([
+    CalendarEventRepository.findByStartInRange(lookbackStart, to),
+    LessonBlockRepository.findAll(),
+    LessonRepository.findAll({ teacherId: myInstructorId, from, to }),
+    LessonRepository.findAll({ teacherId: myInstructorId, from: lapsedSince }),
+    InstructorRepository.findAll(),
+    StudentLessonScheduleRepository.findAll({
+      teacherId: myInstructorId,
+      status: 'active',
+    }),
+    StudentRepository.findAll(),
+  ]);
   const studentNameById = new Map(students.map((s) => [s.id, s.name]));
   const studentByRef = new Map<string, { id: string; name: string }>();
   for (const lesson of lessons) {
@@ -393,6 +438,7 @@ export async function getMyWeek(
       schedules,
       myInstructorId,
       studentNameById,
+      studentsWithRecentLessons(recentLessons, lapsedSince),
     ),
     blocks: myStandingBlocks.map(toMyWeekBlock),
     otherBlocks,
