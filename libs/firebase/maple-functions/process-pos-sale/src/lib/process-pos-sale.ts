@@ -17,8 +17,9 @@
  *  4. Dedup: skip web-originated orders (referenceId → existing registration)
  *     and orders already turned into a registration (squareOrderId).
  *  5. For each order line item that maps to a class variation, create a
- *     `source:'pos'` registration. When the sale carried no customer email,
- *     queue an admin alert so staff can collect it. A line item that matches a
+ *     `source:'pos'` registration and email the buyer their confirmation.
+ *     When the sale carried no customer email, queue an admin alert so staff
+ *     can collect it. A line item that matches a
  *     configured lesson catalog item is instead attributed to a student —
  *     automatically when the customer email maps to exactly one student, else
  *     captured in the POS-lesson review queue for a human (legacy #628).
@@ -45,6 +46,10 @@ import {
   SQUARE_SECRET_NAMES,
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
+import {
+  generateConfirmationNumber,
+  queueRegistrationConfirmation,
+} from '@maple/firebase/functions';
 import { calculateTax, isGiftCertificateLineItem } from '@maple/ts/domain';
 
 const squareSecretParams = SQUARE_SECRET_NAMES.map((name) => defineSecret(name));
@@ -212,9 +217,8 @@ export const processPosSale = onDocumentWritten(
             // capacity, so no re-check is needed there. The class capacity is
             // effectively static, so it's read outside the transaction.
             const wasCancelled = webReg.status === 'cancelled';
-            const capacity = wasCancelled
-              ? (await ClassRepository.findById(webReg.classId))?.capacity ?? 0
-              : 0;
+            const webClass = await ClassRepository.findById(webReg.classId);
+            const capacity = wasCancelled ? webClass?.capacity ?? 0 : 0;
             const regQty = webReg.quantity || 1;
 
             const regRef = RegistrationRepository.getDocRef(webReg.id);
@@ -260,9 +264,30 @@ export const processPosSale = onDocumentWritten(
                 },
               });
             }
-            // TODO(follow-up): rich confirmation email + inline-agreement
-            // processing for full parity with the inline card flow. Square
-            // already emails the buyer its own payment receipt meanwhile.
+
+            // The buyer's confirmation, the same mail the card checkout sends.
+            // Only the run that flipped the registration sends it: a retry
+            // reads 'already'. The mail's fixed id covers a race between two.
+            if (
+              (outcome === 'confirmed' || outcome === 'overbooked') &&
+              webClass
+            ) {
+              await queueRegistrationConfirmation({
+                idempotencyKey: webReg.id,
+                classEntity: webClass,
+                customerName: webReg.customerName,
+                customerEmail: webReg.customerEmail,
+                quantity: regQty,
+                confirmationNumber: webReg.confirmationNumber ?? webReg.id,
+                slotStart: webReg.slotStart,
+                additionalAttendees: webReg.additionalAttendees,
+                subtotalCents: webReg.subtotalCents,
+                taxRatePercent: webReg.taxRatePercent,
+                taxAmountCents: webReg.taxAmountCents,
+                amountPaidCents: webReg.pricePaidCents,
+                receiptUrl: payment.receiptUrl,
+              });
+            }
           }
           await PosSaleRequestRepository.markProcessed(paymentId);
           return;
@@ -310,7 +335,7 @@ export const processPosSale = onDocumentWritten(
       let created = 0;
       let lessonsAttributed = 0;
       let lessonsPending = 0;
-      for (const lineItem of order.lineItems) {
+      for (const [lineIndex, lineItem] of order.lineItems.entries()) {
         // Selling a gift card is not a class, a lesson or merchandise: Square
         // holds the balance and the sale happens when the card is spent. Skip
         // it before any catalog lookup so it can never be mistaken for one.
@@ -448,6 +473,7 @@ export const processPosSale = onDocumentWritten(
         const pricePaidCents =
           lineItem.totalCents ?? subtotalCents + taxAmountCents;
 
+        const confirmationNumber = generateConfirmationNumber();
         await RegistrationRepository.create({
           classId: classEntity.id,
           customerEmail: customerEmail ?? '',
@@ -462,8 +488,27 @@ export const processPosSale = onDocumentWritten(
           squareOrderId: orderId,
           squarePaymentId: paymentId,
           squareReceiptUrl: payment.receiptUrl,
+          confirmationNumber,
         });
         created++;
+
+        // The buyer's confirmation, the same mail a web checkout sends. Keyed
+        // on the payment and line, so a re-run of this sale can't send twice.
+        if (customerEmail) {
+          await queueRegistrationConfirmation({
+            idempotencyKey: `pos-${paymentId}-${lineIndex}`,
+            classEntity,
+            customerName,
+            customerEmail,
+            quantity,
+            confirmationNumber,
+            subtotalCents,
+            taxRatePercent,
+            taxAmountCents,
+            amountPaidCents: pricePaidCents,
+            receiptUrl: payment.receiptUrl,
+          });
+        }
 
         // No email on the sale → the attendee can't get a confirmation or
         // reminders. Alert the admin so they can collect it in person / by

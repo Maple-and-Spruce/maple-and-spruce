@@ -132,6 +132,17 @@ export {
   type InlineAgreementSigner,
 } from './inline-agreements.utility';
 
+// The customer's class confirmation email (card, hosted-checkout and POS paths)
+export {
+  queueRegistrationConfirmation,
+  type RegistrationConfirmationInput,
+  type RegistrationConfirmationResult,
+} from './registration-confirmation.utility';
+export {
+  confirmationCalendarAttachments,
+  type MailAttachment,
+} from './calendar-attachment.utility';
+
 // Per-family calendar subscription utilities
 export {
   FAMILY_CALENDAR_FEED_PATH_PREFIX,

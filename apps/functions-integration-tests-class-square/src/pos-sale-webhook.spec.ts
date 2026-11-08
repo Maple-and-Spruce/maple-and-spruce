@@ -7,8 +7,8 @@
  *   emulator) verifies the HMAC and enqueues `posSaleRequests/{paymentId}`  →
  *   the `processPosSale` Firestore trigger fires, fetches payment/order/customer
  *   from the Square mock (redirected via SQUARE_BASE_URL)  →  creates a
- *   `source:'pos'` registration (and, when the sale carried no email, queues an
- *   admin `mail` alert).
+ *   `source:'pos'` registration and emails the buyer their confirmation (or,
+ *   when the sale carried no email, queues an admin `mail` alert).
  *
  * We assert exclusively via Firestore (the backbone — a `source:'pos'`
  * registration can only exist if the whole two-hop chain ran), plus the mock's
@@ -206,6 +206,22 @@ async function listNoEmailAlerts(): Promise<
   });
 }
 
+/** The buyer's `registration-confirmation` mails sent to `to`. */
+async function listConfirmationsTo(
+  to: string,
+): Promise<Array<{ id: string; data: Record<string, unknown> }>> {
+  const mail = await listFirestoreDocs('mail');
+  return mail.filter((doc) => {
+    const template = doc.data['template'] as
+      | Record<string, unknown>
+      | undefined;
+    return (
+      doc.data['to'] === to &&
+      template?.['name'] === 'registration-confirmation'
+    );
+  });
+}
+
 const CLASS_NAME = 'Integration POS Pottery';
 const VARIATION_ID = 'pos-var-1';
 const ITEM_ID = 'pos-item-1';
@@ -313,8 +329,18 @@ describe('POS class sale (squareWebhook → processPosSale, emulator + Square mo
     expect(reg['taxAmountCents']).toBe(210);
     expect(reg['pricePaidCents']).toBe(3710);
 
-    // Buyer had an email → no admin alert.
+    // Buyer had an email → no admin alert, and their own confirmation.
     expect(await listNoEmailAlerts()).toHaveLength(0);
+    const confirmations = await pollUntil(
+      () => listConfirmationsTo('buyer@example.com'),
+      (docs) => docs.length > 0,
+    );
+    expect(confirmations).toHaveLength(1);
+    const template = confirmations[0].data['template'] as {
+      data: Record<string, unknown>;
+    };
+    expect(template.data['confirmationNumber']).toBe(reg['confirmationNumber']);
+    expect(template.data['amountPaid']).toBe('$37.10');
   });
 
   it('B: creates a placeholder registration and queues an admin alert when the sale has no email', async () => {
@@ -524,6 +550,45 @@ describe('POS class sale (squareWebhook → processPosSale, emulator + Square mo
     expect(after.data?.status).toBe('confirmed');
     expect(after.data?.confirmation?.confirmationNumber).toBe(
       link.data?.confirmationNumber,
+    );
+
+    // 5. The buyer gets the same confirmation email a card checkout sends,
+    // with the class as an .ics.
+    const confirmations = await pollUntil(
+      () => listConfirmationsTo('hosted-buyer@example.com'),
+      (docs) => docs.length > 0,
+    );
+    expect(confirmations).toHaveLength(1);
+    expect(confirmations[0].id).toBe(
+      `registration-confirmation-${registrationId}`,
+    );
+    const mail = confirmations[0].data as {
+      template: { data: Record<string, unknown> };
+      message?: { attachments?: Array<Record<string, string>> };
+    };
+    expect(mail.template.data['confirmationNumber']).toBe(
+      link.data?.confirmationNumber,
+    );
+    expect(mail.template.data['className']).toBe(CLASS_NAME);
+    const [ics] = mail.message?.attachments ?? [];
+    expect(ics?.filename).toBe('class.ics');
+    expect(ics?.content).toContain('BEGIN:VEVENT');
+
+    // 6. Square retries the webhook, and the worker runs the sale again from
+    // scratch (the request doc rewritten without `processedAt`). Still one.
+    const retry = await postWebhook(paymentUpdatedEvent(paymentId, orderId));
+    expect(retry.status).toBe(200);
+    await setFirestoreDoc('posSaleRequests', paymentId, {
+      paymentId,
+      orderId,
+    });
+    await pollUntil(
+      () => getFirestoreDoc('posSaleRequests', paymentId),
+      (req) => Boolean(req?.processedAt),
+    );
+    await waitForTrigger(3000);
+    expect(await listConfirmationsTo('hosted-buyer@example.com')).toHaveLength(
+      1,
     );
   });
 });

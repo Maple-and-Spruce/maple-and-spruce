@@ -14,7 +14,7 @@
  * 9. Validate required agreement signatures (if any) — before payment
  * 10. Process required agreements (upload signatures, create records) — after payment
  * 11. Auto-attach deferred agreement/waiver requests for matching class category
- * 12. Write to `mail` collection for confirmation email (with waiver link if applicable)
+ * 12. Queue the confirmation email (shared helper; waiver link if applicable)
  * 13. Return registration + confirmation number
  *
  * Deployed to us-east4 via CI/CD pipeline.
@@ -22,7 +22,7 @@
 import {
   Functions,
   paymentThrottles,
-  isE2ETestEmail,
+  queueRegistrationConfirmation,
   reserveClassRegistration,
   processInlineAgreements,
 } from '@maple/firebase/functions';
@@ -31,7 +31,6 @@ import {
   RegistrationRepository,
   AgreementTemplateRepository,
   AgreementRequestRepository,
-  getDb,
 } from '@maple/firebase/database';
 import {
   Square,
@@ -39,12 +38,7 @@ import {
   SQUARE_STRING_NAMES,
   PaymentError,
 } from '@maple/firebase/square';
-import {
-  formatPrivateHour,
-  formatSessions,
-  isPrivateHoursClass,
-  lineItemName,
-} from '@maple/ts/domain';
+import { lineItemName } from '@maple/ts/domain';
 import type {
   CreateRegistrationRequest,
   CreateRegistrationResponse,
@@ -59,10 +53,6 @@ import {
   readUsableGiftCard,
   type UsableGiftCard,
 } from './gift-card-payment';
-import {
-  confirmationCalendarAttachments,
-  type MailAttachment,
-} from './calendar-attachment';
 
 /**
  * Generate a referral discount code shared via the confirmation email.
@@ -134,7 +124,6 @@ export const createRegistration = Functions.endpoint
         userAgent: context.userAgent,
       });
 
-      const db = getDb();
       const registrationDocRef = RegistrationRepository.getDocRef(registrationId);
 
       // 6. Create Square Order and process payment
@@ -438,164 +427,41 @@ export const createRegistration = Functions.endpoint
         }
       }
 
-      // 10. Write to mail collection for confirmation emails.
-      // The registration-e2e Pay-flow specs run against the deployed dev
-      // project, whose Send Email extension delivers via real Gmail SMTP.
-      // Test recipients use a non-routable `.test` TLD, so without this
-      // guard every post-merge run produces a real NXDOMAIN bounce back
-      // to the configured From address.
-      const skipMail = isE2ETestEmail(data.customerEmail);
-      if (skipMail) {
-        console.log(
-          `Skipping confirmation email queue for E2E test recipient ${data.customerEmail}`
-        );
-      }
-      // What was actually paid, and how, for the email (#301).
-      const amountPaidCents = giftCardFields?.pricePaidCents ?? pricePaidCents;
-      const taxPaidCents = giftCardFields?.taxAmountCents ?? taxAmountCents;
-      if (!skipMail) try {
-        const formatCurrency = (cents: number): string =>
-          `$${(cents / 100).toFixed(2)}`;
-
-        const classDate = (() => {
-          // A private hour: the one hour this group booked, not every hour.
-          if (data.slotStart && isPrivateHoursClass(classEntity)) {
-            return formatPrivateHour(data.slotStart, classEntity.durationMinutes);
-          }
-          const { dateDisplay, timeDisplay } = formatSessions(
-            classEntity.sessions,
-            'America/New_York'
-          );
-          return timeDisplay && timeDisplay !== 'Varies'
-            ? `${dateDisplay} \u00B7 ${timeDisplay}`
-            : dateDisplay;
-        })();
-        const classDuration =
-          classEntity.durationMinutes >= 60
-            ? `${Math.floor(classEntity.durationMinutes / 60)} hour${Math.floor(classEntity.durationMinutes / 60) > 1 ? 's' : ''}${classEntity.durationMinutes % 60 ? ` ${classEntity.durationMinutes % 60} min` : ''}`
-            : `${classEntity.durationMinutes} minutes`;
-        const classLocation = classEntity.location || 'Maple & Spruce';
-
-        // Every session as an .ics, so the mail client offers "Add to
-        // Calendar" whatever browser the buyer checked out in. A failure here
-        // must not cost the buyer their confirmation email.
-        let calendarAttachments: MailAttachment[] = [];
-        try {
-          calendarAttachments = confirmationCalendarAttachments(
-            classEntity,
-            confirmationNumber,
-            data.slotStart
-          );
-        } catch (calendarError) {
-          console.error('Failed to build confirmation .ics:', calendarError);
-        }
-        const calendarMessage =
-          calendarAttachments.length > 0
-            ? { message: { attachments: calendarAttachments } }
-            : {};
-
-        // Partition attendees: those with email get their own confirmation,
-        // those without become a "remind your N friends" prompt to the
-        // registrant so they aren't left wondering how their friend hears about it.
-        const attendeesWithEmail = additionalAttendees.filter(
-          (a) => a.email && a.email.trim().length > 0
-        );
-        const extrasWithoutEmailCount =
-          additionalAttendees.length - attendeesWithEmail.length;
-
-        // Full roster shown in the registrant's confirmation: primary
-        // purchaser first, then each additional attendee they entered.
-        const attendees = [
-          { name: data.customerName, email: data.customerEmail },
-          ...additionalAttendees
-            .map((a) => ({
-              name: a.name?.trim() || undefined,
-              email: a.email?.trim() || undefined,
-            }))
-            .filter((a) => a.name || a.email),
-        ];
-
-        await db.collection('mail').add({
-          to: data.customerEmail,
-          ...calendarMessage,
-          template: {
-            name: 'registration-confirmation',
-            data: {
-              customerName: data.customerName,
-              className: classEntity.name,
-              classDate,
-              classDuration,
-              classLocation,
-              confirmationNumber,
-              subtotal: formatCurrency(subtotalCents),
-              taxRate: taxRatePercent,
-              taxAmount: formatCurrency(taxPaidCents),
-              amountPaid: formatCurrency(amountPaidCents),
-              // Gift card checkout (#301): last 4 only, never the full number.
-              ...(giftCardFields && {
-                giftCardLast4: giftCardFields.giftCardLast4,
-                giftCardPaid: formatCurrency(giftCardFields.giftCardPaidCents),
-                cardPaid:
-                  giftCardFields.cardPaidCents > 0
-                    ? formatCurrency(giftCardFields.cardPaidCents)
-                    : undefined,
-                classCertificateCover: giftCardFields.classCertificateCoverCents
-                  ? formatCurrency(giftCardFields.classCertificateCoverCents)
-                  : undefined,
-              }),
-              quantity: data.quantity,
-              receiptUrl: squareReceiptUrl?.includes('squareupsandbox.com')
-                ? undefined
-                : squareReceiptUrl,
-              materialsIncluded: classEntity.materialsIncluded,
-              whatToBring: classEntity.whatToBring,
-              agreementsSigned: agreementsSigned || undefined,
-              waiverUrl,
-              referralCode,
-              referralExpires: referralExpiresFormatted,
-              referralPercent: classEntity.referralDiscount?.percent,
-              extrasWithoutEmailCount:
-                extrasWithoutEmailCount > 0
-                  ? extrasWithoutEmailCount
-                  : undefined,
-              extrasWithoutEmailNoun:
-                extrasWithoutEmailCount === 1 ? 'friend' : 'friends',
-              attendees,
-            },
-          },
-        });
-
-        // Per-attendee confirmation emails (class details only, no payment).
-        for (const attendee of attendeesWithEmail) {
-          try {
-            await db.collection('mail').add({
-              to: attendee.email,
-              ...calendarMessage,
-              template: {
-                name: 'registration-confirmation-attendee',
-                data: {
-                  attendeeName: attendee.name?.trim() || undefined,
-                  registrantName: data.customerName,
-                  className: classEntity.name,
-                  classDate,
-                  classDuration,
-                  classLocation,
-                  materialsIncluded: classEntity.materialsIncluded,
-                  whatToBring: classEntity.whatToBring,
-                },
-              },
-            });
-          } catch (attendeeEmailError) {
-            console.error(
-              `Failed to queue attendee confirmation email for ${attendee.email}:`,
-              attendeeEmailError
-            );
-          }
-        }
-      } catch (emailError) {
-        // Don't fail the registration if email fails
-        console.error('Failed to queue confirmation email:', emailError);
-      }
+      // 10. Confirmation emails: the registrant's, plus one per additional
+      // attendee with an address. Shared with the hosted-checkout and POS
+      // paths so every buyer gets the same mail; never throws.
+      await queueRegistrationConfirmation({
+        idempotencyKey: registrationDocRef.id,
+        classEntity,
+        customerName: data.customerName,
+        customerEmail: data.customerEmail,
+        quantity: data.quantity,
+        confirmationNumber,
+        slotStart: data.slotStart,
+        additionalAttendees,
+        subtotalCents,
+        taxRatePercent,
+        // What was actually paid, and how (#301).
+        taxAmountCents: giftCardFields?.taxAmountCents ?? taxAmountCents,
+        amountPaidCents: giftCardFields?.pricePaidCents ?? pricePaidCents,
+        receiptUrl: squareReceiptUrl,
+        giftCard: giftCardFields && {
+          last4: giftCardFields.giftCardLast4,
+          paidCents: giftCardFields.giftCardPaidCents,
+          cardPaidCents: giftCardFields.cardPaidCents,
+          classCertificateCoverCents: giftCardFields.classCertificateCoverCents,
+        },
+        agreementsSigned,
+        waiverUrl,
+        referral:
+          referralCode && referralExpiresFormatted && classEntity.referralDiscount
+            ? {
+                code: referralCode,
+                expires: referralExpiresFormatted,
+                percent: classEntity.referralDiscount.percent,
+              }
+            : undefined,
+      });
 
       // 11. Fetch and return the final registration
       const registration = await RegistrationRepository.findById(
