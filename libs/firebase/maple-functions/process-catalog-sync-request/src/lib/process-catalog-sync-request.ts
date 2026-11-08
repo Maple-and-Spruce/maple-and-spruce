@@ -35,6 +35,7 @@ import {
   SQUARE_SECRET_NAMES,
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
+import { isGiftCertificateItemName } from '@maple/ts/domain';
 
 const squareSecretParams = SQUARE_SECRET_NAMES.map((name) => defineSecret(name));
 const squareStringParams = SQUARE_STRING_NAMES.map((name) => defineString(name));
@@ -126,6 +127,16 @@ async function runCatalogSync(square: Square): Promise<SyncSummary> {
     }
 
     const itemData = catalogObject.itemData;
+
+    // The "Gift certificate" register item (#314) is gift card money, not a
+    // product: importing it would put a draft Product in the admin waiting for
+    // an artist. It is made by hand in the Square Dashboard, so it is known by
+    // its name, not by an id we hold.
+    if (isGiftCertificateItemName(itemData?.name)) {
+      skipped++;
+      continue;
+    }
+
     const variation = itemData?.variations?.[0];
     const variationData = (variation as {
       itemVariationData?: {

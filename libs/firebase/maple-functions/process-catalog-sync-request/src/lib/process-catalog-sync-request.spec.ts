@@ -290,6 +290,63 @@ describe('processCatalogSyncRequest — catalog sync correctness', () => {
     );
   });
 
+  it('never imports the "Gift certificate" register item as a product (#314)', async () => {
+    // Katie makes this item by hand in the Square Dashboard, with a variable
+    // price (no priceMoney) and no tax. It sells gift card money, so it must
+    // not become a draft Product waiting for an artist.
+    mocks.listItems.mockResolvedValue([
+      {
+        id: 'ITEM_GIFT_CERT',
+        type: 'ITEM',
+        version: 1,
+        itemData: {
+          name: 'Gift certificate',
+          variations: [
+            {
+              id: 'VAR_GIFT_CERT',
+              itemVariationData: { pricingType: 'VARIABLE_PRICING' },
+            },
+          ],
+        },
+      },
+      {
+        id: 'ITEM_GIFT_CERT_CAPS',
+        type: 'ITEM',
+        version: 1,
+        itemData: {
+          name: 'Gift Certificate',
+          variations: [{ id: 'VAR_GIFT_CERT_CAPS', itemVariationData: {} }],
+        },
+      },
+      {
+        id: 'ITEM_REAL',
+        type: 'ITEM',
+        version: 1,
+        itemData: {
+          name: 'Real Product',
+          variations: [
+            {
+              id: 'VAR_REAL',
+              itemVariationData: { sku: 'R', priceMoney: { amount: 200n } },
+            },
+          ],
+        },
+      },
+    ]);
+    mocks.createProduct.mockResolvedValue({ id: 'prod-real' });
+
+    await handler(makeEvent({ requestedAt: new Date(), running: false }));
+
+    expect(mocks.createProduct).toHaveBeenCalledTimes(1);
+    expect(mocks.createProduct).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Real Product' }),
+      expect.objectContaining({ squareItemId: 'ITEM_REAL' })
+    );
+    expect(mocks.markCompleted).toHaveBeenCalledWith(
+      expect.stringContaining('created 1, skipped 2')
+    );
+  });
+
   it('skips non-ITEM catalog objects', async () => {
     mocks.listItems.mockResolvedValue([
       { id: 'CAT_1', type: 'CATEGORY' },

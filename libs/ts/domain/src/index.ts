@@ -93,6 +93,7 @@ export * from './lib/gift-card';
 export * from './lib/gift-card-redemption';
 export * from './lib/gift-card-purchase';
 export * from './lib/gift-card-admin';
+export * from './lib/gift-certificate-item';
 
 // User & role administration
 export * from './lib/app-user';

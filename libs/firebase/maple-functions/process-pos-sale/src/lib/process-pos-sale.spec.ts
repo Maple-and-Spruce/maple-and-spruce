@@ -131,7 +131,12 @@ vi.mock('@maple/firebase/square', () => ({
   SQUARE_STRING_NAMES: ['SQUARE_LOCATION_ID'] as const,
 }));
 
-vi.mock('@maple/ts/domain', () => ({
+vi.mock('@maple/ts/domain', async (importOriginal) => ({
+  // The real gift certificate name check (#314), so the spec proves the
+  // worker's actual matching rule rather than a stand-in.
+  isGiftCertificateLineItem: (
+    await importOriginal<typeof import('@maple/ts/domain')>()
+  ).isGiftCertificateLineItem,
   calculateTax: (subtotalCents: number, taxRatePercent: number) => {
     const taxAmountCents = Math.round(subtotalCents * (taxRatePercent / 100));
     return { taxAmountCents, totalCents: subtotalCents + taxAmountCents };
@@ -903,6 +908,100 @@ describe('processPosSale — gift cards', () => {
         source: 'pos',
         status: 'confirmed',
         squarePaymentId: 'PAY-1',
+        subtotalCents: 4500,
+        pricePaidCents: 4770,
+      })
+    );
+  });
+});
+
+describe('processPosSale — gift certificates (#314)', () => {
+  // A printed, pre-loaded gift certificate is sold by ringing up a hand-made
+  // "Gift certificate" catalog item with a typed (variable) price and no tax.
+  // That money loads a gift card: it is never a class, a lesson or an
+  // artist's sale. Its catalog id maps to nothing of ours.
+  const certificateLine = {
+    catalogObjectId: 'VAR_GIFT_CERTIFICATE',
+    itemType: 'ITEM',
+    name: 'Gift certificate',
+    quantity: 1,
+    basePriceCents: 7500,
+    grossSalesCents: 7500,
+    totalTaxCents: 0,
+    totalCents: 7500,
+  };
+
+  function expectNothingRecorded(): void {
+    expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.attrCapture).not.toHaveBeenCalled();
+    expect(mocks.settleOrCreatePosLessonInvoice).not.toHaveBeenCalled();
+    expect(mocks.findByPrimaryContactEmail).not.toHaveBeenCalled();
+    expect(mocks.mailAdd).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  }
+
+  it('ignores an unmapped "Gift certificate" catalog item', async () => {
+    mocks.findBySquareVariationId.mockResolvedValue(undefined);
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [certificateLine],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expectNothingRecorded();
+  });
+
+  it('never treats it as a lesson or class, even if its id were configured as one', async () => {
+    // Guards a misconfiguration: the name check runs before any catalog lookup.
+    mocks.getLessonCatalogObjectIds.mockResolvedValue(['VAR_GIFT_CERTIFICATE']);
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [{ ...certificateLine, name: 'Gift Certificate' }],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.findBySquareVariationId).not.toHaveBeenCalled();
+    expectNothingRecorded();
+  });
+
+  it('ignores an ad hoc "Gift certificate" line with no catalog id', async () => {
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [
+        {
+          ...certificateLine,
+          catalogObjectId: undefined,
+          itemType: 'CUSTOM_AMOUNT',
+        },
+      ],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.findBySquareVariationId).not.toHaveBeenCalled();
+    expectNothingRecorded();
+  });
+
+  it('records only the class on a mixed order (certificate + class)', async () => {
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [
+        certificateLine,
+        { catalogObjectId: 'VAR_A', name: 'Pottery 101', quantity: 1 },
+      ],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.findBySquareVariationId).toHaveBeenCalledTimes(1);
+    expect(mocks.findBySquareVariationId).toHaveBeenCalledWith('VAR_A');
+    expect(mocks.createRegistration).toHaveBeenCalledTimes(1);
+    expect(mocks.createRegistration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        classId: 'class-1',
+        // Only the class line's money, never the certificate's $75.
         subtotalCents: 4500,
         pricePaidCents: 4770,
       })

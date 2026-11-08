@@ -45,7 +45,7 @@ import {
   SQUARE_SECRET_NAMES,
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
-import { calculateTax } from '@maple/ts/domain';
+import { calculateTax, isGiftCertificateLineItem } from '@maple/ts/domain';
 
 const squareSecretParams = SQUARE_SECRET_NAMES.map((name) => defineSecret(name));
 const squareStringParams = SQUARE_STRING_NAMES.map((name) => defineString(name));
@@ -317,6 +317,10 @@ export const processPosSale = onDocumentWritten(
         // (Spending a gift card is a payment source, not a line item, so an
         // order PAID with a gift card is processed like any other.)
         if (lineItem.itemType === 'GIFT_CARD') continue;
+        // Same for the "Gift certificate" register item (#314): the money
+        // loads a printed, pre-loaded gift card, so it is never a class, a
+        // lesson or an artist's sale, whether or not it carries a catalog id.
+        if (isGiftCertificateLineItem(lineItem)) continue;
         if (!lineItem.catalogObjectId) continue;
 
         const classEntity = await ClassRepository.findBySquareVariationId(
