@@ -416,6 +416,15 @@ Square SDK integration for payments, catalog management, and sync conflict resol
   month's totals, month boundary in Eastern time), `giftCards/getGiftCard` (one card and its
   full history), `giftCards/revealGiftCardCode` (the full code for a printed certificate;
   each call logs `{"event":"gift_card_code_revealed"}` with the caller's uid, never the code).
+- `giftCards/previewGiftCardForClass` (#301) — the router's one **public** route (allowlisted
+  in `tools/check-callable-roles.ts`), App Check `enforce`, throttled per IP with
+  `codeLookupThrottles`. Reads the card behind a Web Payments SDK gift card token from Square
+  and prices the class with `priceClassOrder` (the reservation's own pricing), returning the
+  last 4, balance, class-certificate cover and what is left to pay. Charges nothing. Called by
+  the registration widget only when its `giftCardsEnabled` Webflow prop is `show`.
+- `createRegistration` takes an optional `giftCardNonce` (#301): gift card payment authorized
+  first, a card payment for the rest, both completed with `orders.pay`; any failure cancels
+  what was authorized. `cancelRegistration` refunds each share to where it came from.
 
 ### Square webhook
 - `squareWebhook` — HTTP endpoint _(memory: 512MiB, concurrency: 10)_. For `catalog.version.updated` events, the handler just bumps the singleton `catalogSyncRequests/pending` doc and acks 200 within Square's 10-second delivery timeout; the actual catalog re-sync runs in `processCatalogSyncRequest`. For `payment.created` / `payment.updated` events with a `COMPLETED` payment, it enqueues a `posSaleRequests/{paymentId}` doc (stays lean — no Square SDK) and returns; `processPosSale` does the work. Inventory and invoice events run inline (fast).

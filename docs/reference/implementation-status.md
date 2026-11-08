@@ -217,7 +217,7 @@ with the code from the admin.
 | Register gift card sales skipped by POS capture | PR open | #298 |
 | Webflow `/gift-cards` page | Not started (Webflow) | #299 |
 | Own buy page with class certificates | Not started | #300 |
-| Pay for classes with a gift card, 10% class-certificate cushion | Not started | #301 |
+| Pay for classes with a gift card, 10% class-certificate cushion | PR open (dark launch: off until `giftCardsEnabled` is turned on in Webflow) | #301 |
 
 ## Phase 4: Music Lessons - legacy Epic #10
 
