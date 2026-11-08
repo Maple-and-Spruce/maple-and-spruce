@@ -140,6 +140,35 @@ export const Validation: Story = {
   },
 };
 
+/** A code the studio chooses: a bad one is caught before anything is sent. */
+export const CustomCode: Story = {
+  play: async ({ args }) => {
+    const canvas = await openDialog();
+    await userEvent.type(canvas.getByRole('textbox', { name: 'Amount' }), '5');
+    await userEvent.type(
+      canvas.getByRole('textbox', { name: 'Why is the studio giving it?' }),
+      'Register test of a word code'
+    );
+    const code = canvas.getByRole('textbox', { name: 'Custom code (optional)' });
+
+    await userEvent.type(code, '4111 1111');
+    await userEvent.click(canvas.getByRole('button', { name: 'Give gift card' }));
+    await expect(
+      await canvas.findByText('A number-only code cannot start with 2, 3, 4, 5 or 6')
+    ).toBeVisible();
+    await expect(args.onIssue).not.toHaveBeenCalled();
+
+    await userEvent.clear(code);
+    await userEvent.type(code, 'FERN REEL HARP 4821');
+    await userEvent.click(canvas.getByRole('button', { name: 'Give gift card' }));
+    await waitFor(() =>
+      expect(args.onIssue).toHaveBeenCalledWith(
+        expect.objectContaining({ amountCents: 500, code: 'FERN REEL HARP 4821' })
+      )
+    );
+  },
+};
+
 /** Square refused: the form stays filled in, with the reason shown. */
 export const ServerError: Story = {
   args: {

@@ -60,6 +60,7 @@ interface FormValues extends CertificateText {
   dollars: string;
   classCategoryId: string;
   reason: string;
+  code: string;
 }
 
 const EMPTY_FORM: FormValues = {
@@ -67,6 +68,7 @@ const EMPTY_FORM: FormValues = {
   dollars: '',
   classCategoryId: '',
   reason: '',
+  code: '',
   ...EMPTY_CERTIFICATE_TEXT,
 };
 
@@ -83,6 +85,7 @@ function toRequest(values: FormValues, idempotencyKey: string): IssueGiftCardReq
   const cents = parseWholeDollars(values.dollars);
   const common = {
     reason: values.reason.trim(),
+    code: values.code.trim() || undefined,
     recipientName: values.recipientName.trim() || undefined,
     fromName: values.fromName.trim() || undefined,
     message: values.message.trim() || undefined,
@@ -257,6 +260,19 @@ export function IssueGiftCardDialog({
             disabled={busy}
             required
             slotProps={{ htmlInput: { maxLength: ISSUED_GIFT_CARD_REASON_MAX_LENGTH } }}
+          />
+
+          <TextField
+            label="Custom code (optional)"
+            value={values.code}
+            onChange={(e) => set('code', e.target.value)}
+            error={Boolean(errors['code'])}
+            helperText={
+              errors['code'] ??
+              'Leave empty for a Square number. Or 8 to 20 letters and numbers, like FERN REEL HARP 4821.'
+            }
+            disabled={busy}
+            slotProps={{ htmlInput: { maxLength: 30, autoCapitalize: 'characters', spellCheck: false } }}
           />
 
           <CertificateTextFields

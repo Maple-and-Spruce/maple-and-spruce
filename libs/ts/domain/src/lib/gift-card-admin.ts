@@ -58,3 +58,26 @@ export function originalGiftCardValueCents(
   }
   return undefined;
 }
+
+/**
+ * A gift card code the studio chooses (#custom codes), e.g. "FERN REEL HARP
+ * 4821". Square takes 8 to 20 letters and digits for a card it did not
+ * number itself, unique on the account. Spaces and dashes are for people only.
+ */
+export function normalizeGiftCardCode(input: string): string {
+  return input.replace(/[\s-]+/g, '').toUpperCase();
+}
+
+/**
+ * Why a chosen code can't be used, or undefined if it can. A number-only code
+ * must not start like a bank card (2 to 6), which Square refuses.
+ */
+export function customGiftCardCodeProblem(input: string): string | undefined {
+  const code = normalizeGiftCardCode(input);
+  if (!/^[A-Z\d]+$/.test(code)) return 'Use only letters and numbers';
+  if (code.length < 8 || code.length > 20) return 'Use 8 to 20 letters and numbers';
+  if (/^\d+$/.test(code) && /^[2-6]/.test(code)) {
+    return 'A number-only code cannot start with 2, 3, 4, 5 or 6';
+  }
+  return undefined;
+}

@@ -128,11 +128,18 @@ export class GiftCardsService {
   async createDigitalGiftCard(input: {
     locationId: string;
     idempotencyKey: string;
+    /**
+     * A code the studio chose (8 to 20 letters and digits). Omit to let
+     * Square number the card.
+     */
+    gan?: string;
   }): Promise<{ id: string; gan: string; last4: string }> {
     const response = await this.client.giftCards.create({
       idempotencyKey: input.idempotencyKey,
       locationId: input.locationId,
-      giftCard: { type: 'DIGITAL' },
+      giftCard: input.gan
+        ? { type: 'DIGITAL', gan: input.gan, ganSource: 'OTHER' }
+        : { type: 'DIGITAL' },
     });
     throwIfGiftCardErrors(response.errors, 'create gift card');
     const card = response.giftCard;

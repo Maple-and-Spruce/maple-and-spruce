@@ -24,6 +24,9 @@ vi.mock('@maple/firebase/functions', () => ({
   throwNotFound: (entity: string, id: string) => {
     throw Object.assign(new Error(`${entity} with ID ${id} not found`), { code: 'not-found' });
   },
+  throwInvalidArgument: (message: string) => {
+    throw Object.assign(new Error(message), { code: 'invalid-argument' });
+  },
   throwFailedPrecondition: (message: string) => {
     throw Object.assign(new Error(message), { code: 'failed-precondition' });
   },
@@ -267,6 +270,33 @@ describe('issueGiftCard', () => {
     giftCardsService.activateGiftCardWithoutOrder.mockResolvedValue({ balanceCents: 2500 });
   });
 
+  it('uses a code the studio chose, without spaces or dashes and in capitals', async () => {
+    await issueGiftCard({ ...amountRequest, code: 'fern reel-harp 4821' }, context, secrets, strings);
+    expect(giftCardsService.createDigitalGiftCard).toHaveBeenCalledWith(
+      expect.objectContaining({ gan: 'FERNREELHARP4821' })
+    );
+  });
+
+  it("says when Square won't use a chosen code, and gives nothing", async () => {
+    giftCardsService.createDigitalGiftCard.mockRejectedValueOnce(
+      new Error('Square could not create gift card: A gift card with that GAN already exists.')
+    );
+    await expect(
+      issueGiftCard({ ...amountRequest, code: 'FERNREELHARP4821' }, context, secrets, strings)
+    ).rejects.toMatchObject({
+      code: 'invalid-argument',
+      message: expect.stringContaining('already exists'),
+    });
+    expect(giftCardsService.activateGiftCardWithoutOrder).not.toHaveBeenCalled();
+  });
+
+  it('refuses a malformed chosen code before touching Square', async () => {
+    await expect(
+      issueGiftCard({ ...amountRequest, code: '4111 1111' }, context, secrets, strings)
+    ).rejects.toBeTruthy();
+    expect(giftCardsService.createDigitalGiftCard).not.toHaveBeenCalled();
+  });
+
   it('derives stable Square keys and a short comp reference from the dialog key', () => {
     expect(issueGiftCardKeys('issue-test-0001')).toEqual(keys);
     expect(keys.referenceId).toMatch(/^comp-[0-9a-f]{12}$/);
@@ -281,6 +311,7 @@ describe('issueGiftCard', () => {
     expect(giftCardsService.createDigitalGiftCard).toHaveBeenCalledWith({
       locationId: 'LOC-1',
       idempotencyKey: keys.create,
+      gan: undefined,
     });
     expect(giftCardsService.activateGiftCardWithoutOrder).toHaveBeenCalledWith({
       giftCardId: 'gc-free',
