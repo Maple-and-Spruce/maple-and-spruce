@@ -1152,6 +1152,12 @@ Now:
 
 When a test involves dates, include a week that crosses Nov 1 2026 or Mar 14 2027.
 
+**Seeds.** A seeded future lesson at `now + N days` keeps the run's own clock time, so for
+part of every day it lands on some other student's weekly time and the server refuses a
+booking as a room clash (the Hope "Book 4 lessons" e2e failed every afternoon from 3:30 to
+4:30 PM Eastern). Put future lessons at a fixed studio wall-clock time (`studioTime` in
+`apps/maple-spruce-e2e/src/student-management-seed.ts`), and give each student its own slot.
+
 ---
 
 ## Testing Strategy
