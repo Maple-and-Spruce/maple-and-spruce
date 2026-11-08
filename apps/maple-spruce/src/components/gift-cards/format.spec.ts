@@ -4,6 +4,8 @@ import {
   formatGiftCardCode,
   formatGiftCardDate,
   formatGiftCardMoney,
+  newGiftCardRequestKey,
+  parseWholeDollars,
 } from './format';
 
 describe('gift card formatting', () => {
@@ -23,5 +25,21 @@ describe('gift card formatting', () => {
   it('groups a code in fours, as printed', () => {
     expect(formatGiftCardCode('7783320000004821')).toBe('7783 3200 0000 4821');
     expect(formatGiftCardCode('7783 3200 0000 4821')).toBe('7783 3200 0000 4821');
+  });
+
+  it('reads whole dollars as cents, and anything else as NaN', () => {
+    expect(parseWholeDollars('25')).toBe(2500);
+    expect(parseWholeDollars(' $25.00 ')).toBe(2500);
+    expect(parseWholeDollars('500')).toBe(50000);
+    expect(parseWholeDollars('25.50')).toBeNaN();
+    expect(parseWholeDollars('')).toBeNaN();
+    expect(parseWholeDollars('ten')).toBeNaN();
+    expect(parseWholeDollars('-5')).toBeNaN();
+  });
+
+  it('makes a new request key each time, in the shape the server accepts', () => {
+    const a = newGiftCardRequestKey();
+    expect(a).toMatch(/^[A-Za-z0-9-]{8,64}$/);
+    expect(newGiftCardRequestKey()).not.toBe(a);
   });
 });

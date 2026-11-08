@@ -5,3 +5,6 @@ export {
   GiftCardDetailDialog,
   type GiftCardDetail,
 } from './GiftCardDetailDialog';
+export { GiftCardCodeReveal } from './GiftCardCodeReveal';
+export { IssueGiftCardDialog } from './IssueGiftCardDialog';
+export { MarkClassCertificateDialog } from './MarkClassCertificateDialog';

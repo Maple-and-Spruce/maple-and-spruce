@@ -23,8 +23,9 @@ const SECTIONS: Section[] = [
     body: (
       <>
         Each card&apos;s balance, code and history live in Square. This page
-        reads them from Square each time it opens. Nothing here changes a card:
-        selling, adding money and refunds all happen in Square.
+        reads them from Square each time it opens. Selling, adding money and
+        refunds all happen in Square. The one card this page makes is a free
+        one (see below).
       </>
     ),
   },
@@ -62,9 +63,28 @@ const SECTIONS: Section[] = [
           Find the card below. The newest is at the top, or search by its last
           4 digits.
         </li>
+        <li>
+          If it is a gift for a class, open it and click{' '}
+          <strong>Make it a class certificate</strong>, then choose the class
+          type. That records which class it is for, worth what was put on it.
+          Nothing changes in Square.
+        </li>
         <li>Open it and click Show and copy code.</li>
         <li>Paste the code into the Canva certificate and print it.</li>
       </Box>
+    ),
+  },
+  {
+    title: 'Giving a card for free',
+    body: (
+      <>
+        For a raffle prize, a thank-you or a make-good, click{' '}
+        <strong>Issue a gift card</strong> at the top. Choose an amount, or a
+        class type and its value, and say why. Square makes the card with the
+        money on it, but nobody pays for it: when it is spent, the studio
+        covers it. Then click Show and copy code for the certificate. Each free
+        card is logged with who gave it and why.
+      </>
     ),
   },
   {

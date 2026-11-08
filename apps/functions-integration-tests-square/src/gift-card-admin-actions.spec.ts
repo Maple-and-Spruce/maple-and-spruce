@@ -33,6 +33,11 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 const SQUARE_MOCK = EMULATOR_CONFIG.squareMockServerUrl;
+
+/** The message the route answered with. */
+function errorMessage(result: { raw: unknown }): string {
+  return JSON.stringify(result.raw);
+}
 const CATEGORY_ID = 'gc-admin-pottery';
 
 type Recorded = { method: string; path: string; body: Record<string, unknown> };
@@ -275,7 +280,7 @@ describe('giftCards admin actions (#310)', () => {
       });
 
       expect(result.status).toBe(400);
-      expect(result.error).toContain('amountCents');
+      expect(errorMessage(result)).toContain('amountCents');
       expect(await mockGiftCards()).toHaveLength(0);
     });
 
@@ -300,7 +305,7 @@ describe('giftCards admin actions (#310)', () => {
       });
 
       expect(result.status).toBe(400);
-      expect(result.error).toContain('nothing was given');
+      expect(errorMessage(result)).toContain('nothing was given');
       const cards = await mockGiftCards();
       expect(cards[0]).toMatchObject({ state: 'PENDING' });
       expect(await getFirestoreDoc('giftCardPurchases', cards[0]['id'] as string)).toBeNull();
@@ -349,7 +354,7 @@ describe('giftCards admin actions (#310)', () => {
 
       const second = await mark({ giftCardId, classCategoryId: CATEGORY_ID });
       expect(second.status).toBe(400);
-      expect(second.error).toContain('already a $65 class certificate for Pottery');
+      expect(errorMessage(second)).toContain('already a $65 class certificate for Pottery');
     });
 
     it('refuses a card given free by the studio', async () => {
@@ -366,7 +371,7 @@ describe('giftCards admin actions (#310)', () => {
       });
 
       expect(result.status).toBe(400);
-      expect(result.error).toContain('given free by the studio');
+      expect(errorMessage(result)).toContain('given free by the studio');
     });
 
     it('refuses a card that was never loaded', async () => {
@@ -382,7 +387,7 @@ describe('giftCards admin actions (#310)', () => {
       });
 
       expect(result.status).toBe(400);
-      expect(result.error).toContain('Only an active card');
+      expect(errorMessage(result)).toContain('Only an active card');
       expect(await getFirestoreDoc('giftCardPurchases', card['id'] as string)).toBeNull();
     });
 

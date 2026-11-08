@@ -12,6 +12,10 @@ import type {
   GetGiftCardResponse,
   GetGiftCardsRequest,
   GetGiftCardsResponse,
+  IssueGiftCardRequest,
+  IssueGiftCardResponse,
+  MarkClassCertificateRequest,
+  MarkClassCertificateResponse,
   RevealGiftCardCodeRequest,
   RevealGiftCardCodeResponse,
 } from '@maple/ts/firebase/api-types';
@@ -67,9 +71,47 @@ export function useGiftCards() {
     return result.data.code;
   }, []);
 
+  /**
+   * Make a register-sold card a class certificate (#310). Writes our record
+   * only; nothing changes in Square.
+   */
+  const markClassCertificate = useCallback(
+    async (
+      request: MarkClassCertificateRequest
+    ): Promise<MarkClassCertificateResponse> => {
+      const fn = httpsCallableFromURL<
+        MarkClassCertificateRequest,
+        MarkClassCertificateResponse
+      >(getMapleFunctions(), routerCallableUrl('giftCards', 'markClassCertificate'));
+      const result = await fn(request);
+      return result.data;
+    },
+    []
+  );
+
+  /** Give a free card (#310): makes and loads a card in Square. */
+  const issueGiftCard = useCallback(
+    async (request: IssueGiftCardRequest): Promise<IssueGiftCardResponse> => {
+      const fn = httpsCallableFromURL<IssueGiftCardRequest, IssueGiftCardResponse>(
+        getMapleFunctions(),
+        routerCallableUrl('giftCards', 'issueGiftCard')
+      );
+      const result = await fn(request);
+      return result.data;
+    },
+    []
+  );
+
   useEffect(() => {
     fetchGiftCards();
   }, [fetchGiftCards]);
 
-  return { giftCardsState, fetchGiftCards, fetchGiftCard, revealGiftCardCode };
+  return {
+    giftCardsState,
+    fetchGiftCards,
+    fetchGiftCard,
+    revealGiftCardCode,
+    markClassCertificate,
+    issueGiftCard,
+  };
 }
