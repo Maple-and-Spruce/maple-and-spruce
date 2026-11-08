@@ -19,9 +19,10 @@
 9. [UI Component Patterns](#ui-component-patterns)
 10. [Validation Patterns](#validation-patterns)
 11. [Error Handling](#error-handling)
-12. [Testing Strategy](#testing-strategy)
-13. [Third-Party Services](#third-party-services)
-14. [Dependencies](#dependencies)
+12. [Dates and Clock Changes](#dates-and-clock-changes)
+13. [Testing Strategy](#testing-strategy)
+14. [Third-Party Services](#third-party-services)
+15. [Dependencies](#dependencies)
 
 ---
 
@@ -1120,6 +1121,36 @@ const handleSubmit = async (data: ArtistFormData) => {
     }
 };
 ```
+
+---
+
+## Dates and Clock Changes
+
+A calendar day is not always 24 hours. The studio is in America/New_York, so one Sunday a
+year is 25 hours long (fall back) and one is 23 (spring forward). Adding `24 * 60 * 60 * 1000`
+to a local midnight, or `7 * 24h` to a lesson time, is wrong on those days:
+
+- My Week labelled Monday "11/1" in the Nov 1 2026 week (#302).
+- A 4:00 PM weekly series was created at 3:00 PM after the fall-back (#304).
+
+| To do this | Use |
+|---|---|
+| Step calendar days in the viewer's local time (labels, week columns) | `addLocalDays`, `startOfLocalWeek` |
+| Same wall-clock time N weeks later, in the studio's timezone (lessons) | `addWeeksOnWallClock` |
+| Weekday / minutes of a moment in the studio's timezone | `weekdayIndexInZone`, `minutesOfDayInZone` |
+
+All of these are in `@maple/ts/domain`. A real duration ("3 days ago", "the last 7 days") is
+fine as milliseconds.
+
+**Gates.** CI's runner is UTC, which has no daylight saving, so none of this could fail there.
+Now:
+
+- the Unit Tests job runs the suite a second time with `TZ=America/New_York`;
+- Storybook play tests render in `America/New_York` (`vitest.storybook.config.ts`);
+- ESLint flags the 24-hour shortcut in browser code (`DAY_AS_24_HOURS` in `eslint.config.mjs`).
+  Disable it on the line with a reason when it really is a duration.
+
+When a test involves dates, include a week that crosses Nov 1 2026 or Mar 14 2027.
 
 ---
 
