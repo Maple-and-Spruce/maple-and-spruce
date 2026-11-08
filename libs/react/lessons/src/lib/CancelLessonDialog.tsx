@@ -35,7 +35,7 @@ import {
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { SCHEDULE_TIME_ZONE } from '@maple/ts/domain';
+import { SCHEDULE_TIME_ZONE, addWeeksOnWallClock } from '@maple/ts/domain';
 import type { Lesson } from '@maple/ts/domain';
 
 export type CancelLessonChoice = 'cancel' | 'reschedule' | 'virtual';
@@ -70,7 +70,6 @@ export interface CancelLessonDialogProps {
   onGoVirtual?: (lesson: Lesson) => void;
 }
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function submitLabel(choice: CancelLessonChoice, alreadyCancelled: boolean): string {
   if (choice === 'cancel') return 'Cancel lesson';
@@ -134,7 +133,8 @@ export function CancelLessonDialog({
     if (!lesson) return;
     setChoice(alreadyCancelled ? 'reschedule' : firstChoice);
     // Same time next week: the usual answer, and an easy one to adjust.
-    setNewTime(new Date(lesson.scheduledAt.getTime() + WEEK_MS));
+    // On the wall clock, so a lesson the week before a clock change keeps its time.
+    setNewTime(addWeeksOnWallClock(lesson.scheduledAt, 1));
   }, [lesson, alreadyCancelled, firstChoice]);
 
   if (!lesson) return null;

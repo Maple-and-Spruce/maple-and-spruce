@@ -27,6 +27,9 @@ export interface ListGiftCardActivitiesInput {
   endTime?: Date;
 }
 
+/** Square's default history window; just under a year to stay inside it. */
+const HISTORY_WINDOW_MS = 360 * 24 * 60 * 60 * 1000;
+
 export class GiftCardsService {
   constructor(private readonly client: SquareClient) {}
 
@@ -76,6 +79,43 @@ export class GiftCardsService {
     for await (const activity of page) {
       const entry = toGiftCardActivityEntry(activity);
       if (entry) out.push(entry);
+    }
+    return out;
+  }
+
+  /**
+   * One card's whole history, newest first.
+   *
+   * Square searches the last year when no time range is given, and rejected a
+   * start time on its own ("Time range provided is not valid") when we asked
+   * for history from the card's creation date. So a card under a year old is
+   * read with no range at all, the shape that always works, and an older card
+   * is read in one-year windows that each have both a start and an end, like
+   * the month totals query.
+   */
+  async listCardHistory(
+    giftCardId: string,
+    createdAt: string,
+    now: Date = new Date()
+  ): Promise<GiftCardActivityEntry[]> {
+    const created = Date.parse(createdAt);
+    if (!Number.isFinite(created) || now.getTime() - created < HISTORY_WINDOW_MS) {
+      return this.listActivities({ giftCardId });
+    }
+
+    const out: GiftCardActivityEntry[] = [];
+    let end = now.getTime();
+    while (end > created) {
+      const begin = Math.max(created - 1000, end - HISTORY_WINDOW_MS);
+      const window = await this.listActivities({
+        giftCardId,
+        beginTime: new Date(begin),
+        endTime: new Date(end),
+      });
+      for (const entry of window) {
+        if (!out.some((e) => e.id === entry.id)) out.push(entry);
+      }
+      end = begin - 1;
     }
     return out;
   }

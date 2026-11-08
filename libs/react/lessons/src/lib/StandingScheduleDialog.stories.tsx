@@ -463,3 +463,53 @@ export const NoBlocksKeepsTheCreateFirstMessage: Story = {
     expect(canvas.queryByText(/the block sets the day/i)).toBeNull();
   },
 };
+
+/**
+ * Katie's own words: "I want to change his lesson time to Thursday... thurs
+ * 4:30-5." There is no weekday field, so moving days means picking the
+ * Thursday block. Written as the task she came to do, not as a check of the
+ * design: the earlier stories all passed while she could not find the way.
+ */
+export const MovesAStudentToAnotherDay: Story = {
+  args: {
+    schedule: existing,
+    blocks: [
+      ...blocks,
+      {
+        id: 'block-thu',
+        teacherId: mockInstructor.id,
+        dayOfWeek: 4,
+        startMinutes: 15 * 60,
+        endMinutes: 18 * 60,
+        label: 'Thursday afternoons',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ],
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(await canvas.findByLabelText('Which block'));
+    await userEvent.click(
+      await canvas.findByRole('option', { name: /thursday/i }),
+    );
+
+    const time = canvas.getByLabelText(/start time/i);
+    await userEvent.clear(time);
+    await userEvent.type(time, '16:30');
+
+    expect(
+      await canvas.findByText(/every thursday at 4:30 pm/i),
+    ).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('button', { name: /save change/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledTimes(1);
+    });
+    const [input] = (args.onSubmit as ReturnType<typeof fn>).mock.calls[0];
+    expect(input.dayOfWeek).toBe(4);
+    expect(input.blockId).toBe('block-thu');
+    expect(input.startMinutes).toBe(16 * 60 + 30);
+  },
+};

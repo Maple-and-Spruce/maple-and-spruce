@@ -25,6 +25,7 @@ import {
   type Room,
   type RoomBusyWindow,
   type RoomScheduleDay,
+  addWeeksOnWallClock,
 } from '@maple/ts/domain';
 import { useRoomScheduleRange } from './useRoomScheduleRange';
 
@@ -32,7 +33,6 @@ import { useRoomScheduleRange } from './useRoomScheduleRange';
 // selected horizon so repeatedly clicking Next walks the whole year.
 const HORIZON_OPTIONS = [2, 4, 8, 12] as const;
 const DEFAULT_HORIZON_WEEKS = 4;
-const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
 /** "Jul 30 – Aug 27, 2026" — the span of the currently visible window. */
 export function formatWindowRange(start: Date, end: Date): string {
@@ -216,10 +216,8 @@ export function RoomScheduleAgenda({ room, bookHref }: RoomScheduleAgendaProps) 
   const [todayAnchor] = useState(() => new Date());
 
   const { start, end } = useMemo(() => {
-    const startDate = new Date(
-      todayAnchor.getTime() + offsetWeeks * MS_PER_WEEK
-    );
-    const endDate = new Date(startDate.getTime() + horizonWeeks * MS_PER_WEEK);
+    const startDate = addWeeksOnWallClock(todayAnchor, offsetWeeks);
+    const endDate = addWeeksOnWallClock(startDate, horizonWeeks);
     return { start: startDate, end: endDate };
   }, [todayAnchor, offsetWeeks, horizonWeeks]);
 

@@ -335,3 +335,63 @@ describe('toGiftCardActivityEntry', () => {
     ).toBeUndefined();
   });
 });
+
+describe('GiftCardsService.listCardHistory', () => {
+  const activity = (id: string) => ({
+    id,
+    type: 'ACTIVATE',
+    locationId: 'L1',
+    giftCardId: 'gc',
+    activateActivityDetails: { amountMoney: { amount: BigInt(2500) } },
+  });
+
+  let list: ReturnType<typeof vi.fn>;
+  let service: GiftCardsService;
+  beforeEach(() => {
+    list = vi.fn();
+    service = new GiftCardsService({
+      giftCards: { activities: { list } },
+    } as never);
+  });
+
+  it('reads a card under a year old with no time range, which Square always accepts', async () => {
+    list.mockResolvedValue(page([activity('a1')]));
+    const now = new Date('2026-11-08T20:00:00Z');
+
+    const entries = await service.listCardHistory('gc', '2026-11-08T19:00:00Z', now);
+
+    expect(list).toHaveBeenCalledTimes(1);
+    const req = list.mock.calls[0][0];
+    expect(req.giftCardId).toBe('gc');
+    expect(req.beginTime).toBeUndefined();
+    expect(req.endTime).toBeUndefined();
+    expect(entries.map((e) => e.id)).toEqual(['a1']);
+  });
+
+  it('reads an older card in windows that each have a start and an end, without duplicates', async () => {
+    list
+      .mockResolvedValueOnce(page([activity('a3'), activity('a2')]))
+      .mockResolvedValueOnce(page([activity('a2'), activity('a1')]));
+    const now = new Date('2026-11-08T20:00:00Z');
+
+    const entries = await service.listCardHistory('gc', '2025-06-01T00:00:00Z', now);
+
+    expect(list).toHaveBeenCalledTimes(2);
+    for (const [req] of list.mock.calls) {
+      expect(req.beginTime).toEqual(expect.any(String));
+      expect(req.endTime).toEqual(expect.any(String));
+      expect(Date.parse(req.beginTime)).toBeLessThan(Date.parse(req.endTime));
+    }
+    expect(list.mock.calls[0][0].endTime).toBe(now.toISOString());
+    expect(Date.parse(list.mock.calls[1][0].beginTime)).toBeLessThanOrEqual(
+      Date.parse('2025-06-01T00:00:00Z')
+    );
+    expect(entries.map((e) => e.id)).toEqual(['a3', 'a2', 'a1']);
+  });
+
+  it('falls back to no range when the creation date is missing', async () => {
+    list.mockResolvedValue(page([]));
+    await service.listCardHistory('gc', '');
+    expect(list.mock.calls[0][0].beginTime).toBeUndefined();
+  });
+});

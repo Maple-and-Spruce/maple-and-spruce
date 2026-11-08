@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const giftCardsService = {
   listGiftCards: vi.fn(),
   listActivities: vi.fn(),
+  listCardHistory: vi.fn(),
   getGiftCard: vi.fn(),
   getGiftCardCode: vi.fn(),
 };
@@ -80,20 +81,17 @@ describe('getGiftCards', () => {
 describe('getGiftCard', () => {
   it('reads the whole history back to when the card was made', async () => {
     giftCardsService.getGiftCard.mockResolvedValue(card);
-    giftCardsService.listActivities.mockResolvedValue([]);
+    giftCardsService.listCardHistory.mockResolvedValue([]);
 
     const result = await getGiftCard({ id: 'gc-1' }, {}, secrets, strings);
 
-    expect(giftCardsService.listActivities).toHaveBeenCalledWith({
-      giftCardId: 'gc-1',
-      beginTime: new Date('2026-11-02T15:00:00Z'),
-    });
+    expect(giftCardsService.listCardHistory).toHaveBeenCalledWith('gc-1', '2026-11-02T15:00:00Z');
     expect(result).toEqual({ card, activities: [] });
   });
 
   it('adds the online purchase record, with the class type for a certificate', async () => {
     giftCardsService.getGiftCard.mockResolvedValue(card);
-    giftCardsService.listActivities.mockResolvedValue([]);
+    giftCardsService.listCardHistory.mockResolvedValue([]);
     repos.GiftCardPurchaseRepository.findByGiftCardId.mockResolvedValue({
       giftCardId: 'gc-1',
       last4: '1111',
@@ -123,7 +121,7 @@ describe('getGiftCard', () => {
 
   it('leaves the purchase off when the record cannot be read', async () => {
     giftCardsService.getGiftCard.mockResolvedValue(card);
-    giftCardsService.listActivities.mockResolvedValue([]);
+    giftCardsService.listCardHistory.mockResolvedValue([]);
     repos.GiftCardPurchaseRepository.findByGiftCardId.mockRejectedValue(new Error('down'));
     const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
