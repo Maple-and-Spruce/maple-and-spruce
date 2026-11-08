@@ -18,7 +18,6 @@ import {
   ThemeProvider,
 } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PrintIcon from '@mui/icons-material/Print';
 import { httpsCallable } from 'firebase/functions';
 import { theme } from '@maple/react/theme';
@@ -55,6 +54,7 @@ import { readMetaAttribution } from './lib/meta-attribution';
 import { readGaAttribution } from './lib/ga-attribution';
 import { warmup } from './lib/warmup';
 import { scrollToConfirmation } from './lib/scroll-to-confirmation';
+import { AddToCalendarButton, AddToCalendarOptions } from './AddToCalendar';
 
 
 /**
@@ -101,57 +101,6 @@ function formatClassDateTime(isoString: string): string {
     hour: 'numeric',
     minute: '2-digit',
   });
-}
-
-/**
- * Pad a number to two digits for .ics date formatting.
- */
-function pad(n: number): string {
-  return n.toString().padStart(2, '0');
-}
-
-/**
- * Convert a Date to an .ics-compatible UTC timestamp (YYYYMMDDTHHMMSSZ).
- */
-function toIcsDate(date: Date): string {
-  return (
-    date.getUTCFullYear().toString() +
-    pad(date.getUTCMonth() + 1) +
-    pad(date.getUTCDate()) +
-    'T' +
-    pad(date.getUTCHours()) +
-    pad(date.getUTCMinutes()) +
-    pad(date.getUTCSeconds()) +
-    'Z'
-  );
-}
-
-/**
- * Generate a minimal .ics calendar file as a string.
- */
-function generateIcsFile(opts: {
-  startDate: string;
-  endDate: string;
-  summary: string;
-  location?: string;
-  description: string;
-}): string {
-  const start = toIcsDate(new Date(opts.startDate));
-  const end = toIcsDate(new Date(opts.endDate));
-  const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Maple & Spruce//Registration//EN',
-    'BEGIN:VEVENT',
-    `DTSTART:${start}`,
-    `DTEND:${end}`,
-    `SUMMARY:${opts.summary}`,
-    ...(opts.location ? [`LOCATION:${opts.location}`] : []),
-    `DESCRIPTION:${opts.description}`,
-    'END:VEVENT',
-    'END:VCALENDAR',
-  ];
-  return lines.join('\r\n');
 }
 
 /**
@@ -382,6 +331,7 @@ export function RegistrationWidget({
   const digitalWalletsEnabled = showDigitalWallets === 'show';
   const giftCardsOn = giftCardsEnabled === 'show';
   const [state, setState] = useState<WidgetState>({ status: 'loading' });
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const functions = useMemo(() => getWidgetFunctions(env), [env]);
 
@@ -880,34 +830,10 @@ export function RegistrationWidget({
                 mb: 3,
               }}
             >
-              <Button
-                variant="outlined"
-                color="primary"
-                startIcon={<CalendarTodayIcon />}
-                onClick={() => {
-                  const icsContent = generateIcsFile({
-                    startDate: state.classDate,
-                    endDate: state.classEndDate,
-                    summary: state.className,
-                    location:
-                      state.location ?? 'Maple & Spruce Folk Arts',
-                    description: `Class at Maple & Spruce Folk Arts. Confirmation: ${state.confirmationNumber}`,
-                  });
-                  const blob = new Blob([icsContent], {
-                    type: 'text/calendar;charset=utf-8',
-                  });
-                  const url = URL.createObjectURL(blob);
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.download = 'class.ics';
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  URL.revokeObjectURL(url);
-                }}
-              >
-                Add to Calendar
-              </Button>
+              <AddToCalendarButton
+                open={calendarOpen}
+                onToggle={() => setCalendarOpen((o) => !o)}
+              />
               <Button
                 variant="outlined"
                 color="primary"
@@ -917,6 +843,17 @@ export function RegistrationWidget({
                 Print
               </Button>
             </Box>
+            <AddToCalendarOptions
+              open={calendarOpen}
+              event={{
+                start: state.classDate,
+                end: state.classEndDate,
+                title: state.className,
+                location: state.location ?? 'Maple & Spruce Folk Arts',
+                description: `Class at Maple & Spruce Folk Arts. Confirmation: ${state.confirmationNumber}`,
+                uid: `${state.confirmationNumber}@mapleandsprucefolkarts.com`,
+              }}
+            />
 
             {/* Email confirmation notice */}
             <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>

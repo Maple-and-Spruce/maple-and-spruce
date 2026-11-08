@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import type { GetRegistrationStatusResponse } from '@maple/ts/firebase/api-types';
 import { RegistrationWidget } from './RegistrationWidget';
 
@@ -149,6 +149,14 @@ export const Confirmed: Story = {
     await expect(canvas.getByText(/robin@example\.com/)).toBeInTheDocument();
     // A buyer who has paid must not be offered the form again.
     await expect(canvas.queryByText(/Your Information/)).toBeNull();
+
+    // Calendar choices work in any browser, not just ones that open an .ics.
+    await userEvent.click(canvas.getByRole('button', { name: /add to calendar/i }));
+    const google = await canvas.findByRole('link', { name: 'Google Calendar' });
+    await expect(google.getAttribute('href')).toContain(
+      encodeURIComponent('Stained Glass Suncatchers').replace(/%20/g, '+')
+    );
+    await expect(canvas.getByRole('link', { name: 'Outlook' })).toBeInTheDocument();
   },
 };
 
