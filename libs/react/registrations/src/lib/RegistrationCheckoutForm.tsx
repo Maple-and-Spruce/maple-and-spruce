@@ -45,7 +45,8 @@ import type {
   PreviewGiftCardForClassResponse,
 } from '@maple/ts/firebase/api-types';
 import { registrationValidation } from '@maple/ts/validation';
-import { groupPrivateHoursByDay } from '@maple/ts/domain';
+import { freeCancellationUntil, groupPrivateHoursByDay } from '@maple/ts/domain';
+import { FreeCancellationNote } from './FreeCancellationNote';
 import { PrivateHourPicker } from './PrivateHourPicker';
 import { HourWaitlistForm, type HourWaitlistStatus } from './HourWaitlistForm';
 import { formatPhoneNumber } from './formatPhoneNumber';
@@ -1305,6 +1306,24 @@ export function RegistrationCheckoutForm({
         <Typography variant="h6" gutterBottom>
           Payment
         </Typography>
+
+        {/* A private group's deadline depends on its hour: none until picked. */}
+        <FreeCancellationNote
+          variant="checkout"
+          deadline={
+            isPrivateHours && !selectedSlot.value
+              ? undefined
+              : freeCancellationUntil(
+                  {
+                    sessions: publicClass.sessions,
+                    slotStart: isPrivateHours
+                      ? selectedSlot.value ?? undefined
+                      : undefined,
+                  },
+                  new Date()
+                )
+          }
+        />
 
         {showApplePay && (
           <button

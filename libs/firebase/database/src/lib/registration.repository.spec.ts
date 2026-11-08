@@ -44,6 +44,27 @@ function mockDocSnapshot(
   };
 }
 
+/**
+ * A transaction over doc `reg-1` holding `data`; returns the ref and the
+ * transaction's update spy.
+ */
+function setupRegistrationTransaction(data: Record<string, unknown> | null) {
+  const docRef = { id: 'reg-1' };
+  const txUpdate = vi.fn();
+  vi.mocked(db.collection).mockReturnValue({
+    doc: vi.fn().mockReturnValue(docRef),
+  } as unknown as ReturnType<typeof db.collection>);
+  vi.mocked(db.runTransaction).mockImplementation((async (
+    fn: (tx: unknown) => Promise<unknown>
+  ) =>
+    fn({
+      get: vi.fn().mockResolvedValue(mockDocSnapshot('reg-1', data)),
+      update: txUpdate,
+    })) as unknown as typeof db.runTransaction);
+  return { docRef, txUpdate };
+}
+
+
 /** Minimal registration data stored in Firestore */
 function firestoreRegData(overrides: Record<string, unknown> = {}) {
   return {
@@ -884,6 +905,26 @@ describe('RegistrationRepository', () => {
       expect(result).toHaveLength(1);
     });
 
+    it('findByConfirmationNumber matches the number exactly', async () => {
+      const where = setupWhere([
+        { id: 'reg-1', data: firestoreRegData({ confirmationNumber: 'MS-ABC234' }) },
+      ]);
+      const result = await RegistrationRepository.findByConfirmationNumber('MS-ABC234');
+      expect(where).toHaveBeenCalledWith('confirmationNumber', '==', 'MS-ABC234');
+      expect(result).toHaveLength(1);
+    });
+
+    it('findWithCancellationRequestSince reads requests and maps the time', async () => {
+      const since = new Date('2026-08-01T00:00:00Z');
+      const askedAt = new Date('2026-11-20T12:00:00Z');
+      const where = setupWhere([
+        { id: 'reg-1', data: firestoreRegData({ cancellationRequestedAt: askedAt }) },
+      ]);
+      const [reg] = await RegistrationRepository.findWithCancellationRequestSince(since);
+      expect(where).toHaveBeenCalledWith('cancellationRequestedAt', '>', since);
+      expect(reg.cancellationRequestedAt).toEqual(askedAt);
+    });
+
     it('findWithRefundReviewSince reads flagged registrations and maps the review', async () => {
       const since = new Date('2026-07-17T00:00:00Z');
       const flaggedAt = new Date('2026-10-15T15:00:00Z');
@@ -908,24 +949,41 @@ describe('RegistrationRepository', () => {
     });
   });
 
+  describe('cancellation requests', () => {
+    const at = new Date('2026-11-20T12:00:00Z');
+
+    const setupTransaction = setupRegistrationTransaction;
+
+    it('records a request on a confirmed registration, once', async () => {
+      const { docRef, txUpdate } = setupTransaction(firestoreRegData({ status: 'confirmed' }));
+      await expect(
+        RegistrationRepository.markCancellationRequested('reg-1', at)
+      ).resolves.toBe(true);
+      expect(txUpdate).toHaveBeenCalledWith(docRef, {
+        cancellationRequestedAt: at,
+        updatedAt: at,
+      });
+    });
+
+    it('records nothing when already asked, not confirmed, or gone', async () => {
+      for (const data of [
+        firestoreRegData({ status: 'confirmed', cancellationRequestedAt: at }),
+        firestoreRegData({ status: 'cancelled' }),
+        null,
+      ]) {
+        const { txUpdate } = setupTransaction(data);
+        await expect(
+          RegistrationRepository.markCancellationRequested('reg-1', at)
+        ).resolves.toBe(false);
+        expect(txUpdate).not.toHaveBeenCalled();
+      }
+    });
+  });
+
   describe('flagSquareRefundForReview', () => {
     const at = new Date('2026-10-15T15:00:00Z');
 
-    function setupTransaction(data: Record<string, unknown> | null) {
-      const docRef = { id: 'reg-1' };
-      const txUpdate = vi.fn();
-      vi.mocked(db.collection).mockReturnValue({
-        doc: vi.fn().mockReturnValue(docRef),
-      } as unknown as ReturnType<typeof db.collection>);
-      vi.mocked(db.runTransaction).mockImplementation((async (
-        fn: (tx: unknown) => Promise<unknown>
-      ) =>
-        fn({
-          get: vi.fn().mockResolvedValue(mockDocSnapshot('reg-1', data)),
-          update: txUpdate,
-        })) as unknown as typeof db.runTransaction);
-      return { docRef, txUpdate };
-    }
+    const setupTransaction = setupRegistrationTransaction;
 
     it('notes the refund and leaves status and amount alone', async () => {
       const { docRef, txUpdate } = setupTransaction(firestoreRegData({ source: 'pos' }));

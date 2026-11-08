@@ -22,6 +22,7 @@ export * from './lib/schedule-format';
 export * from './lib/local-days';
 export * from './lib/class-category';
 export * from './lib/registration';
+export * from './lib/free-cancellation';
 export * from './lib/pos-sale-request';
 export * from './lib/pos-lesson-attribution';
 export * from './lib/pos-lesson-config';

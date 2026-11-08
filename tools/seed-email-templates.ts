@@ -194,11 +194,13 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
       call us at <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>,
       or visit our <a href="https://mapleandsprucefolkarts.com/contact" style="color: #6B7B5E;">contact page</a>.</p>
 
-    <p style="font-size: 14px; color: #999;">
-      Need to cancel? Contact us at least two weeks before the class date for a full refund.
-      Refunds are processed within 5–10 business days. See our
-      <a href="https://mapleandsprucefolkarts.com/cancellation-policy" style="color: #999;">cancellation policy</a>.
+    {{#if freeCancellationUntil}}
+    <p style="font-size: 14px; color: #7A7A6E;">
+      <strong style="color: #4A3728;">Free cancellation until {{freeCancellationUntil}}.</strong>
+      If your plans change before then, <a href="{{cancelUrl}}" style="color: #6B7B5E;">request a cancellation</a>
+      or email Katie with your confirmation number, and we will refund you in full.
     </p>
+    {{/if}}
   </div>
   <div class="footer">
     <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
@@ -270,6 +272,132 @@ const registrationCancelledHtml = `<!DOCTYPE html>
     Morgantown, WV<br>
     <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
     <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
+// Template: registration-cancellation-requested
+//
+// Sent to the customer when they ask to cancel on the website's cancel page,
+// before the free cancellation date. Nothing has been cancelled yet: Katie
+// cancels and refunds by hand, and the registration-cancelled email follows.
+// ---------------------------------------------------------------------------
+
+const registrationCancellationRequestedSubject =
+  'We got your cancellation request for {{className}}';
+
+const registrationCancellationRequestedHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cancellation request received</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Maple &amp; Spruce Folk Arts</h1>
+  </div>
+  <div class="content">
+    <h2>We got your request</h2>
+    <p>Hi {{customerName}},</p>
+    <p>You asked to cancel your registration before the free cancellation date
+      ({{freeCancellationUntil}}), so you will get a full refund. Katie will cancel it
+      and send you a confirmation when the refund is on its way.</p>
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">Class</td>
+        <td>{{className}}</td>
+      </tr>
+      {{#if classDate}}
+      <tr>
+        <td class="label">Date</td>
+        <td>{{classDate}}</td>
+      </tr>
+      {{/if}}
+      <tr>
+        <td class="label">Confirmation #</td>
+        <td>{{confirmationNumber}}</td>
+      </tr>
+    </table>
+
+    <p>Changed your mind, or have a question? Reply to this email or reach Katie at
+      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>
+      or <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
+// Template: registration-cancellation-request-staff
+//
+// To ADMIN_ALERT_EMAIL (Katie) when a customer asks to cancel before the free
+// cancellation date. The same request is on the Home Inbox.
+// ---------------------------------------------------------------------------
+
+const registrationCancellationRequestStaffSubject =
+  'Cancellation request: {{className}} ({{confirmationNumber}})';
+
+const registrationCancellationRequestStaffHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cancellation request</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="content">
+    <h2>Someone asked to cancel</h2>
+    <p>{{customerName}} asked to cancel on the website before the free cancellation
+      date ({{freeCancellationUntil}}), so they are owed a full refund.</p>
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">Class</td>
+        <td>{{className}}</td>
+      </tr>
+      {{#if classDate}}
+      <tr>
+        <td class="label">Date</td>
+        <td>{{classDate}}</td>
+      </tr>
+      {{/if}}
+      <tr>
+        <td class="label">Confirmation #</td>
+        <td>{{confirmationNumber}}</td>
+      </tr>
+      <tr>
+        <td class="label">Email</td>
+        <td>{{customerEmail}}</td>
+      </tr>
+      <tr>
+        <td class="label">Spots</td>
+        <td>{{quantity}}</td>
+      </tr>
+      <tr>
+        <td class="label">Paid</td>
+        <td>{{amountPaid}}</td>
+      </tr>
+    </table>
+
+    {{#if rosterUrl}}
+    <p><a href="{{rosterUrl}}" style="display: inline-block; background-color: #6B7B5E; color: #ffffff; padding: 12px 32px; text-decoration: none; border-radius: 4px; font-weight: bold;">Open the class roster</a></p>
+    {{/if}}
+    <p style="font-size: 14px; color: #7A7A6E;">Cancel the registration on the roster to refund it.
+      They have already been told the request reached us.</p>
   </div>
 </div>
 </body>
@@ -1502,6 +1630,14 @@ const templates: Record<string, EmailTemplate> = {
   'registration-confirmation-attendee': {
     subject: registrationConfirmationAttendeeSubject,
     html: registrationConfirmationAttendeeHtml,
+  },
+  'registration-cancellation-requested': {
+    subject: registrationCancellationRequestedSubject,
+    html: registrationCancellationRequestedHtml,
+  },
+  'registration-cancellation-request-staff': {
+    subject: registrationCancellationRequestStaffSubject,
+    html: registrationCancellationRequestStaffHtml,
   },
   'registration-cancelled': {
     subject: registrationCancelledSubject,

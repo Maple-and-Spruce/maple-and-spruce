@@ -66,6 +66,10 @@ const PUBLIC_ALLOWLIST = new Set<string>([
   'publicSite/calculateRegistrationCost',
   'publicSite/getRegistrationStatus',
   'publicSite/lookupDiscount',
+  // The website's cancel page: finds a class registration only by its
+  // confirmation number AND booking email, and returns the class name and
+  // free cancellation date. App Check enforced, throttled per IP.
+  'publicSite/lookupRegistrationForCancellation',
   'publicSite/getPublicMusicTogetherSection',
   'publicSite/getPublicMusicTogetherSections',
   'publicSite/getPublicMusicTogetherDemos',
@@ -96,6 +100,11 @@ const PUBLIC_ALLOWLIST = new Set<string>([
   // cannot require a login. Gated by App Check (enforce) and the payment
   // throttles; it only ever creates a card the caller paid for.
   'giftCards/purchaseGiftCard',
+  // The cancel page's "Request cancellation" button. Customers have no login;
+  // it needs the confirmation number AND booking email, only before the free
+  // cancellation date, and only records a request and emails Katie. Nothing
+  // is cancelled or refunded. App Check enforced, email-link throttles.
+  'requestRegistrationCancellation',
   // Token-based (magic-link / session-token) flows — auth is the signed
   // token, not a Firebase session.
   'getAgreementForSigning',

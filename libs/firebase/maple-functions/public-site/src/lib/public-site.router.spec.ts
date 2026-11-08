@@ -82,6 +82,9 @@ vi.mock('./get-required-agreements-for-class', () => ({
   getRequiredAgreementsForClass: vi.fn(),
 }));
 vi.mock('./lookup-discount', () => ({ lookupDiscount: vi.fn() }));
+vi.mock('@maple/firebase/maple-functions/request-registration-cancellation', () => ({
+  lookupRegistrationForCancellation: vi.fn(),
+}));
 
 import { publicSite } from './public-site.router';
 import { calculateRegistrationCost } from './calculate-registration-cost';
@@ -93,6 +96,7 @@ import { getPublicMusicTogetherSections } from './get-public-music-together-sect
 import { getRegistrationStatus } from './get-registration-status';
 import { getRequiredAgreementsForClass } from './get-required-agreements-for-class';
 import { lookupDiscount } from './lookup-discount';
+import { lookupRegistrationForCancellation } from '@maple/firebase/maple-functions/request-registration-cancellation';
 
 type Route = {
   roles: unknown;
@@ -119,6 +123,7 @@ const handlers: Record<string, unknown> = {
   getRegistrationStatus,
   getRequiredAgreementsForClass,
   lookupDiscount,
+  lookupRegistrationForCancellation,
 };
 
 describe('publicSite router', () => {
@@ -126,7 +131,7 @@ describe('publicSite router', () => {
     vi.unstubAllEnvs();
   });
 
-  it('is deployed as publicSite with exactly these nine routes', () => {
+  it('is deployed as publicSite with exactly these ten routes', () => {
     expect(router.name).toBe('publicSite');
     expect(Object.keys(router.routes).sort()).toEqual(
       Object.keys(handlers).sort(),
@@ -148,12 +153,13 @@ describe('publicSite router', () => {
     }
   });
 
-  it('verifies App Check and throttles per IP on lookupDiscount only', () => {
+  it('verifies App Check and throttles per IP on the two guessable lookups only', () => {
+    const guarded = ['lookupDiscount', 'lookupRegistrationForCancellation'];
     for (const [name, route] of Object.entries(router.routes)) {
-      if (name === 'lookupDiscount') {
+      if (guarded.includes(name)) {
         expect(route.appCheck, name).toBe('enforce');
         expect(route.throttle, name).toEqual({
-          scope: 'lookupDiscount',
+          scope: name,
           rules: ['per-ip'],
         });
       } else {

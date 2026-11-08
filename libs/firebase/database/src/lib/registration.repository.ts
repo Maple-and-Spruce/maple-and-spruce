@@ -77,6 +77,9 @@ function docToRegistration(
     refundReviewAt: data.refundReviewAt ? toDate(data.refundReviewAt) : undefined,
     refundReviewAmountCents: data.refundReviewAmountCents ?? undefined,
     refundReviewId: data.refundReviewId ?? undefined,
+    cancellationRequestedAt: data.cancellationRequestedAt
+      ? toDate(data.cancellationRequestedAt)
+      : undefined,
     confirmationNumber: data.confirmationNumber,
     // Default to 'web' so registrations created before the source field
     // existed (all of which were web checkouts) read back with a usable value.
@@ -308,6 +311,53 @@ export const RegistrationRepository = {
     return snapshot.docs
       .map((doc) => docToRegistration(doc))
       .filter((r): r is Registration => r !== undefined);
+  },
+
+  /**
+   * The registrations with this confirmation number (normally one). A single
+   * equality filter, so no composite index.
+   */
+  async findByConfirmationNumber(
+    confirmationNumber: string
+  ): Promise<Registration[]> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('confirmationNumber', '==', confirmationNumber)
+      .get();
+    return snapshot.docs
+      .map((doc) => docToRegistration(doc))
+      .filter((r): r is Registration => r !== undefined);
+  },
+
+  /**
+   * Registrations whose customer asked to cancel since `since` (the cancel
+   * page). A single range filter, so no composite index.
+   */
+  async findWithCancellationRequestSince(since: Date): Promise<Registration[]> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('cancellationRequestedAt', '>', since)
+      .get();
+    return snapshot.docs
+      .map((doc) => docToRegistration(doc))
+      .filter((r): r is Registration => r !== undefined);
+  },
+
+  /**
+   * Record a customer's cancellation request, once. In a transaction so a
+   * double click cannot record (and email Katie about) it twice. Returns
+   * whether this call recorded it; false when it was already there or the
+   * registration is no longer confirmed.
+   */
+  async markCancellationRequested(id: string, at: Date): Promise<boolean> {
+    const ref = db.collection(COLLECTION).doc(id);
+    return db.runTransaction(async (tx) => {
+      const current = docToRegistration(await tx.get(ref));
+      if (!current || current.status !== 'confirmed') return false;
+      if (current.cancellationRequestedAt) return false;
+      tx.update(ref, { cancellationRequestedAt: at, updatedAt: at });
+      return true;
+    });
   },
 
   /**

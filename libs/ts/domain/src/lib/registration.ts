@@ -151,6 +151,13 @@ export interface Registration {
   refundReviewAmountCents?: number;
   /** The Square id of that refund. */
   refundReviewId?: string;
+  /**
+   * When the customer asked to cancel from the website's cancel page, before
+   * the free cancellation deadline. Nothing is cancelled or refunded: it shows
+   * on the Home Inbox as `cancellation-request` until Katie cancels the
+   * registration (which refunds it) or marks the item done.
+   */
+  cancellationRequestedAt?: Date;
   /** Human-readable confirmation number (e.g. MS-XXXXXX) shown to the buyer. */
   confirmationNumber?: string;
   /**
@@ -200,6 +207,7 @@ export type CreateRegistrationInput = Omit<
   | 'refundReviewAt'
   | 'refundReviewAmountCents'
   | 'refundReviewId'
+  | 'cancellationRequestedAt'
 >;
 
 /**

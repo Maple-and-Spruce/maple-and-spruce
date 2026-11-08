@@ -41,7 +41,10 @@ import {
 } from '@maple/firebase/square';
 import {
   formatPrivateHour,
+  cancelPageUrl,
+  formatFreeCancellationDeadline,
   formatSessions,
+  freeCancellationUntil,
   isPrivateHoursClass,
   lineItemName,
 } from '@maple/ts/domain';
@@ -475,6 +478,12 @@ export const createRegistration = Functions.endpoint
             ? `${Math.floor(classEntity.durationMinutes / 60)} hour${Math.floor(classEntity.durationMinutes / 60) > 1 ? 's' : ''}${classEntity.durationMinutes % 60 ? ` ${classEntity.durationMinutes % 60} min` : ''}`
             : `${classEntity.durationMinutes} minutes`;
         const classLocation = classEntity.location || 'Maple & Spruce';
+        // Shown only while it is ahead: a booking inside the two weeks gets
+        // no cancellation line at all.
+        const cancelDeadline = freeCancellationUntil(
+          { sessions: classEntity.sessions, slotStart: data.slotStart },
+          new Date()
+        );
 
         // Every session as an .ics, so the mail client offers "Add to
         // Calendar" whatever browser the buyer checked out in. A failure here
@@ -527,6 +536,12 @@ export const createRegistration = Functions.endpoint
               classDuration,
               classLocation,
               confirmationNumber,
+              freeCancellationUntil: cancelDeadline
+                ? formatFreeCancellationDeadline(cancelDeadline)
+                : undefined,
+              cancelUrl: cancelDeadline
+                ? cancelPageUrl(confirmationNumber)
+                : undefined,
               subtotal: formatCurrency(subtotalCents),
               taxRate: taxRatePercent,
               taxAmount: formatCurrency(taxPaidCents),

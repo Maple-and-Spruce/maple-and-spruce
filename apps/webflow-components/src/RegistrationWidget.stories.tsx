@@ -51,6 +51,22 @@ const CONFIRMED: GetRegistrationStatusResponse = {
   },
 };
 
+/**
+ * A class five days out: inside the two weeks, so no free cancellation line.
+ * Built from the real clock so it stays five days out whenever this runs.
+ */
+const SOON_CLASS = {
+  ...CLASS,
+  id: 'class-soon',
+  sessions: [
+    // eslint-disable-next-line no-restricted-syntax -- a duration, not a calendar day
+    { dateTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString() },
+  ],
+};
+
+/** The class `getPublicClass` returns. */
+let currentClass: typeof CLASS = CLASS;
+
 /** What `getRegistrationStatus` answers, in order; the last one repeats. */
 let statusReplies: Array<GetRegistrationStatusResponse | 'error'> = [];
 let statusCalls = 0;
@@ -73,7 +89,7 @@ function installStubs(): void {
       });
 
     if (url.includes('getPublicClass')) {
-      return json({ data: { class: CLASS } });
+      return json({ data: { class: currentClass } });
     }
     if (url.includes('getRequiredAgreementsForClass')) {
       return json({ data: { agreements: [] } });
@@ -113,6 +129,8 @@ type ReturnParameters = {
   reg?: string;
   /** `getRegistrationStatus` replies, in order. */
   statusReplies?: Array<GetRegistrationStatusResponse | 'error'>;
+  /** The class to show; defaults to one in 2030 (well before the deadline). */
+  publicClass?: typeof CLASS;
 };
 
 const meta: Meta<typeof RegistrationWidget> = {
@@ -129,6 +147,7 @@ const meta: Meta<typeof RegistrationWidget> = {
     (Story, context) => {
       const params = context.parameters as ReturnParameters;
       statusReplies = params.statusReplies ?? [{ status: 'not-found' }];
+      currentClass = params.publicClass ?? CLASS;
       setReturnParam(params.reg);
       installStubs();
       return <Story />;
@@ -157,6 +176,31 @@ export const Confirmed: Story = {
       encodeURIComponent('Stained Glass Suncatchers').replace(/%20/g, '+')
     );
     await expect(canvas.getByRole('link', { name: 'Outlook' })).toBeInTheDocument();
+    // More than two weeks out: the date, and how to ask before it.
+    await expect(
+      canvas.getByText(/Free cancellation until Tue, Apr 30 at 6:00 PM/)
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('link', { name: 'request a cancellation' })
+    ).toHaveAttribute(
+      'href',
+      'https://mapleandsprucefolkarts.com/cancel?confirmation=MS-HOSTED1'
+    );
+  },
+};
+
+/** Booked inside the two weeks: nothing at all about cancelling. */
+export const ConfirmedInsideTwoWeeks: Story = {
+  parameters: {
+    reg: 'reg-hosted-soon',
+    statusReplies: [CONFIRMED],
+    publicClass: SOON_CLASS,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("You're Registered!");
+    await expect(canvas.queryByTestId('free-cancellation-note')).toBeNull();
+    await expect(canvas.queryByText(/cancel/i)).toBeNull();
   },
 };
 
@@ -200,5 +244,34 @@ export const UnknownRegistrationShowsForm: Story = {
     const canvas = within(canvasElement);
     await canvas.findByText(/Your Information/);
     await expect(canvas.queryByText("You're Registered!")).toBeNull();
+  },
+};
+
+/** Checkout, more than two weeks out: the free cancellation date by Payment. */
+export const CheckoutShowsFreeCancellation: Story = {
+  parameters: { statusReplies: [{ status: 'not-found' }] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText(/Your Information/);
+    await expect(
+      await canvas.findByText(/Free cancellation until Tue, Apr 30 at 6:00 PM/)
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByText('Cancel before then for a full refund.')
+    ).toBeInTheDocument();
+  },
+};
+
+/** Checkout inside the two weeks: no cancellation line. */
+export const CheckoutInsideTwoWeeks: Story = {
+  parameters: {
+    statusReplies: [{ status: 'not-found' }],
+    publicClass: SOON_CLASS,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText(/Your Information/);
+    await canvas.findByText('Payment');
+    await expect(canvas.queryByTestId('free-cancellation-note')).toBeNull();
   },
 };

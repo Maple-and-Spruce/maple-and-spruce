@@ -171,6 +171,19 @@ A class can be booked as private hours: one group per hour, a flat price per gro
 | 4. Waitlist by hour | **In Review** | Waitlist per hour; when an hour reopens, everyone waiting on it is emailed |
 | 5. Start times per date | **In Review** | Class form switch "Use different start times for each date"; each date keeps its own hours, and editing loads them back per date |
 
+### Free cancellation date (In Review)
+
+Airbnb-style "Free cancellation until <date>" for class registrations, two weeks before the
+class, shown only while it is ahead. See `docs/guides/free-cancellation.md`.
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Deadline rule | **In Review** | `libs/ts/domain/src/lib/free-cancellation.ts` |
+| Checkout + confirmation screen line | **In Review** | `FreeCancellationNote` in `libs/react/registrations` |
+| Confirmation email line | **In Review** | `registration-confirmation` template |
+| Cancel page widget | **In Review** | `apps/webflow-components/src/CancelRegistrationWidget.tsx` |
+| Request → Katie (email + Inbox) | **In Review** | `requestRegistrationCancellation`, Inbox `cancellation-request` |
+
 ### Image2Pages Widget (PR pending)
 
 | Feature | Status | Location |

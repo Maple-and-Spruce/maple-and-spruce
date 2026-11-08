@@ -11,3 +11,5 @@ export type {
   SquareBillingContact,
   SquareInitErrorInfo,
 } from './lib/SquareCardForm';
+export { FreeCancellationNote } from './lib/FreeCancellationNote';
+export type { FreeCancellationNoteProps } from './lib/FreeCancellationNote';

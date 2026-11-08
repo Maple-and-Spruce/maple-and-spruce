@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   findDismissals: vi.fn(),
   findWithRefunds: vi.fn(),
   findWithRefundReviewSince: vi.fn(),
+  findWithCancellationRequestSince: vi.fn(),
   findInstructors: vi.fn(),
   findUpcomingClasses: vi.fn(),
   countSeats: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock('@maple/firebase/database', () => ({
   RegistrationRepository: {
     findWithRefunds: mocks.findWithRefunds,
     findWithRefundReviewSince: mocks.findWithRefundReviewSince,
+    findWithCancellationRequestSince: mocks.findWithCancellationRequestSince,
     countByClassId: mocks.countSeats,
   },
 }));
@@ -128,6 +130,7 @@ beforeEach(() => {
   mocks.findDismissals.mockResolvedValue([]);
   mocks.findWithRefunds.mockResolvedValue([]);
   mocks.findWithRefundReviewSince.mockResolvedValue([]);
+  mocks.findWithCancellationRequestSince.mockResolvedValue([]);
   mocks.findInstructors.mockResolvedValue([]);
   mocks.findUpcomingClasses.mockResolvedValue([]);
 });
@@ -351,6 +354,53 @@ describe('getInbox', () => {
       title: 'Wheel Pottery',
       href: '/classes/cls-pottery/roster',
     });
+  });
+
+  it('lists open cancellation requests with the deadline they asked under', async () => {
+    mocks.findAgreements.mockResolvedValue([]);
+    mocks.findWithCancellationRequestSince.mockResolvedValue([
+      {
+        id: 'reg-ask',
+        classId: 'cls-pottery',
+        customerName: 'Test Student',
+        confirmationNumber: 'MS-ABC234',
+        status: 'confirmed',
+        cancellationRequestedAt: new Date(NOW.getTime() - HOUR),
+      },
+      {
+        id: 'reg-done',
+        classId: 'cls-other',
+        status: 'cancelled',
+        cancellationRequestedAt: new Date(NOW.getTime() - HOUR),
+      },
+    ]);
+    mocks.findClass.mockImplementation(async (id: string) =>
+      id === 'cls-pottery'
+        ? {
+            id,
+            name: 'Wheel Pottery',
+            // Sat Dec 5 2026, 10:00 AM Eastern.
+            sessions: [{ dateTime: new Date('2026-12-05T15:00:00Z') }],
+          }
+        : undefined
+    );
+
+    const { items } = await getInbox();
+
+    expect(mocks.findWithCancellationRequestSince).toHaveBeenCalledWith(
+      new Date(NOW.getTime() - 90 * 86_400_000)
+    );
+    expect(mocks.findClass.mock.calls.map(([id]) => id)).toEqual(['cls-pottery']);
+    expect(items.filter((i) => i.kind === 'cancellation-request')).toEqual([
+      expect.objectContaining({
+        key: `cancellation-request:reg-ask:${NOW.getTime() - HOUR}`,
+        title: 'Wheel Pottery',
+        detail:
+          'Asked to cancel before the free cancellation date (Sat, Nov 21 at 10:00 AM) · Test Student · MS-ABC234',
+        href: '/classes/cls-pottery/roster',
+        actionLabel: 'Cancel & refund',
+      }),
+    ]);
   });
 
   it('is empty when nothing needs doing', async () => {

@@ -28,6 +28,9 @@ import {
 import { collectNeedsAttention } from '@maple/firebase/maple-functions/get-needs-attention';
 import {
   buildInboxItems,
+  cancellationAnchor,
+  freeCancellationDeadline,
+  hasOpenCancellationRequest,
   hasOpenPartialRefund,
   hasOpenRefundReview,
   INBOX_REFUND_LOOKBACK_DAYS,
@@ -68,6 +71,7 @@ export async function getInbox(): Promise<GetInboxResponse> {
     upcomingClasses,
     refundedRegistrations,
     flaggedRefunds,
+    requestedCancellations,
   ] = await Promise.all([
     // The whole studio: the inbox is admin-only.
     collectNeedsAttention(undefined, now),
@@ -85,9 +89,16 @@ export async function getInbox(): Promise<GetInboxResponse> {
     RegistrationRepository.findWithRefundReviewSince(
       new Date(now.getTime() - INBOX_REFUND_LOOKBACK_DAYS * 86_400_000)
     ),
+    // Asked to cancel on the website's cancel page; rare, same lookback.
+    RegistrationRepository.findWithCancellationRequestSince(
+      new Date(now.getTime() - INBOX_REFUND_LOOKBACK_DAYS * 86_400_000)
+    ),
   ]);
   const partialRefunds = refundedRegistrations.filter(hasOpenPartialRefund);
   const refundReviews = flaggedRefunds.filter(hasOpenRefundReview);
+  const openCancellations = requestedCancellations.filter(
+    hasOpenCancellationRequest
+  );
 
   // Only the classes a pending request or a partial refund names.
   const classIds = [
@@ -96,12 +107,22 @@ export async function getInbox(): Promise<GetInboxResponse> {
         ...pendingAgreements.map((r) => r.classId),
         ...partialRefunds.map((r) => r.classId),
         ...refundReviews.map((r) => r.classId),
+        ...openCancellations.map((r) => r.classId),
       ].filter((id): id is string => Boolean(id))
     ),
   ];
   const classes: InboxClass[] = (
     await Promise.all(classIds.map((id) => ClassRepository.findById(id)))
   ).filter((c): c is NonNullable<typeof c> => c !== undefined);
+  const classById = new Map(classes.map((c) => [c.id, c]));
+  const cancellationRequests = openCancellations.map((r) => {
+    const cls = classById.get(r.classId);
+    const anchor = cls && cancellationAnchor(cls.sessions, r.slotStart);
+    return {
+      ...r,
+      freeCancellationUntil: anchor ? freeCancellationDeadline(anchor) : undefined,
+    };
+  });
 
   // Seats only for the few classes inside the under-minimum window.
   const minimumClasses = classesForMinimumCheck(upcomingClasses, now);
@@ -127,6 +148,7 @@ export async function getInbox(): Promise<GetInboxResponse> {
     syncConflicts,
     refundedRegistrations: partialRefunds,
     refundReviews,
+    cancellationRequests,
     instructorsNotReady: instructorsNotReadyToTeach(
       activeInstructors,
       upcomingClasses,

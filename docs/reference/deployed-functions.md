@@ -13,7 +13,8 @@
 > (ADR-037): `createRegistration`, `createRegistrationCheckoutLink`,
 > `createMusicTogetherRegistration`, `createCraftClubSubscription`,
 > `updateCraftClubPaymentMethod`, `updateMusicTogetherPaymentMethod`, `publicSite/lookupDiscount`,
-> `requestCraftClubAccess`, `requestCraftClubManageLink`, `requestMusicTogetherManageLink`.
+> `requestCraftClubAccess`, `requestCraftClubManageLink`, `requestMusicTogetherManageLink`,
+> `publicSite/lookupRegistrationForCancellation`, `requestRegistrationCancellation`.
 > Over a limit they answer 429 `RESOURCE_EXHAUSTED`. App Check is enforced in prod (401 without
 > a valid token), except `createRegistrationCheckoutLink`, which stays in `monitor`.
 
@@ -385,6 +386,7 @@ ratchet for no behavioral gain).
 - `requestCraftClubManageLink` _(public)_ — emails a single-use magic link to manage a membership; uniform response (no enumeration)
 - `startCraftClubSession` _(public)_ — exchanges a magic-link token (single-use) for a short-lived session token
 - `getCraftClubSubscription` _(public, session-gated)_ — returns the member's customer-safe subscription view
+- `requestRegistrationCancellation` _(public)_ — the website's cancel page: before a class's free cancellation date (two weeks before), records a cancellation request on the registration, emails Katie and the customer, and puts it on the Home Inbox. Never cancels or refunds. The page's lookup is `publicSite/lookupRegistrationForCancellation`. See `docs/guides/free-cancellation.md`
 - `requestMusicTogetherManageLink` _(public)_ — emails a single-use magic link to update the card on file for an installment registration; uniform response (no enumeration)
 - `startMusicTogetherManageSession` _(public)_ — exchanges an MT magic-link token (single-use) for a short-lived session token + a customer-safe manage view (section + next installment)
 - _Subscribe + self-service Square mutations live in the `maple-square` codebase; subscription webhooks land in a later phase._

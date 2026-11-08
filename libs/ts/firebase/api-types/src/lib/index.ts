@@ -282,6 +282,10 @@ export type {
   CreateRegistrationCheckoutLinkResponse,
   GetRegistrationStatusRequest,
   GetRegistrationStatusResponse,
+  LookupRegistrationForCancellationRequest,
+  LookupRegistrationForCancellationResponse,
+  RequestRegistrationCancellationRequest,
+  RequestRegistrationCancellationResponse,
 } from './registration.types';
 
 // Phase 4: Music Lessons - Student types

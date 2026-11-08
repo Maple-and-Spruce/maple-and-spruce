@@ -44,6 +44,9 @@
       "@maple/firebase/maple-functions/update-craft-club-payment-method": [
         "libs/firebase/maple-functions/update-craft-club-payment-method/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/request-registration-cancellation": [
+        "libs/firebase/maple-functions/request-registration-cancellation/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/request-music-together-manage-link": [
         "libs/firebase/maple-functions/request-music-together-manage-link/src/index.ts"
       ],
