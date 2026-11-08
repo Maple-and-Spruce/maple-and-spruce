@@ -782,6 +782,134 @@ describe('processPosSale — lesson attribution', () => {
   });
 });
 
+describe('processPosSale — gift cards', () => {
+  // Square's own line-item shape for a gift card sold at the register or as an
+  // eGift card online. Some gift card lines carry a catalog id, so the skip
+  // must not depend on the id being absent.
+  const giftCardLine = {
+    catalogObjectId: 'VAR_GIFT_CARD',
+    itemType: 'GIFT_CARD',
+    name: 'Gift Card',
+    quantity: 1,
+    grossSalesCents: 5000,
+    totalTaxCents: 0,
+    totalCents: 5000,
+  };
+
+  it('ignores a gift card sale: no registration, lesson attribution or alert', async () => {
+    // Even if the gift card's catalog id were configured as a lesson item or
+    // resolved to a class, a gift card line must never be treated as one.
+    mocks.getLessonCatalogObjectIds.mockResolvedValue(['VAR_GIFT_CARD']);
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [giftCardLine],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.findBySquareVariationId).not.toHaveBeenCalled();
+    expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.attrCapture).not.toHaveBeenCalled();
+    expect(mocks.settleOrCreatePosLessonInvoice).not.toHaveBeenCalled();
+    expect(mocks.mailAdd).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('records only the class on a mixed order (gift card + class)', async () => {
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [
+        giftCardLine,
+        { catalogObjectId: 'VAR_A', name: 'Pottery 101', quantity: 1 },
+      ],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.findBySquareVariationId).toHaveBeenCalledTimes(1);
+    expect(mocks.findBySquareVariationId).toHaveBeenCalledWith('VAR_A');
+    expect(mocks.createRegistration).toHaveBeenCalledTimes(1);
+    expect(mocks.createRegistration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        classId: 'class-1',
+        quantity: 1,
+        // Only the class line's money, never the gift card's $50.
+        subtotalCents: 4500,
+        pricePaidCents: 4770,
+      })
+    );
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('records only the lesson on a mixed order (gift card + lesson)', async () => {
+    mocks.getLessonCatalogObjectIds.mockResolvedValue(['VAR_LESSON']);
+    mocks.findBySquareVariationId.mockResolvedValue(undefined);
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [
+        giftCardLine,
+        {
+          catalogObjectId: 'VAR_LESSON',
+          name: 'Guitar Lesson',
+          quantity: 1,
+          grossSalesCents: 3000,
+          totalCents: 3000,
+        },
+      ],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.attrCapture).toHaveBeenCalledTimes(1);
+    expect(mocks.attrCapture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        catalogObjectId: 'VAR_LESSON',
+        subtotalCents: 3000,
+        amountPaidCents: 3000,
+      })
+    );
+  });
+
+  it('registers a class PAID with a gift card exactly like a card payment', async () => {
+    // Spending a gift card shows up as the payment source, not a line item.
+    // The worker reads neither the source type nor card details, so the
+    // registration is identical to a card sale.
+    mocks.getPayment.mockResolvedValue({
+      paymentId: 'PAY-1',
+      status: 'COMPLETED',
+      orderId: 'ORDER-1',
+      customerId: undefined,
+      receiptUrl: 'https://squareup.com/receipt/pos',
+      sourceType: 'SQUARE_GIFT_CARD',
+    });
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [
+        {
+          catalogObjectId: 'VAR_A',
+          itemType: 'ITEM',
+          name: 'Pottery 101',
+          quantity: 1,
+        },
+      ],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.createRegistration).toHaveBeenCalledTimes(1);
+    expect(mocks.createRegistration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        classId: 'class-1',
+        source: 'pos',
+        status: 'confirmed',
+        squarePaymentId: 'PAY-1',
+        subtotalCents: 4500,
+        pricePaidCents: 4770,
+      })
+    );
+  });
+});
+
 describe('processPosSale — error handling', () => {
   it('marks failed and re-throws when Square throws', async () => {
     mocks.getPayment.mockRejectedValue(new Error('Square 500'));
