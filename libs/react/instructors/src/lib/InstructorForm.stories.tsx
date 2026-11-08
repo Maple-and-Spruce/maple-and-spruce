@@ -217,6 +217,62 @@ export const SubmitsWithoutEmail: Story = {
 };
 
 /**
+ * "Teaches" decides which website pages list the instructor. Editing a craft
+ * teacher into a Suzuki teacher sends the new list, and unticking sends it
+ * without the program (not undefined), so the page drops them.
+ */
+export const ChangesWhatTheyTeach: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    instructor: mockInstructor,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    const craft = canvas.getByRole('checkbox', { name: /craft classes/i });
+    const suzuki = canvas.getByRole('checkbox', { name: /suzuki school/i });
+    await expect(craft).toBeChecked();
+    await expect(suzuki).not.toBeChecked();
+
+    await userEvent.click(craft);
+    await userEvent.click(suzuki);
+    await userEvent.click(canvas.getByRole('checkbox', { name: /private music lessons/i }));
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledTimes(1);
+    });
+    const submitted = (args.onSubmit as ReturnType<typeof fn>).mock.calls[0][0];
+    expect(submitted.programs).toEqual(['suzuki', 'music-lessons']);
+  },
+};
+
+/**
+ * Unticking everything still sends an empty list, so the stored programs clear.
+ */
+export const ClearsWhatTheyTeach: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    instructor: mockInstructor,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    await userEvent.click(canvas.getByRole('checkbox', { name: /craft classes/i }));
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledTimes(1);
+    });
+    const submitted = (args.onSubmit as ReturnType<typeof fn>).mock.calls[0][0];
+    expect(submitted.programs).toEqual([]);
+  },
+};
+
+/**
  * A percentage is typed as a percent and saved as a decimal
  */
 export const PercentagePayRate: Story = {

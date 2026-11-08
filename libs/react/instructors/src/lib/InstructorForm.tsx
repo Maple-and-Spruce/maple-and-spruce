@@ -28,12 +28,21 @@ import {
   Chip,
   Autocomplete,
   Typography,
+  FormControlLabel,
+  FormGroup,
+  FormLabel,
+  Checkbox,
 } from '@mui/material';
 import { httpsCallableFromURL } from 'firebase/functions';
 import {
   getMapleFunctions,
   routerCallableUrl,
 } from '@maple/ts/firebase/firebase-config';
+import {
+  INSTRUCTOR_PROGRAMS,
+  INSTRUCTOR_PROGRAM_LABELS,
+  type InstructorProgram,
+} from '@maple/ts/domain';
 import type {
   Instructor,
   CreateInstructorInput,
@@ -159,6 +168,7 @@ export function InstructorForm({
   const notes = useSignal('');
   const bio = useSignal('');
   const specialties = useSignal<string[]>([]);
+  const programs = useSignal<InstructorProgram[]>([]);
   const payRate = useSignal<number | undefined>(undefined);
   const payRateType = useSignal<InstructorPayRateType | undefined>(undefined);
   const lessonRates = useSignal<LessonRateDrafts>({});
@@ -192,6 +202,7 @@ export function InstructorForm({
       notes: notes.value || undefined,
       bio: bio.value || undefined,
       specialties: specialties.value.length > 0 ? specialties.value : undefined,
+      programs: programs.value,
       payRate: payRate.value,
       payRateType: payRateType.value,
       lessonRates: draftsToRates(lessonRates.value),
@@ -227,6 +238,7 @@ export function InstructorForm({
         notes.value = instructor.notes ?? '';
         bio.value = instructor.bio ?? '';
         specialties.value = instructor.specialties ?? [];
+        programs.value = instructor.programs ?? [];
         payRate.value = instructor.payRate;
         payRateType.value = instructor.payRateType;
         lessonRates.value = ratesToDrafts(instructor.lessonRates);
@@ -256,6 +268,7 @@ export function InstructorForm({
         notes.value = '';
         bio.value = '';
         specialties.value = [];
+        programs.value = [];
         payRate.value = undefined;
         payRateType.value = undefined;
         lessonRates.value = {};
@@ -365,6 +378,9 @@ export function InstructorForm({
         notes: notes.value || undefined,
         bio: bio.value || undefined,
         specialties: specialties.value.length > 0 ? specialties.value : undefined,
+        // Always sent, even empty, so unticking a program takes the
+        // instructor off that page.
+        programs: programs.value,
         payRate: payRate.value,
         payRateType: payRateType.value,
         // Always sent, even empty: the stored map is replaced whole, which is
@@ -498,6 +514,35 @@ export function InstructorForm({
               />
             )}
           />
+
+          {/* Programs: which public pages list this instructor */}
+          <FormControl component="fieldset" error={!!getFieldError('programs')}>
+            <FormLabel component="legend">Teaches</FormLabel>
+            <FormGroup row>
+              {INSTRUCTOR_PROGRAMS.map((program) => (
+                <FormControlLabel
+                  key={program}
+                  label={INSTRUCTOR_PROGRAM_LABELS[program]}
+                  control={
+                    <Checkbox
+                      checked={programs.value.includes(program)}
+                      onChange={(event) => {
+                        programs.value = event.target.checked
+                          ? INSTRUCTOR_PROGRAMS.filter(
+                              (p) => p === program || programs.value.includes(p)
+                            )
+                          : programs.value.filter((p) => p !== program);
+                      }}
+                    />
+                  }
+                />
+              ))}
+            </FormGroup>
+            <FormHelperText>
+              {getFieldError('programs') ??
+                'Decides which pages on the website list this instructor'}
+            </FormHelperText>
+          </FormControl>
 
           {/* Pay Rate Type */}
           <FormControl fullWidth>
