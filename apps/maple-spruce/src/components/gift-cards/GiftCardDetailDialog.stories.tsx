@@ -10,6 +10,16 @@ import { GiftCardDetailDialog } from './GiftCardDetailDialog';
 const card = mockGiftCards[1];
 const body = () => within(document.body);
 
+/** The dialog fades in; wait until it is fully shown before acting on it. */
+async function openDialog() {
+  const canvas = body();
+  await waitFor(() => expect(canvas.getByRole('dialog')).toBeVisible());
+  await waitFor(() =>
+    expect(getComputedStyle(canvas.getByRole('dialog').parentElement!).opacity).toBe('1')
+  );
+  return canvas;
+}
+
 const meta = {
   component: GiftCardDetailDialog,
   title: 'Gift Cards/GiftCardDetailDialog',
@@ -32,9 +42,8 @@ type Story = StoryObj<typeof GiftCardDetailDialog>;
 /** Balance and history in plain words; the code is hidden until asked for. */
 export const History: Story = {
   play: async ({ args }) => {
-    const canvas = body();
-    // The dialog fades in, so wait for it to be fully shown.
-    await waitFor(() => expect(canvas.getByText('Gift card ending 0937')).toBeVisible());
+    const canvas = await openDialog();
+    await expect(canvas.getByText('Gift card ending 0937')).toBeVisible();
     await expect(canvas.getByText('$12.50')).toBeVisible();
     const history = canvas.getByRole('list', { name: 'Card history' });
     await expect(within(history).getByText('Sold')).toBeVisible();
@@ -49,7 +58,7 @@ export const History: Story = {
 /** One click fetches the code, shows it in groups of four and copies it. */
 export const ShowAndCopyCode: Story = {
   play: async ({ args }) => {
-    const canvas = body();
+    const canvas = await openDialog();
     await userEvent.click(await canvas.findByRole('button', { name: 'Show and copy code' }));
     await expect(await canvas.findByTestId('gift-card-code')).toHaveTextContent('7783 3200 0000 4821');
     await expect(args.onRevealCode).toHaveBeenCalledWith(card.id);
@@ -66,9 +75,9 @@ export const CopyBlocked: Story = {
     }),
   },
   play: async () => {
-    const canvas = body();
+    const canvas = await openDialog();
     await userEvent.click(await canvas.findByRole('button', { name: 'Show and copy code' }));
-    await expect(await canvas.findByTestId('gift-card-code')).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId('gift-card-code')).toBeVisible());
     await expect(canvas.getByRole('status')).toHaveTextContent('copy it by hand');
   },
 };
@@ -80,7 +89,7 @@ export const RevealFails: Story = {
     }),
   },
   play: async () => {
-    const canvas = body();
+    const canvas = await openDialog();
     await userEvent.click(await canvas.findByRole('button', { name: 'Show and copy code' }));
     await waitFor(() =>
       expect(canvas.getByRole('alert')).toHaveTextContent('Square is unavailable')
@@ -93,7 +102,7 @@ export const RevealFails: Story = {
 export const LoadingHistory: Story = {
   args: { detailState: { status: 'loading' } },
   play: async () => {
-    const canvas = body();
+    const canvas = await openDialog();
     await expect(await canvas.findByLabelText('Loading history')).toHaveAttribute('aria-busy', 'true');
     await expect(canvas.queryByText(/Nothing has happened/)).toBeNull();
     // The balance from the table row shows straight away.
@@ -104,7 +113,7 @@ export const LoadingHistory: Story = {
 export const HistoryFails: Story = {
   args: { detailState: { status: 'error', error: 'Square is unavailable' } },
   play: async () => {
-    const canvas = body();
+    const canvas = await openDialog();
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Square is unavailable');
   },
 };
