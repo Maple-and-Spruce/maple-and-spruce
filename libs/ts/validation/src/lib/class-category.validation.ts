@@ -97,7 +97,11 @@ export const classCategoryValidation = staticSuite(
       'giftCertificatePriceCents',
       'The certificate price must be more than $0',
       () => {
-        if (data.giftCertificatePriceCents !== undefined && data.giftCertificatePriceCents !== null) {
+        if (
+          data.giftCertificateEnabled &&
+          data.giftCertificatePriceCents !== undefined &&
+          data.giftCertificatePriceCents !== null
+        ) {
           enforce(
             Number.isInteger(data.giftCertificatePriceCents) &&
               data.giftCertificatePriceCents > 0
