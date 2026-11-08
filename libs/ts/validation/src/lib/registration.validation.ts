@@ -12,6 +12,9 @@ import { staticSuite } from './static-suite';
 /**
  * Input shape for registration validation
  */
+/** Longest staff note on a registration. */
+export const STAFF_NOTES_MAX_LENGTH = 2000;
+
 export interface RegistrationValidationInput {
   classId?: string;
   customerEmail?: string;
@@ -19,6 +22,7 @@ export interface RegistrationValidationInput {
   customerPhone?: string;
   quantity?: number;
   notes?: string;
+  staffNotes?: string;
   additionalAttendees?: Array<{ name?: string; email?: string }>;
   /** Private-hours classes: start of the hour being booked (ISO or Date). */
   slotStart?: string | Date;
@@ -112,6 +116,12 @@ export const registrationValidation = staticSuite(
     test('notes', 'Notes must be less than 500 characters', () => {
       if (data.notes) {
         enforce(data.notes).shorterThanOrEquals(500);
+      }
+    });
+
+    test('staffNotes', 'Staff notes must be 2000 characters or fewer', () => {
+      if (data.staffNotes) {
+        enforce(data.staffNotes).shorterThanOrEquals(STAFF_NOTES_MAX_LENGTH);
       }
     });
 

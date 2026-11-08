@@ -144,24 +144,24 @@ export default function ClassRosterPage() {
   // A private-hours class sells hours: one group each.
   const privateHours = !!currentClass && isPrivateHoursClass(currentClass);
 
-  // Detail dialog
-  const [pickedRegistration, setPickedRegistration] =
-    useState<Registration | null>(null);
-  const linkedRegistration = useMemo(
+  // Detail dialog: by id (picked, else from the link), so a save shows the
+  // registration as it now is.
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const selectedId = pickedId ?? linkedRegistrationId;
+  const selectedRegistration = useMemo(
     () =>
-      linkedRegistrationId
-        ? (registrations.find((r) => r.id === linkedRegistrationId) ?? null)
+      selectedId
+        ? (registrations.find((r) => r.id === selectedId) ?? null)
         : null,
-    [registrations, linkedRegistrationId]
+    [registrations, selectedId]
   );
-  const selectedRegistration = pickedRegistration ?? linkedRegistration;
 
   const handleViewDetail = useCallback((registration: Registration) => {
-    setPickedRegistration(registration);
+    setPickedId(registration.id);
   }, []);
 
   const handleCloseDetail = useCallback(() => {
-    setPickedRegistration(null);
+    setPickedId(null);
     if (linkedRegistrationId) {
       router.replace(`/classes/${classId}/roster`, { scroll: false });
     }
@@ -174,9 +174,9 @@ export default function ClassRosterPage() {
     [cancelRegistration]
   );
 
-  const handleUpdateNotes = useCallback(
-    async (id: string, notes: string) => {
-      await updateRegistration({ id, notes });
+  const handleUpdateStaffNotes = useCallback(
+    async (id: string, staffNotes: string) => {
+      await updateRegistration({ id, staffNotes });
     },
     [updateRegistration]
   );
@@ -468,7 +468,7 @@ export default function ClassRosterPage() {
             : undefined
         }
         onCancel={handleCancel}
-        onUpdateNotes={handleUpdateNotes}
+        onUpdateStaffNotes={handleUpdateStaffNotes}
       />
       {/* Copy success toast */}
       <Snackbar

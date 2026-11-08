@@ -165,8 +165,16 @@ export interface Registration {
    * predating the field — see `docToRegistration` for the back-compat read.
    */
   source: RegistrationSource;
-  /** Notes from customer (e.g., dietary restrictions, accessibility needs) */
+  /**
+   * The customer's note from checkout (dietary restrictions, accessibility
+   * needs), kept as they wrote it: `updateRegistration` refuses to change it.
+   */
   notes?: string;
+  /**
+   * Staff's own notes on the registration ("called, table by the door is
+   * set"). Admin-only; separate from the customer's `notes` (#326).
+   */
+  staffNotes?: string;
   /** Confirmation email sent */
   confirmationSentAt?: Date;
   /**
