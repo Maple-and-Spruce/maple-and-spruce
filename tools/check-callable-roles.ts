@@ -69,6 +69,8 @@ const PUBLIC_ALLOWLIST = new Set<string>([
   'publicSite/getPublicMusicTogetherSection',
   'publicSite/getPublicMusicTogetherSections',
   'publicSite/getPublicMusicTogetherDemos',
+  // The gift card buy page's amounts and class types (#309): read only.
+  'publicSite/getGiftCardOptions',
   // Public customer-facing writes (checkout / interest / waitlist).
   // NOTE: cancelRegistration / cancelMusicTogetherRegistration are role-gated
   // (admin/clerk), NOT public — so they are intentionally absent here.

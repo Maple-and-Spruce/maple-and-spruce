@@ -10,6 +10,10 @@ import {
   DialogActions,
   TextField,
   Alert,
+  FormControlLabel,
+  InputAdornment,
+  Switch,
+  Typography,
 } from '@mui/material';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
@@ -30,6 +34,19 @@ import {
   batch,
   useSignals,
 } from '@maple/react/signals';
+
+/** Dollars as typed to cents; NaN when it is not a number, undefined when blank. */
+function dollarsToCents(text: string): number | undefined {
+  const t = text.trim().replace(/^\$/, '');
+  if (!t) return undefined;
+  if (!/^\d+(\.\d{0,2})?$/.test(t)) return Number.NaN;
+  return Math.round(Number(t) * 100);
+}
+
+function centsToDollars(cents: number | undefined): string {
+  if (cents === undefined) return '';
+  return Number.isInteger(cents / 100) ? String(cents / 100) : (cents / 100).toFixed(2);
+}
 
 function readFileAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -65,6 +82,8 @@ export function ClassCategoryForm({
   const name = useSignal('');
   const description = useSignal('');
   const galleryImages = useSignal<GalleryImage[]>([]);
+  const giftCertificateEnabled = useSignal(false);
+  const giftCertificatePrice = useSignal('');
 
   const showValidationErrors = useSignal(false);
   const submitError = useSignal<string | null>(null);
@@ -78,6 +97,8 @@ export function ClassCategoryForm({
       order: isEdit ? category.order : nextOrder,
       galleryImages:
         galleryImages.value.length > 0 ? galleryImages.value : undefined,
+      giftCertificateEnabled: giftCertificateEnabled.value,
+      giftCertificatePriceCents: dollarsToCents(giftCertificatePrice.value),
     });
   });
 
@@ -128,6 +149,8 @@ export function ClassCategoryForm({
         galleryImages.value = category.galleryImages
           ? category.galleryImages.map((img) => ({ ...img }))
           : [];
+        giftCertificateEnabled.value = category.giftCertificateEnabled === true;
+        giftCertificatePrice.value = centsToDollars(category.giftCertificatePriceCents);
         showValidationErrors.value = false;
         submitError.value = null;
       });
@@ -136,6 +159,8 @@ export function ClassCategoryForm({
         name.value = '';
         description.value = '';
         galleryImages.value = [];
+        giftCertificateEnabled.value = false;
+        giftCertificatePrice.value = '';
         showValidationErrors.value = false;
         submitError.value = null;
       });
@@ -164,6 +189,11 @@ export function ClassCategoryForm({
                 alt: img.alt.trim(),
               }))
             : undefined,
+        giftCertificateEnabled: giftCertificateEnabled.value,
+        // Kept while switched off, so switching back on remembers it.
+        giftCertificatePriceCents: Number.isFinite(dollarsToCents(giftCertificatePrice.value))
+          ? dollarsToCents(giftCertificatePrice.value)
+          : undefined,
       };
 
       await onSubmit(input);
@@ -218,6 +248,42 @@ export function ClassCategoryForm({
             rows={2}
             fullWidth
           />
+
+          <Box>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={giftCertificateEnabled.value}
+                  onChange={(e) => (giftCertificateEnabled.value = e.target.checked)}
+                />
+              }
+              label="Sell as a gift certificate"
+            />
+            <Typography variant="body2" color="textSecondary">
+              Buyers can choose this class type on the gift card page. The certificate loads
+              its price onto a gift card that pays for one class of this type.
+            </Typography>
+            {giftCertificateEnabled.value && (
+              <TextField
+                label="Certificate price"
+                value={giftCertificatePrice.value}
+                onChange={(e) => (giftCertificatePrice.value = e.target.value)}
+                error={!!getFieldError('giftCertificatePriceCents')}
+                helperText={
+                  getFieldError('giftCertificatePriceCents') ||
+                  'What one class of this type costs as a gift'
+                }
+                required
+                slotProps={{
+                  input: {
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                  },
+                  htmlInput: { inputMode: 'decimal' },
+                }}
+                sx={{ mt: 1.5, maxWidth: 240 }}
+              />
+            )}
+          </Box>
 
           <GalleryEditor
             label="Image pool (shared across classes in this category)"

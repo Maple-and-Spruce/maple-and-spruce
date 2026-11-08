@@ -218,6 +218,7 @@ with the code from the admin.
 | Webflow `/gift-cards` page | Not started (Webflow) | #299 |
 | Pay for classes with a gift card, 10% class-certificate cushion | PR open (dark launch: off until `giftCardsEnabled` is turned on in Webflow) | #301 |
 | Own buy page with class certificates (`giftCards/purchaseGiftCard`, Webflow Gift Card component, admin "Bought online") | PR open | #300 |
+| Amounts in Admin > Settings, gift certificates per class type, class-type picker on the buy page | PR open | #309 |
 
 ## Phase 4: Music Lessons - legacy Epic #10
 

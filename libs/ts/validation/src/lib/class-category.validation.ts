@@ -82,5 +82,32 @@ export const classCategoryValidation = staticSuite(
         }
       }
     );
+
+    test(
+      'giftCertificatePriceCents',
+      'Enter a certificate price to sell this type as a gift certificate',
+      () => {
+        if (data.giftCertificateEnabled) {
+          enforce(data.giftCertificatePriceCents).isNotNullish();
+        }
+      }
+    );
+
+    test(
+      'giftCertificatePriceCents',
+      'The certificate price must be more than $0',
+      () => {
+        if (
+          data.giftCertificateEnabled &&
+          data.giftCertificatePriceCents !== undefined &&
+          data.giftCertificatePriceCents !== null
+        ) {
+          enforce(
+            Number.isInteger(data.giftCertificatePriceCents) &&
+              data.giftCertificatePriceCents > 0
+          ).isTruthy();
+        }
+      }
+    );
   }
 );

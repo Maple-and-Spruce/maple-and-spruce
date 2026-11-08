@@ -31,6 +31,7 @@ export {
   emailKey,
 } from './lib/class-waitlist.repository';
 export { GiftCardPurchaseRepository } from './lib/gift-card-purchase.repository';
+export { GiftCardSettingsRepository } from './lib/gift-card-settings.repository';
 
 // Phase 4: Music Lessons
 export { StudentRepository } from './lib/student.repository';

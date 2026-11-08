@@ -26,9 +26,14 @@ interface PurchaseGiftCardBase {
   idempotencyKey: string;
 }
 
+/**
+ * A class certificate names a class type (#309). Old `?giftClass=` links name
+ * a class instead, and the server resolves its type; one of the two is
+ * required.
+ */
 export type PurchaseGiftCardRequest =
   | (PurchaseGiftCardBase & { kind: 'amount'; amountCents: number })
-  | (PurchaseGiftCardBase & { kind: 'class'; classId: string });
+  | (PurchaseGiftCardBase & { kind: 'class'; classCategoryId?: string; classId?: string });
 
 export interface PurchaseGiftCardResponse {
   /** Square gift card id. */
@@ -38,7 +43,7 @@ export interface PurchaseGiftCardResponse {
   kind: GiftCardPurchaseKind;
   /** What was charged and put on the card, in cents. */
   valueCents: number;
-  /** For a class certificate, the class's name. */
+  /** For a class certificate, the class type's name. */
   className?: string;
   /** Who the email with the code went to. */
   deliverTo: GiftCardDeliverTo;
