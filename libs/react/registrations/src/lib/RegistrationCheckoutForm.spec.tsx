@@ -1196,6 +1196,20 @@ describe('RegistrationCheckoutForm — gift cards (#301)', () => {
     );
   });
 
+  it('shows a gift card error without the status code Square puts on it', async () => {
+    const user = userEvent.setup();
+    const onPreview = vi.fn(async () => {
+      throw new Error('This gift card has no balance left. [400]');
+    });
+    renderForm(onPreview);
+    await applyCard(user);
+
+    expect(
+      await screen.findByText('This gift card has no balance left.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/\[400\]/)).not.toBeInTheDocument();
+  });
+
   it('needs no card when the gift card covers it all', async () => {
     const user = userEvent.setup();
     const onTokenize = vi.fn(() => Promise.resolve({ nonce: 'should-not-be-used' }));
