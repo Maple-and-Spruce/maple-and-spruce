@@ -49,8 +49,31 @@ describe('giftCardPurchaseValidation', () => {
     expect(errors).not.toHaveProperty('amountCents');
   });
 
-  it('needs a class for a class certificate', () => {
-    expect(errorsFor({ ...valid, kind: 'class', classId: '' })).toHaveProperty('classId');
+  it('needs a class type (or an old class link) for a class certificate', () => {
+    expect(errorsFor({ ...valid, kind: 'class', classId: '' })).toHaveProperty('classCategoryId');
+    expect(errorsFor({ ...valid, kind: 'class', classCategoryId: 'cat-pottery' })).not.toHaveProperty(
+      'classCategoryId'
+    );
+    expect(errorsFor({ ...valid, kind: 'class', classId: 'class-1' })).not.toHaveProperty(
+      'classCategoryId'
+    );
+  });
+
+  it('checks the amount against the limits from Settings (#309)', () => {
+    const limits = { minCents: 500, maxCents: 100000 };
+    const at = (amountCents: number) =>
+      giftCardPurchaseValidation({ ...valid, amountCents }, undefined, limits).getErrors();
+    expect(at(500)).not.toHaveProperty('amountCents');
+    expect(at(75000)).not.toHaveProperty('amountCents');
+    expect(at(100100)['amountCents']).toEqual([
+      'Choose a whole-dollar amount from $5 to $1000',
+    ]);
+  });
+
+  it('defaults to $10 to $500 without limits', () => {
+    expect(errorsFor({ ...valid, amountCents: 900 })['amountCents']).toEqual([
+      'Choose a whole-dollar amount from $10 to $500',
+    ]);
   });
 
   it('refuses an unknown kind', () => {

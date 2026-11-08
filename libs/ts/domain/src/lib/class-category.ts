@@ -35,6 +35,17 @@ export interface ClassCategory {
    * field so Webflow can render related classes natively.
    */
   webflowItemId?: string;
+  /**
+   * Sold on the gift card page as a class gift certificate (#309). Only
+   * switched-on types can be bought, at `giftCertificatePriceCents`.
+   */
+  giftCertificateEnabled?: boolean;
+  /**
+   * What a gift certificate for one class of this type costs, in cents.
+   * Required while `giftCertificateEnabled` is on; kept when it is switched
+   * off so turning it back on remembers the price.
+   */
+  giftCertificatePriceCents?: number;
   createdAt: Date;
   updatedAt: Date;
 }

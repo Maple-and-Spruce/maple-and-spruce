@@ -8,16 +8,20 @@
  */
 import { test, enforce, only, skipWhen } from 'vest';
 import {
-  GIFT_CARD_MAX_CENTS,
+  DEFAULT_GIFT_CARD_AMOUNT_SETTINGS,
   GIFT_CARD_MESSAGE_MAX_LENGTH,
-  GIFT_CARD_MIN_CENTS,
+  formatGiftCardDollars,
   isAllowedGiftCardAmount,
+  type GiftCardAmountSettings,
 } from '@maple/ts/domain';
 import { staticSuite } from './static-suite';
 
 export interface GiftCardPurchaseValidationInput {
   kind?: string;
   amountCents?: unknown;
+  /** The class type a certificate is for (#309). */
+  classCategoryId?: string;
+  /** Old `?giftClass=` links: the class whose type the certificate is for. */
   classId?: string;
   buyerName?: string;
   buyerEmail?: string;
@@ -33,8 +37,16 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** A browser-made key: letters, digits and dashes, 8 to 64 long. */
 const IDEMPOTENCY_KEY_RE = /^[A-Za-z0-9-]{8,64}$/;
 
+/**
+ * `limits` are the lowest and highest amounts from Settings (#309); the
+ * defaults apply when the caller has none.
+ */
 export const giftCardPurchaseValidation = staticSuite(
-  (data: GiftCardPurchaseValidationInput, field?: string | string[]) => {
+  (
+    data: GiftCardPurchaseValidationInput,
+    field?: string | string[],
+    limits: Pick<GiftCardAmountSettings, 'minCents' | 'maxCents'> = DEFAULT_GIFT_CARD_AMOUNT_SETTINGS
+  ) => {
     only(field);
 
     test('kind', 'Choose an amount or a class', () => {
@@ -44,16 +56,16 @@ export const giftCardPurchaseValidation = staticSuite(
     skipWhen(data.kind !== 'amount', () => {
       test(
         'amountCents',
-        `Choose a whole-dollar amount from $${GIFT_CARD_MIN_CENTS / 100} to $${GIFT_CARD_MAX_CENTS / 100}`,
+        `Choose a whole-dollar amount from ${formatGiftCardDollars(limits.minCents)} to ${formatGiftCardDollars(limits.maxCents)}`,
         () => {
-          enforce(isAllowedGiftCardAmount(data.amountCents)).isTruthy();
+          enforce(isAllowedGiftCardAmount(data.amountCents, limits)).isTruthy();
         }
       );
     });
 
     skipWhen(data.kind !== 'class', () => {
-      test('classId', 'Choose a class', () => {
-        enforce(data.classId).isNotBlank();
+      test('classCategoryId', 'Choose a class', () => {
+        enforce(Boolean(data.classCategoryId?.trim() || data.classId?.trim())).isTruthy();
       });
     });
 
