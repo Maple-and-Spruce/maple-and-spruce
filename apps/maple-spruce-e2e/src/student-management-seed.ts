@@ -70,7 +70,7 @@ export async function seedStudentManagement(
   // Room: the two-ahead student keeps 4:00 PM and the Hope student books
   // 5:00 PM. A lesson at "now + 8 days" used to land inside the Hope slot
   // whenever CI ran near 4 PM Eastern, and booking was refused as a room
-  // clash.
+  // clash. Keep the two slots at least a lesson (30 minutes) apart.
   const slotDay = weekdayInStudio(at(8));
   const TWO_AHEAD_SLOT = 16 * 60;
   const HOPE_BOOKING_SLOT = 17 * 60;
