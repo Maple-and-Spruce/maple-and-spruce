@@ -3,6 +3,12 @@ import {
   listFirestoreDocs,
   setFirestoreDoc,
 } from '@maple/firebase/integration-test-utils';
+import {
+  SCHEDULE_TIME_ZONE,
+  weekdayIndexInZone,
+  zonedDateKey,
+  zonedWallClockToInstant,
+} from '@maple/ts/domain';
 
 /**
  * A student with teaching owed and nothing else, for the task-ordered student
@@ -22,16 +28,34 @@ export const HISTORY_STUDENT_ID = 'e2e-stu-history';
 /** A Hope student with a weekly time and nothing booked: book-only (#158). */
 export const HOPE_BOOKING_STUDENT_ID = 'e2e-stu-hope-booking';
 const BLOCK_ID = 'e2e-block-weekly';
-const TZ = 'America/New_York';
 
-/** Weekday (0 = Sunday) of an instant, read in the studio's timezone. */
-function weekdayInStudio(at: Date): number {
-  const short = new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    timeZone: TZ,
-  }).format(at);
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(short);
+/**
+ * The studio's calendar date `days` from today, at `minutes` past midnight
+ * there. Steps calendar days, not 24-hour blocks, so a clock change between
+ * now and then keeps the wall-clock time (PATTERNS: Dates and Clock Changes).
+ */
+export function studioTime(now: Date, days: number, minutes: number): Date {
+  const [year, month, day] = zonedDateKey(now, SCHEDULE_TIME_ZONE)
+    .split('-')
+    .map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
+  return zonedWallClockToInstant(
+    date.getUTCFullYear(),
+    date.getUTCMonth() + 1,
+    date.getUTCDate(),
+    minutes,
+    SCHEDULE_TIME_ZONE
+  );
 }
+
+/** The two-ahead student's weekly time, and its hand-made lessons. */
+export const TWO_AHEAD_START_MINUTES = 16 * 60;
+/**
+ * The Hope booking student's weekly time: its own hour, in the same room.
+ * Sharing 4:00 PM with the two-ahead student made "Book 4 lessons" collide
+ * with that student's booked lessons, a real room clash the server refuses.
+ */
+export const HOPE_BOOKING_START_MINUTES = 17 * 60;
 const TEACHER_ID = 'e2e-teacher';
 const DAY = 86_400_000;
 
@@ -47,9 +71,9 @@ export async function seedStudentManagement(
     status: 'active',
     ...stamps,
   });
-  // The weekly times below sit on the weekday eight days out, at 4:00 PM, so
-  // the first proposed date is never today and never in the past.
-  const slotDay = weekdayInStudio(at(8));
+  // The weekly times below sit on the weekday eight days out (so tomorrow's
+  // weekday): the first proposed date is never today and never in the past.
+  const slotDay = weekdayIndexInZone(studioTime(now, 8, 0), SCHEDULE_TIME_ZONE);
   await setFirestoreDoc('lessonBlocks', BLOCK_ID, {
     teacherId: TEACHER_ID,
     dayOfWeek: slotDay,
@@ -57,12 +81,12 @@ export async function seedStudentManagement(
     endMinutes: 20 * 60,
     ...stamps,
   });
-  const weeklyTime = (studentId: string) => ({
+  const weeklyTime = (studentId: string, startMinutes: number) => ({
     studentId,
     teacherId: TEACHER_ID,
     blockId: BLOCK_ID,
     dayOfWeek: slotDay,
-    startMinutes: 16 * 60,
+    startMinutes,
     durationMinutes: 30,
     intervalWeeks: 1,
     room: 'spruce',
@@ -111,7 +135,7 @@ export async function seedStudentManagement(
   await setFirestoreDoc(
     'studentLessonSchedules',
     'e2e-sched-two-ahead',
-    weeklyTime(TWO_AHEAD_STUDENT_ID)
+    weeklyTime(TWO_AHEAD_STUDENT_ID, TWO_AHEAD_START_MINUTES)
   );
   // A retry must start from two again, so clear any this spec already added.
   const lessons = await listFirestoreDocs('lessons');
@@ -120,6 +144,9 @@ export async function seedStudentManagement(
       await deleteFirestoreDoc('lessons', doc.id);
     }
   }
+  // On the weekly time, not at whatever time of day the run started: a lesson
+  // that keeps "now"'s clock time lands on another student's slot for an
+  // hour each afternoon (the 3:30-4:30 PM Eastern e2e failure).
   for (const [id, days] of [
     ['e2e-two-ahead-1', 8],
     ['e2e-two-ahead-2', 22],
@@ -127,7 +154,7 @@ export async function seedStudentManagement(
     await setFirestoreDoc('lessons', id, {
       studentId: TWO_AHEAD_STUDENT_ID,
       teacherId: TEACHER_ID,
-      scheduledAt: at(days),
+      scheduledAt: studioTime(now, days, TWO_AHEAD_START_MINUTES),
       durationMinutes: 30,
       status: 'scheduled',
       ...stamps,
@@ -224,7 +251,7 @@ export async function seedStudentManagement(
   await setFirestoreDoc(
     'studentLessonSchedules',
     'e2e-sched-hope-booking',
-    weeklyTime(HOPE_BOOKING_STUDENT_ID)
+    weeklyTime(HOPE_BOOKING_STUDENT_ID, HOPE_BOOKING_START_MINUTES)
   );
   // A retry starts with nothing booked.
   for (const doc of await listFirestoreDocs('lessons')) {
