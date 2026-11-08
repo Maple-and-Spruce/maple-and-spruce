@@ -249,11 +249,25 @@ export type GiftCardPurchaseKind = 'amount' | 'class';
 export type GiftCardDeliverTo = 'recipient' | 'buyer';
 
 /**
- * A gift card bought through our own buy page. Square still owns the card and
- * its balance; this records what Square cannot: who it was for, the message,
- * and, for a class certificate, which class type it covers.
+ * How a recorded card came about (#310):
  *
- * Stored at `giftCardPurchases/{giftCardId}` (one purchase per card).
+ * - `online`: bought on our own buy page (#300). Records from before #310
+ *   have no `source`, and read as `online`.
+ * - `register`: sold at the shop's Square register, then marked as a class
+ *   certificate by Katie on the admin Gift Cards page.
+ * - `issued`: given free by the studio from the admin page. No money changed
+ *   hands; the value comes out of the studio's pocket when it is spent.
+ */
+export type GiftCardPurchaseSource = 'online' | 'register' | 'issued';
+
+/**
+ * What we know about a gift card that Square cannot hold. Square still owns
+ * the card and its balance; this records who it was for, the message, for a
+ * class certificate which class type it covers, and how it came about.
+ *
+ * Stored at `giftCardPurchases/{giftCardId}` (one record per card). The buyer,
+ * delivery and Square order fields are only there for a card bought online
+ * (see `OnlineGiftCardPurchase`).
  */
 export interface GiftCardPurchase {
   /** Square gift card id; also the document id. */
@@ -261,23 +275,58 @@ export interface GiftCardPurchase {
   /** Last 4 digits of the card code. The full code is never stored. */
   last4: string;
   kind: GiftCardPurchaseKind;
-  /** What was paid and loaded onto the card, in cents. */
+  /**
+   * What the card was worth when it was made, in cents: what was paid online,
+   * what was loaded at the register, or what the studio gave.
+   */
   valueCents: number;
-  /** For a class certificate: the class it was bought from. */
+  /** How the card came about. Missing means `online`. */
+  source?: GiftCardPurchaseSource;
+  /** For a class certificate bought online: the class it was bought from. */
   classId?: string;
   /** For a class certificate: the class type it covers. */
   classCategoryId?: string;
-  /** For a class certificate: the class's name at purchase, for emails. */
+  /**
+   * For a class certificate: the class's name at purchase (online), or the
+   * class type's name (register, issued), for emails and the admin.
+   */
   className?: string;
-  buyerName: string;
-  buyerEmail: string;
+  /** Online only: who paid. */
+  buyerName?: string;
+  /** Online only: the buyer's email. */
+  buyerEmail?: string;
   recipientName?: string;
   recipientEmail?: string;
+  /** Register or issued: who the card is from, as written on the certificate. */
+  fromName?: string;
   message?: string;
-  deliverTo: GiftCardDeliverTo;
-  squareOrderId: string;
-  squarePaymentId: string;
+  /** Online only: who the email with the code went to. */
+  deliverTo?: GiftCardDeliverTo;
+  /** Online only. */
+  squareOrderId?: string;
+  /** Online only. */
+  squarePaymentId?: string;
+  /** Issued only: why the studio gave it, in Katie's words. */
+  reason?: string;
+  /** Register or issued: the admin who recorded it. */
+  recordedByUid?: string;
   createdAt: Date;
+}
+
+/** A card bought on our own buy page: every buyer field is there. */
+export type OnlineGiftCardPurchase = GiftCardPurchase &
+  Required<
+    Pick<
+      GiftCardPurchase,
+      'buyerName' | 'buyerEmail' | 'deliverTo' | 'squareOrderId' | 'squarePaymentId'
+    >
+  >;
+
+/** How the record came about, reading a missing `source` as `online`. */
+export function giftCardPurchaseSource(
+  purchase: Pick<GiftCardPurchase, 'source'>
+): GiftCardPurchaseSource {
+  return purchase.source ?? 'online';
 }
 
 /** The studio covers up to this share of a class certificate's value. */

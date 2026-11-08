@@ -90,6 +90,7 @@ export * from './lib/music-together-licensee';
 // Gift cards (Square-owned balances)
 export * from './lib/gift-card';
 export * from './lib/gift-card-purchase';
+export * from './lib/gift-card-admin';
 
 // User & role administration
 export * from './lib/app-user';

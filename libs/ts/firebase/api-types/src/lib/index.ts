@@ -674,6 +674,10 @@ export type {
   GetGiftCardResponse,
   RevealGiftCardCodeRequest,
   RevealGiftCardCodeResponse,
+  MarkClassCertificateRequest,
+  MarkClassCertificateResponse,
+  IssueGiftCardRequest,
+  IssueGiftCardResponse,
 } from './gift-card.types';
 export type {
   PurchaseGiftCardRequest,

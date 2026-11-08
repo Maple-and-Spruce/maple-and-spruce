@@ -1,10 +1,13 @@
 /**
  * Gift card purchases (#300).
  *
- * One document per gift card bought on our own buy page, keyed by the Square
- * gift card id: `giftCardPurchases/{giftCardId}`. Square owns the balance and
- * the code; this keeps what Square cannot (who it was for, the message, and
- * for a class certificate, which class type it covers).
+ * One document per gift card we know more about than Square does, keyed by
+ * the Square gift card id: `giftCardPurchases/{giftCardId}`. Written when a
+ * card is bought on our own buy page (#300), when Katie marks a register card
+ * as a class certificate, or when the studio gives a free card (#310).
+ * Square owns the balance and the code; this keeps what Square cannot (who it
+ * was for, the message, for a class certificate which class type it covers,
+ * and how it came about).
  *
  * Never store the full card code here.
  */
@@ -23,17 +26,21 @@ function docToGiftCardPurchase(
     last4: data.last4,
     kind: data.kind,
     valueCents: data.valueCents,
+    source: data.source ?? undefined,
     classId: data.classId ?? undefined,
     classCategoryId: data.classCategoryId ?? undefined,
     className: data.className ?? undefined,
-    buyerName: data.buyerName,
-    buyerEmail: data.buyerEmail,
+    buyerName: data.buyerName ?? undefined,
+    buyerEmail: data.buyerEmail ?? undefined,
     recipientName: data.recipientName ?? undefined,
     recipientEmail: data.recipientEmail ?? undefined,
+    fromName: data.fromName ?? undefined,
     message: data.message ?? undefined,
-    deliverTo: data.deliverTo,
-    squareOrderId: data.squareOrderId,
-    squarePaymentId: data.squarePaymentId,
+    deliverTo: data.deliverTo ?? undefined,
+    squareOrderId: data.squareOrderId ?? undefined,
+    squarePaymentId: data.squarePaymentId ?? undefined,
+    reason: data.reason ?? undefined,
+    recordedByUid: data.recordedByUid ?? undefined,
     createdAt: toDate(data.createdAt),
   };
 }
@@ -47,8 +54,8 @@ function withoutUndefined<T extends object>(value: T): Partial<T> {
 
 export const GiftCardPurchaseRepository = {
   /**
-   * Record a purchase. Uses `create`, so recording the same card twice fails
-   * instead of overwriting the first record.
+   * Record a card. Uses `create`, so recording the same card twice fails
+   * (`isAlreadyExists`) instead of overwriting the first record.
    */
   async create(
     input: Omit<GiftCardPurchase, 'createdAt'>
