@@ -68,6 +68,12 @@ export interface MarkClassCertificateResponse {
 interface IssueGiftCardBase {
   /** Why the studio is giving it, in Katie's words. 3 to 200 characters. */
   reason: string;
+  /**
+   * A code the studio chooses instead of Square's number, e.g.
+   * "FERN REEL HARP 4821". Spaces and dashes are ignored. 8 to 20 letters and
+   * digits; Square refuses one already in use.
+   */
+  code?: string;
   recipientName?: string;
   fromName?: string;
   message?: string;

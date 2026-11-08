@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   isAllowedIssuedGiftCardAmount,
   originalGiftCardValueCents,
+  customGiftCardCodeProblem,
+  normalizeGiftCardCode,
 } from './gift-card-admin';
 import { giftCardPurchaseSource, type GiftCardActivityEntry } from './gift-card';
 
@@ -72,5 +74,22 @@ describe('giftCardPurchaseSource', () => {
   it('reads a record with no source as bought online', () => {
     expect(giftCardPurchaseSource({})).toBe('online');
     expect(giftCardPurchaseSource({ source: 'issued' })).toBe('issued');
+  });
+});
+
+describe('custom gift card codes', () => {
+  it('drops spaces and dashes and capitalises', () => {
+    expect(normalizeGiftCardCode(' fern reel-harp 4821 ')).toBe('FERNREELHARP4821');
+  });
+
+  it.each([
+    ['FERN REEL HARP 4821', undefined],
+    ['7012 3456 7890', undefined],
+    ['FERN', 'Use 8 to 20 letters and numbers'],
+    ['FERNREELHARPMAPLE48213', 'Use 8 to 20 letters and numbers'],
+    ['FERN_REEL_4821', 'Use only letters and numbers'],
+    ['4111 1111 1111', 'A number-only code cannot start with 2, 3, 4, 5 or 6'],
+  ])('%s → %s', (code, problem) => {
+    expect(customGiftCardCodeProblem(code)).toBe(problem);
   });
 });
