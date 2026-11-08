@@ -74,9 +74,9 @@ export function normalizeGiftCardCode(input: string): string {
  */
 export function customGiftCardCodeProblem(input: string): string | undefined {
   const code = normalizeGiftCardCode(input);
-  if (!/^[A-Z0-9]+$/.test(code)) return 'Use only letters and numbers';
+  if (!/^[A-Z\d]+$/.test(code)) return 'Use only letters and numbers';
   if (code.length < 8 || code.length > 20) return 'Use 8 to 20 letters and numbers';
-  if (/^[0-9]+$/.test(code) && /^[2-6]/.test(code)) {
+  if (/^\d+$/.test(code) && /^[2-6]/.test(code)) {
     return 'A number-only code cannot start with 2, 3, 4, 5 or 6';
   }
   return undefined;
