@@ -17,7 +17,12 @@ import {
   SQUARE_SECRET_NAMES,
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
-import { canRefundRegistration } from '@maple/ts/domain';
+import {
+  canRefundRegistration,
+  formatCentsAsDollars,
+  registrationRefundParts,
+  type Registration,
+} from '@maple/ts/domain';
 import type {
   CancelRegistrationRequest,
   CancelRegistrationResponse,
@@ -75,6 +80,35 @@ export const cancelRegistration = Functions.endpoint
       let refundId: string | undefined;
       let refundedAmountCents: number | undefined;
 
+      // Paid partly or wholly by gift card (#301): refund each payment to
+      // where it came from. A registration paid by card alone never has
+      // `squareGiftCardPaymentId` and takes the original path below.
+      if (data.refund && registration.squareGiftCardPaymentId) {
+        if (!canRefundRegistration(registration)) {
+          throwFailedPrecondition(
+            `Cannot refund a registration with status '${registration.status}'`
+          );
+        }
+        const square = new Square(
+          secrets as typeof secrets &
+            Record<(typeof SQUARE_SECRET_NAMES)[number], string>,
+          strings as typeof strings &
+            Record<(typeof SQUARE_STRING_NAMES)[number], string>
+        );
+        const result = await refundGiftCardRegistration(square, registration);
+        const refundedAt = new Date();
+        const updated = await RegistrationRepository.update({
+          id: data.id,
+          status: 'refunded',
+          refundedAt,
+          lastRefundAt: refundedAt,
+          refundedAmountCents: result.refundedAmountCents,
+          squareRefundId: result.refundIds[0],
+          squareRefundIds: result.squareRefundIds,
+        });
+        return { registration: updated, refundId: result.refundIds[0] };
+      }
+
       // Process refund if requested and payment exists
       if (data.refund && registration.squarePaymentId) {
         if (!canRefundRegistration(registration)) {
@@ -127,3 +161,68 @@ export const cancelRegistration = Functions.endpoint
       };
     }
   );
+
+/**
+ * Refund a registration that a gift card paid for, in part or in full: the
+ * card's share back to the card, the gift card's share back onto the gift
+ * card. The studio-covered class certificate amount was never paid by anyone,
+ * so it is not refunded.
+ *
+ * Idempotency keys are derived from the registration, so running it again
+ * after a partial failure gets the same refunds back from Square rather than
+ * refunding twice, and a refund already recorded is not counted twice.
+ *
+ * If one refund goes through and the next fails, what did go back is recorded
+ * (the registration stays active) and the admin is told what is left to
+ * refund by hand.
+ */
+async function refundGiftCardRegistration(
+  square: Square,
+  registration: Registration
+): Promise<{
+  refundIds: string[];
+  squareRefundIds: string[];
+  refundedAmountCents: number;
+}> {
+  const known = registration.squareRefundIds ?? [];
+  const squareRefundIds = [...known];
+  const refundIds: string[] = [];
+  let refundedAmountCents = registration.refundedAmountCents ?? 0;
+
+  for (const part of registrationRefundParts(registration)) {
+    try {
+      const refund = await square.paymentsService.refundPayment({
+        paymentId: part.paymentId,
+        amountCents: part.amountCents,
+        idempotencyKey: `refund-${registration.id}-${part.kind}`,
+        reason: 'Registration cancelled by admin',
+      });
+      refundIds.push(refund.refundId);
+      if (!squareRefundIds.includes(refund.refundId)) {
+        squareRefundIds.push(refund.refundId);
+        refundedAmountCents += refund.amountCents || part.amountCents;
+      }
+    } catch (error) {
+      if (squareRefundIds.length > known.length) {
+        await RegistrationRepository.update({
+          id: registration.id,
+          refundedAmountCents,
+          lastRefundAt: new Date(),
+          squareRefundIds,
+        });
+      }
+      const detail = error instanceof Error ? error.message : String(error);
+      const where = part.kind === 'gift-card' ? 'gift card' : 'card';
+      const done =
+        refundIds.length > 0
+          ? `${formatCentsAsDollars(refundedAmountCents)} has been refunded so far. `
+          : '';
+      throwFailedPrecondition(
+        `${done}The ${formatCentsAsDollars(part.amountCents)} refund to the ${where} failed (${detail}). ` +
+          'Try again, or refund it in Square and then mark the registration refunded in Square.'
+      );
+    }
+  }
+
+  return { refundIds, squareRefundIds, refundedAmountCents };
+}

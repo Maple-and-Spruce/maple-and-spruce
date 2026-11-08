@@ -92,6 +92,12 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
         <td class="label">Subtotal</td>
         <td>{{subtotal}}</td>
       </tr>
+      {{#if classCertificateCover}}
+      <tr>
+        <td class="label">Class certificate covers</td>
+        <td>&minus;{{classCertificateCover}}</td>
+      </tr>
+      {{/if}}
       <tr>
         <td class="label">WV Sales Tax ({{taxRate}}%)</td>
         <td>{{taxAmount}}</td>
@@ -100,6 +106,18 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
         <td class="label">Total Paid</td>
         <td><strong>{{amountPaid}}</strong></td>
       </tr>
+      {{#if giftCardPaid}}
+      <tr>
+        <td class="label">Gift card ending {{giftCardLast4}}</td>
+        <td>{{giftCardPaid}}</td>
+      </tr>
+      {{/if}}
+      {{#if cardPaid}}
+      <tr>
+        <td class="label">Paid by card</td>
+        <td>{{cardPaid}}</td>
+      </tr>
+      {{/if}}
       <tr>
         <td class="label">Confirmation #</td>
         <td>{{confirmationNumber}}</td>
