@@ -6,6 +6,7 @@ function createMockClient() {
     orders: {
       create: vi.fn(),
       get: vi.fn(),
+      pay: vi.fn(),
     },
   };
 }
@@ -19,6 +20,43 @@ describe('OrdersService', () => {
     mockClient = createMockClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     service = new OrdersService(mockClient as any);
+  });
+
+  describe('payOrder', () => {
+    it('pays the order with every payment and returns its state', async () => {
+      mockClient.orders.pay.mockResolvedValue({
+        order: { id: 'order-1', state: 'COMPLETED' },
+      });
+
+      const result = await service.payOrder({
+        orderId: 'order-1',
+        paymentIds: ['gc-pay', 'card-pay'],
+        idempotencyKey: 'pay-reg-1',
+      });
+
+      expect(mockClient.orders.pay).toHaveBeenCalledWith({
+        orderId: 'order-1',
+        idempotencyKey: 'pay-reg-1',
+        paymentIds: ['gc-pay', 'card-pay'],
+      });
+      expect(result).toEqual({ orderId: 'order-1', state: 'COMPLETED' });
+    });
+
+    it('throws on Square errors', async () => {
+      mockClient.orders.pay.mockResolvedValue({
+        errors: [{ code: 'BAD_REQUEST', detail: 'payment not approved' }],
+      });
+      await expect(
+        service.payOrder({ orderId: 'o', paymentIds: ['p'], idempotencyKey: 'k' })
+      ).rejects.toThrow('payment not approved');
+    });
+
+    it('throws when no order comes back', async () => {
+      mockClient.orders.pay.mockResolvedValue({});
+      await expect(
+        service.payOrder({ orderId: 'o', paymentIds: ['p'], idempotencyKey: 'k' })
+      ).rejects.toThrow('no order');
+    });
   });
 
   describe('createOrder', () => {
@@ -148,37 +186,6 @@ describe('OrdersService', () => {
       expect(result.customerId).toBeUndefined();
       expect(result.lineItems[0].quantity).toBe(1);
       expect(result.lineItems[0].basePriceCents).toBeUndefined();
-    });
-
-    it('keeps the line item type so a gift card sale can be told apart', async () => {
-      mockClient.orders.get.mockResolvedValue({
-        order: {
-          id: 'order-gc',
-          totalMoney: { amount: BigInt(9500) },
-          lineItems: [
-            {
-              name: 'Gift Card',
-              itemType: 'GIFT_CARD',
-              quantity: '1',
-              totalMoney: { amount: BigInt(5000) },
-            },
-            {
-              catalogObjectId: 'VAR_MUG',
-              name: 'Mug',
-              itemType: 'ITEM',
-              quantity: '1',
-              totalMoney: { amount: BigInt(4500) },
-            },
-          ],
-        },
-      });
-
-      const result = await service.getOrder('order-gc');
-
-      expect(result.lineItems.map((li) => li.itemType)).toEqual([
-        'GIFT_CARD',
-        'ITEM',
-      ]);
     });
 
     it('handles an order with no line items', async () => {

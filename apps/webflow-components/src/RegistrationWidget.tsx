@@ -41,7 +41,10 @@ import type {
   InlineAgreementSigningData,
   AddToClassWaitlistRequest,
   AddToClassWaitlistResponse,
+  PreviewGiftCardForClassRequest,
+  PreviewGiftCardForClassResponse,
 } from '@maple/ts/firebase/api-types';
+import { formatCentsAsDollars } from '@maple/ts/domain';
 import { getWidgetFunctions, routeCallable } from './firebase-init';
 import {
   trackAddClassToCart,
@@ -278,6 +281,19 @@ interface RegistrationWidgetProps {
   env: string;
   applePayCheckoutUrl?: string;
   showDigitalWallets?: string;
+  /**
+   * 'show' offers "Have a gift card?" at checkout (#301). Anything else
+   * (the default 'hide') leaves the form exactly as it was.
+   */
+  giftCardsEnabled?: string;
+}
+
+/** What a gift card paid, for the success screen (#301). Last 4 only. */
+interface GiftCardPaymentDetails {
+  giftCardLast4?: string;
+  giftCardPaidCents?: number;
+  cardPaidCents?: number;
+  classCertificateCoverCents?: number;
 }
 
 interface ConfirmedState {
@@ -294,6 +310,7 @@ interface ConfirmedState {
   skillLevel: string;
   location?: string;
   agreementsSigned?: boolean;
+  giftCard?: GiftCardPaymentDetails;
 }
 
 type WidgetState =
@@ -320,7 +337,7 @@ function buildConfirmedState(
     agreementsSigned?: boolean;
     /** Private hours: the hour booked, which is what the buyer attends. */
     slotStart?: string;
-  }
+  } & GiftCardPaymentDetails
 ): ConfirmedState {
   const firstSessionIso =
     details.slotStart ?? pc.sessions?.[0]?.dateTime ?? '';
@@ -340,6 +357,16 @@ function buildConfirmedState(
     skillLevel: pc.skillLevel,
     location: pc.location,
     agreementsSigned: details.agreementsSigned,
+    ...(details.giftCardPaidCents
+      ? {
+          giftCard: {
+            giftCardLast4: details.giftCardLast4,
+            giftCardPaidCents: details.giftCardPaidCents,
+            cardPaidCents: details.cardPaidCents,
+            classCertificateCoverCents: details.classCertificateCoverCents,
+          },
+        }
+      : {}),
   };
 }
 
@@ -350,8 +377,10 @@ export function RegistrationWidget({
   env,
   applePayCheckoutUrl,
   showDigitalWallets,
+  giftCardsEnabled,
 }: RegistrationWidgetProps) {
   const digitalWalletsEnabled = showDigitalWallets === 'show';
+  const giftCardsOn = giftCardsEnabled === 'show';
   const [state, setState] = useState<WidgetState>({ status: 'loading' });
 
   const functions = useMemo(() => getWidgetFunctions(env), [env]);
@@ -517,6 +546,7 @@ export function RegistrationWidget({
       discountCode?: string;
       notes?: string;
       paymentNonce: string;
+      giftCardNonce?: string;
       agreements?: InlineAgreementSigningData[];
       slotStart?: string;
       groupSize?: number;
@@ -572,6 +602,21 @@ export function RegistrationWidget({
       return { added: result.data.added };
     },
     [functions, classId]
+  );
+
+  /** Gift cards (#301): what a card would pay toward this class. */
+  const handlePreviewGiftCard = useCallback(
+    async (
+      request: PreviewGiftCardForClassRequest
+    ): Promise<PreviewGiftCardForClassResponse> => {
+      const preview = routeCallable<
+        PreviewGiftCardForClassRequest,
+        PreviewGiftCardForClassResponse
+      >(functions, 'giftCards', 'previewGiftCardForClass');
+      const result = await preview(request);
+      return result.data;
+    },
+    [functions]
   );
 
   const handleHostedCheckout = useCallback(
@@ -633,7 +678,7 @@ export function RegistrationWidget({
       quantity: number;
       agreementsSigned?: boolean;
       slotStart?: string;
-    }) => {
+    } & GiftCardPaymentDetails) => {
       if (state.status !== 'ready') return;
 
       const pc = state.publicClass;
@@ -719,6 +764,9 @@ export function RegistrationWidget({
                   onHostedCheckout={handleHostedCheckout}
                   onSuccess={handleSuccess}
                   onJoinHourWaitlist={handleJoinHourWaitlist}
+                  onPreviewGiftCard={
+                    giftCardsOn ? handlePreviewGiftCard : undefined
+                  }
                 />
               </Box>
             )}
@@ -766,6 +814,30 @@ export function RegistrationWidget({
                 }}>
                 ${(state.pricePaidCents / 100).toFixed(2)} paid
               </Typography>
+              {state.giftCard && (
+                <Box sx={{ mt: 0.5 }} data-testid="gift-card-paid">
+                  {state.giftCard.giftCardPaidCents ? (
+                    <Typography variant="body2" color="textSecondary">
+                      Paid with gift card ending {state.giftCard.giftCardLast4}:{' '}
+                      {formatCentsAsDollars(state.giftCard.giftCardPaidCents)}
+                    </Typography>
+                  ) : null}
+                  {state.giftCard.classCertificateCoverCents ? (
+                    <Typography variant="body2" color="textSecondary">
+                      Class certificate covered:{' '}
+                      {formatCentsAsDollars(
+                        state.giftCard.classCertificateCoverCents
+                      )}
+                    </Typography>
+                  ) : null}
+                  {state.giftCard.cardPaidCents ? (
+                    <Typography variant="body2" color="textSecondary">
+                      Paid by card:{' '}
+                      {formatCentsAsDollars(state.giftCard.cardPaidCents)}
+                    </Typography>
+                  ) : null}
+                </Box>
+              )}
             </Box>
 
             {/* Waiver signed indicator */}

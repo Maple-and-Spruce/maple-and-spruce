@@ -20,7 +20,7 @@ vi.mock('@maple/firebase/functions', () => {
         route.appCheck = mode;
         return chain;
       },
-      throttling: (scope: string, rules: unknown) => {
+      throttling: (scope: unknown, rules: unknown) => {
         route.throttle = { scope, rules };
         return chain;
       },
@@ -48,6 +48,7 @@ vi.mock('@maple/firebase/functions', () => {
       router: (_name: string, routes: unknown) => routes,
     },
     Role: { Admin: 'admin', Clerk: 'clerk' },
+    codeLookupThrottles: () => ['per-ip'],
     paymentThrottles: (field: string) => [`payment:${field}`],
   };
 });
@@ -63,6 +64,8 @@ const handlers = vi.hoisted(() => ({
   revealGiftCardCode: vi.fn(),
 }));
 vi.mock('./gift-cards.handlers', () => handlers);
+const preview = vi.hoisted(() => ({ previewGiftCardForClass: vi.fn() }));
+vi.mock('./preview-gift-card-for-class', () => preview);
 const purchase = vi.hoisted(() => ({ purchaseGiftCard: vi.fn() }));
 vi.mock('./purchase-gift-card', () => purchase);
 
@@ -70,8 +73,8 @@ import { giftCards } from './gift-cards.router';
 
 type Route = {
   roles: unknown;
-  appCheck: unknown;
-  throttle: unknown;
+  appCheck?: unknown;
+  throttle?: unknown;
   secrets: string[];
   strings: string[];
   handler: (...args: unknown[]) => unknown;
@@ -79,13 +82,23 @@ type Route = {
 const routes = giftCards as unknown as Record<string, Route>;
 
 describe('giftCards router', () => {
-  it('has the three admin reads and the public purchase', () => {
+  it('has the three admin reads, the checkout preview and the public purchase', () => {
     expect(Object.keys(routes).sort()).toEqual([
       'getGiftCard',
       'getGiftCards',
+      'previewGiftCardForClass',
       'purchaseGiftCard',
       'revealGiftCardCode',
     ]);
+  });
+
+  it('previewGiftCardForClass is public, App Check enforced and throttled (#301)', () => {
+    const route = routes['previewGiftCardForClass'];
+    expect(route.roles).toBeUndefined();
+    expect(route.appCheck).toBe('enforce');
+    expect(route.throttle).toEqual({ scope: 'previewGiftCardForClass', rules: ['per-ip'] });
+    expect(route.secrets).toEqual(['SQUARE_ACCESS_TOKEN']);
+    expect(route.handler).toBe(preview.previewGiftCardForClass);
   });
 
   it('purchaseGiftCard is public, App Check enforced and throttled per buyer', () => {

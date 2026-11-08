@@ -168,4 +168,118 @@ describe('cancelRegistration', () => {
       expect(mocks.markRefundedInSquare).not.toHaveBeenCalled();
     });
   });
+  describe('paid with a gift card (#301)', () => {
+    const split = {
+      ...registration,
+      pricePaidCents: 5300,
+      squarePaymentId: 'card-pay',
+      squareGiftCardPaymentId: 'gc-pay',
+      giftCardPaidCents: 2000,
+      cardPaidCents: 3300,
+      classCertificateCoverCents: 500,
+    };
+
+    it('refunds the card and the gift card each their own share', async () => {
+      mocks.findById.mockResolvedValue(split);
+      mocks.refundPayment
+        .mockResolvedValueOnce({ refundId: 'rf-card', status: 'PENDING', amountCents: 3300 })
+        .mockResolvedValueOnce({ refundId: 'rf-gc', status: 'PENDING', amountCents: 2000 });
+
+      const result = await call({ id: 'reg-1', refund: true });
+
+      expect(mocks.refundPayment).toHaveBeenNthCalledWith(1, {
+        paymentId: 'card-pay',
+        amountCents: 3300,
+        idempotencyKey: 'refund-reg-1-card',
+        reason: 'Registration cancelled by admin',
+      });
+      expect(mocks.refundPayment).toHaveBeenNthCalledWith(2, {
+        paymentId: 'gc-pay',
+        amountCents: 2000,
+        idempotencyKey: 'refund-reg-1-gift-card',
+        reason: 'Registration cancelled by admin',
+      });
+      // 5300 in all: the 500 certificate cover is never refunded as cash.
+      expect(mocks.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'reg-1',
+          status: 'refunded',
+          refundedAmountCents: 5300,
+          squareRefundId: 'rf-card',
+          squareRefundIds: ['rf-card', 'rf-gc'],
+        })
+      );
+      expect(result).toMatchObject({ refundId: 'rf-card' });
+    });
+
+    it('refunds a registration the gift card paid for alone back onto the card', async () => {
+      mocks.findById.mockResolvedValue({
+        ...registration,
+        squarePaymentId: 'gc-pay',
+        squareGiftCardPaymentId: 'gc-pay',
+        giftCardPaidCents: 5300,
+        cardPaidCents: 0,
+      });
+      mocks.refundPayment.mockResolvedValue({ refundId: 'rf-gc', status: 'PENDING', amountCents: 5300 });
+
+      await call({ id: 'reg-1', refund: true });
+
+      expect(mocks.refundPayment).toHaveBeenCalledTimes(1);
+      expect(mocks.refundPayment).toHaveBeenCalledWith(
+        expect.objectContaining({ paymentId: 'gc-pay', amountCents: 5300 })
+      );
+    });
+
+    it('records what went back and tells the admin when the second refund fails', async () => {
+      mocks.findById.mockResolvedValue(split);
+      mocks.refundPayment
+        .mockResolvedValueOnce({ refundId: 'rf-card', status: 'PENDING', amountCents: 3300 })
+        .mockRejectedValueOnce(new Error('Square refund error: boom'));
+
+      await expect(call({ id: 'reg-1', refund: true })).rejects.toThrow(
+        /\$33\.00 has been refunded so far\. The \$20\.00 refund to the gift card failed/
+      );
+      expect(mocks.update).toHaveBeenCalledTimes(1);
+      const written = mocks.update.mock.calls[0][0];
+      expect(written).toMatchObject({
+        id: 'reg-1',
+        refundedAmountCents: 3300,
+        squareRefundIds: ['rf-card'],
+      });
+      expect(written.status).toBeUndefined();
+    });
+
+    it('does not count a refund twice when retried after a partial failure', async () => {
+      mocks.findById.mockResolvedValue({
+        ...split,
+        refundedAmountCents: 3300,
+        squareRefundIds: ['rf-card'],
+      });
+      mocks.refundPayment
+        .mockResolvedValueOnce({ refundId: 'rf-card', status: 'COMPLETED', amountCents: 3300 })
+        .mockResolvedValueOnce({ refundId: 'rf-gc', status: 'PENDING', amountCents: 2000 });
+
+      await call({ id: 'reg-1', refund: true });
+
+      expect(mocks.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'refunded',
+          refundedAmountCents: 5300,
+          squareRefundIds: ['rf-card', 'rf-gc'],
+        })
+      );
+    });
+
+    it('cancels without refunding when no refund is asked for', async () => {
+      mocks.findById.mockResolvedValue(split);
+      await call({ id: 'reg-1' });
+      expect(mocks.refundPayment).not.toHaveBeenCalled();
+      expect(mocks.update).toHaveBeenCalledWith({ id: 'reg-1', status: 'cancelled' });
+    });
+
+    it('refuses a status that cannot be refunded', async () => {
+      mocks.findById.mockResolvedValue({ ...split, status: 'pending' });
+      await expect(call({ id: 'reg-1', refund: true })).rejects.toThrow("status 'pending'");
+    });
+  });
 });

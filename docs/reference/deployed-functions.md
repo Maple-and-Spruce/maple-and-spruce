@@ -424,9 +424,18 @@ Square SDK integration for payments, catalog management, and sync conflict resol
   month's totals, month boundary in Eastern time), `giftCards/getGiftCard` (one card and its
   full history), `giftCards/revealGiftCardCode` (the full code for a printed certificate;
   each call logs `{"event":"gift_card_code_revealed"}` with the caller's uid, never the code).
+- `giftCards/previewGiftCardForClass` (#301) — a **public** route (allowlisted
+  in `tools/check-callable-roles.ts`), App Check `enforce`, throttled per IP with
+  `codeLookupThrottles`. Reads the card behind a Web Payments SDK gift card token from Square
+  and prices the class with `priceClassOrder` (the reservation's own pricing), returning the
+  last 4, balance, class-certificate cover and what is left to pay. Charges nothing. Called by
+  the registration widget only when its `giftCardsEnabled` Webflow prop is `show`.
+- `createRegistration` takes an optional `giftCardNonce` (#301): gift card payment authorized
+  first, a card payment for the rest, both completed with `orders.pay`; any failure cancels
+  what was authorized. `cancelRegistration` refunds each share to where it came from.
   `getGiftCard` also returns `purchase` (the `giftCardPurchases` record) for a card bought
   online.
-- `giftCards/purchaseGiftCard` (#300) — the one **public** route on the router, for the
+- `giftCards/purchaseGiftCard` (#300) — a **public** route on the router, for the
   Webflow Gift Card component. App Check `enforce`, `paymentThrottles('buyerEmail')`, Square
   secrets + strings + `ADMIN_ALERT_EMAIL`. Validates (`giftCardPurchaseValidation`), creates
   an order with one untaxed `GIFT_CARD` line (`referenceId: giftcard-…`), pays it with the
