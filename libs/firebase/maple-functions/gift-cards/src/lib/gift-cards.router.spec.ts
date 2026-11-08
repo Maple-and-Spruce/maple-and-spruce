@@ -6,8 +6,22 @@ import { describe, it, expect, vi } from 'vitest';
  */
 vi.mock('@maple/firebase/functions', () => {
   function builder() {
-    const route = { roles: undefined as unknown, secrets: [] as string[], strings: [] as string[] };
+    const route = {
+      roles: undefined as unknown,
+      secrets: [] as string[],
+      strings: [] as string[],
+      appCheck: undefined as unknown,
+      throttle: undefined as unknown,
+    };
     const chain = {
+      withAppCheck: (mode: unknown) => {
+        route.appCheck = mode;
+        return chain;
+      },
+      throttling: (scope: unknown, rules: unknown) => {
+        route.throttle = { scope, rules };
+        return chain;
+      },
       requiringRole: (roles: unknown) => {
         route.roles = roles;
         return chain;
@@ -32,6 +46,7 @@ vi.mock('@maple/firebase/functions', () => {
       router: (_name: string, routes: unknown) => routes,
     },
     Role: { Admin: 'admin', Clerk: 'clerk' },
+    codeLookupThrottles: () => ['per-ip'],
   };
 });
 
@@ -46,11 +61,15 @@ const handlers = vi.hoisted(() => ({
   revealGiftCardCode: vi.fn(),
 }));
 vi.mock('./gift-cards.handlers', () => handlers);
+const preview = vi.hoisted(() => ({ previewGiftCardForClass: vi.fn() }));
+vi.mock('./preview-gift-card-for-class', () => preview);
 
 import { giftCards } from './gift-cards.router';
 
 type Route = {
   roles: unknown;
+  appCheck?: unknown;
+  throttle?: unknown;
   secrets: string[];
   strings: string[];
   handler: (...args: unknown[]) => unknown;
@@ -58,12 +77,22 @@ type Route = {
 const routes = giftCards as unknown as Record<string, Route>;
 
 describe('giftCards router', () => {
-  it('has exactly the three read routes', () => {
+  it('has the three admin reads and the checkout preview', () => {
     expect(Object.keys(routes).sort()).toEqual([
       'getGiftCard',
       'getGiftCards',
+      'previewGiftCardForClass',
       'revealGiftCardCode',
     ]);
+  });
+
+  it('previewGiftCardForClass is public, App Check enforced and throttled (#301)', () => {
+    const route = routes['previewGiftCardForClass'];
+    expect(route.roles).toBeUndefined();
+    expect(route.appCheck).toBe('enforce');
+    expect(route.throttle).toEqual({ scope: 'previewGiftCardForClass', rules: ['per-ip'] });
+    expect(route.secrets).toEqual(['SQUARE_ACCESS_TOKEN']);
+    expect(route.handler).toBe(preview.previewGiftCardForClass);
   });
 
   it.each(['getGiftCards', 'getGiftCard', 'revealGiftCardCode'])(

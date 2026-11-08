@@ -76,6 +76,10 @@ const PUBLIC_ALLOWLIST = new Set<string>([
   // Safari/ITP hosted-checkout fallback — same public self-service surface as
   // createRegistration (reserves a spot + returns a Square-hosted checkout URL).
   'createRegistrationCheckoutLink',
+  // Gift card at class checkout (#301): reads the card the family typed from
+  // Square and prices the class, so the checkout can show what it covers.
+  // Charges nothing; App Check enforced and throttled per IP like a code lookup.
+  'giftCards/previewGiftCardForClass',
   'createMusicTogetherRegistration',
   'addMusicTogetherInterest',
   'addMusicTogetherDemoRsvp',
