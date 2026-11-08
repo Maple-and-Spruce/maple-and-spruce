@@ -20,6 +20,12 @@ export interface OrderLineItemInput {
   quantity: string;
   /** Base price per unit in cents */
   basePriceCents: number;
+  /**
+   * Square line item type. Omit for an ordinary item. `GIFT_CARD` sells a
+   * gift card: the line is untaxed, and its `uid` is what activates the card
+   * (#300).
+   */
+  itemType?: 'ITEM' | 'GIFT_CARD';
 }
 
 /**
@@ -74,6 +80,11 @@ export interface CreateOrderResult {
   totalCents: number;
   /** Total tax amount in cents */
   taxCents: number;
+  /**
+   * The order's line items as Square created them, in request order. A gift
+   * card is activated against its line's `uid`.
+   */
+  lineItems: Array<{ uid?: string; name?: string; itemType?: string }>;
 }
 
 /**
@@ -140,6 +151,7 @@ export class OrdersService {
         lineItems: input.lineItems.map((item) => ({
           name: item.name,
           quantity: item.quantity,
+          ...(item.itemType ? { itemType: item.itemType } : {}),
           basePriceMoney: {
             amount: BigInt(item.basePriceCents),
             currency: 'USD',
@@ -177,6 +189,11 @@ export class OrdersService {
       orderId: order.id,
       totalCents: Number(order.totalMoney?.amount ?? 0),
       taxCents: Number(order.totalTaxMoney?.amount ?? 0),
+      lineItems: (order.lineItems ?? []).map((item) => ({
+        uid: item.uid ?? undefined,
+        name: item.name ?? undefined,
+        itemType: item.itemType ?? undefined,
+      })),
     };
   }
 
