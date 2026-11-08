@@ -86,6 +86,50 @@ describe('GiftCardPurchaseRepository', () => {
     });
   });
 
+  it('reads back a free card the studio gave, with no buyer or order (#310)', async () => {
+    const createdAt = new Date('2026-11-20T15:00:00Z');
+    mocks.get.mockResolvedValue({
+      exists: true,
+      id: 'gftc-2',
+      data: () => ({
+        last4: '0007',
+        kind: 'amount',
+        valueCents: 2500,
+        source: 'issued',
+        reason: 'Raffle prize',
+        recipientName: 'Olive Thompson',
+        fromName: 'Maple & Spruce',
+        recordedByUid: 'admin-1',
+        createdAt,
+      }),
+    });
+
+    const read = await GiftCardPurchaseRepository.findByGiftCardId('gftc-2');
+
+    expect(read).toEqual({
+      giftCardId: 'gftc-2',
+      last4: '0007',
+      kind: 'amount',
+      valueCents: 2500,
+      source: 'issued',
+      reason: 'Raffle prize',
+      recipientName: 'Olive Thompson',
+      fromName: 'Maple & Spruce',
+      recordedByUid: 'admin-1',
+      createdAt,
+      classId: undefined,
+      classCategoryId: undefined,
+      className: undefined,
+      buyerName: undefined,
+      buyerEmail: undefined,
+      recipientEmail: undefined,
+      message: undefined,
+      deliverTo: undefined,
+      squareOrderId: undefined,
+      squarePaymentId: undefined,
+    });
+  });
+
   it('returns undefined for a card bought somewhere else', async () => {
     mocks.get.mockResolvedValue({ exists: false });
     await expect(GiftCardPurchaseRepository.findByGiftCardId('nope')).resolves.toBeUndefined();

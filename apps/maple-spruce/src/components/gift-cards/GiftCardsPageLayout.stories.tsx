@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Box, Typography } from '@mui/material';
+import { Box, Button, Typography } from '@mui/material';
 import { fn } from 'storybook/test';
 import {
   mockGiftCardActivities,
@@ -20,9 +20,12 @@ function GiftCardsPageLayout({ withCardOpen }: { withCardOpen: boolean }) {
       <Typography variant="h4" component="h1">
         Gift Cards
       </Typography>
-      <Typography color="textSecondary" sx={{ mb: 3 }}>
-        Every Maple &amp; Spruce gift card, read from Square.
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+        <Typography color="textSecondary">
+          Every Maple &amp; Spruce gift card, read from Square.
+        </Typography>
+        <Button variant="contained">Issue a gift card</Button>
+      </Box>
       <GiftCardsHowItWorks />
       <GiftCardTotalsCards
         totalsState={{ status: 'success', data: mockGiftCardTotals }}
@@ -40,6 +43,7 @@ function GiftCardsPageLayout({ withCardOpen }: { withCardOpen: boolean }) {
         onClose={fn()}
         onRevealCode={async () => mockGiftCardCode}
         copyToClipboard={async () => undefined}
+        onMakeClassCertificate={fn()}
       />
     </Box>
   );

@@ -19,6 +19,11 @@
   `GiftCardPurchaseRepository` (`giftCardPurchases/{giftCardId}`), create/activate/from-nonce on
   `GiftCardsService`, and `classCertificateCushionCents`.
 - **#298 (PR #303):** register sales of a gift card are skipped by POS class/lesson capture.
+- **#310:** two admin actions on the Gift Cards page: **Issue a gift card** (free card, made and
+  loaded in Square with an order-less ACTIVATE, reason required, logged) and **Make it a class
+  certificate** (register card → `giftCardPurchases` record at its original loaded value, no
+  Square write). `GiftCardPurchase` gained `source` / `reason` / `fromName` / `recordedByUid`;
+  buyer fields are optional (`OnlineGiftCardPurchase` keeps them required for the buy page).
 - **Before selling (Katie, #296):** turn on gift cards + "Sell eGift Cards in Store" in Square,
   terms, Canva template, decide who pays the class-certificate cushion.
 

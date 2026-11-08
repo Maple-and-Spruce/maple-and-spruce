@@ -101,3 +101,47 @@ refunded in full and the buyer is told so. If that refund also fails, Katie gets
 `gift_card_purchased`, `gift_card_payment_failed`, `gift_card_purchase_refunded`,
 `gift_card_refund_failed`, `gift_card_purchase_record_failed`, `gift_card_email_failed`.
 None of them contain the card code.
+
+## Katie: two things the admin Gift Cards page can do (#310)
+
+Both are admin only, under **Money > Gift Cards**.
+
+### Make a register card a class certificate
+
+For an eGift card sold at the register as a gift for a class.
+
+1. Sell the eGift card at the register as usual. Square takes the money there.
+2. On the Gift Cards page, open the card (newest at the top, or search its last 4).
+3. Click **Make it a class certificate**. It only shows on an active card that is not
+   already recorded (bought online, given free, or already a certificate).
+4. Choose the class type. Add To, From and a note if you like.
+5. Click **Make it a class certificate**. The card now shows a "Class certificate" box.
+6. Click **Show and copy code** and paste it into the Canva certificate.
+
+**What changes:** only our record. The card, its balance and its code stay exactly as
+they are in Square. The certificate is worth what was put on the card when it was sold
+(read from the card's Square history), not what is left on it. That is the value class
+checkout will use for the 10% cushion (#301).
+
+### Give a free card
+
+For a raffle prize, a thank-you or a make-good.
+
+1. Click **Issue a gift card** at the top of the page.
+2. Choose **A dollar amount** ($5 to $500, whole dollars) or **A class** (choose the class
+   type, then enter what goes on the card, usually the class price).
+3. Say why the studio is giving it (required). Add To, From and a note if you like.
+4. Click **Give gift card**. The dialog says "Gift card ending 1234 is ready".
+5. Click **Show and copy code** for the certificate.
+
+**How the value moves:** no money comes in. Square makes the card and loads it with an
+`ACTIVATE` that has no order and no payment (its reference is `comp-…`). The card spends
+like any other; when it is spent, the studio is out that amount. It does not show in Square
+as a gift card sale.
+
+**Logged:** `gift_card_issued` with the card id, value, who gave it and why, never the
+code. The card's record (`giftCardPurchases`, `source: 'issued'`) keeps the reason, so the
+card dialog shows "Given free by the studio" with it.
+
+If Square cannot make or load the card, the dialog says nothing was given; trying again
+from the same dialog reuses the same card, so it never makes two.

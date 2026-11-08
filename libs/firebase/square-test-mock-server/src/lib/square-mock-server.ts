@@ -202,10 +202,20 @@ function matchPattern(
   const params: Record<string, string> = {};
   for (let i = 0; i < patternParts.length; i++) {
     if (patternParts[i].startsWith(':')) {
-      params[patternParts[i].slice(1)] = pathParts[i];
+      // Decoded like Express does: the SDK encodes a Square id's `:` as `%3A`
+      // (`gftc:…` gift card ids).
+      params[patternParts[i].slice(1)] = safeDecode(pathParts[i]);
     } else if (patternParts[i] !== pathParts[i]) {
       return null;
     }
   }
   return params;
+}
+
+function safeDecode(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
 }

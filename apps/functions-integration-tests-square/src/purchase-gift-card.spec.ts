@@ -30,6 +30,15 @@ const ROUTE = 'giftCards/purchaseGiftCard';
 
 type Recorded = { method: string; path: string; body: Record<string, unknown> };
 
+/**
+ * A call the purchase itself makes. A class written during setup fires the
+ * class-to-Square catalog sync, which makes its own Square calls at its own
+ * pace, so "nothing touched Square" means none of the purchase's paths.
+ */
+function isPurchaseCall(r: Recorded): boolean {
+  return /^\/v2\/(orders|payments|refunds|gift-cards)/.test(r.path);
+}
+
 async function squareRequests(): Promise<Recorded[]> {
   const body = (await (await fetch(`${SQUARE_MOCK}/_mock/requests`)).json()) as {
     requests: Recorded[];

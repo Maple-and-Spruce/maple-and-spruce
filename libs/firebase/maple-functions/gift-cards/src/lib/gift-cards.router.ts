@@ -6,6 +6,10 @@
  * request) a card's code back from Square for Katie. They are admin only: a
  * card's code is as good as cash.
  *
+ * Two admin routes write (#310): `markClassCertificate` records that a card
+ * sold at the register is a class certificate (no Square write), and
+ * `issueGiftCard` makes and loads a free card in Square.
+ *
  * `purchaseGiftCard` is the one public route (#300): the Webflow buy page
  * sells a card through it. It is gated the way every public widget payment is
  * (ADR-037): App Check enforced, and throttled per IP and per buyer email.
@@ -29,6 +33,10 @@ import type {
   GetGiftCardResponse,
   GetGiftCardsRequest,
   GetGiftCardsResponse,
+  IssueGiftCardRequest,
+  IssueGiftCardResponse,
+  MarkClassCertificateRequest,
+  MarkClassCertificateResponse,
   PreviewGiftCardForClassRequest,
   PreviewGiftCardForClassResponse,
   PurchaseGiftCardRequest,
@@ -43,6 +51,10 @@ import {
 } from './gift-cards.handlers';
 import { previewGiftCardForClass } from './preview-gift-card-for-class';
 import { purchaseGiftCard } from './purchase-gift-card';
+import {
+  issueGiftCard,
+  markClassCertificate,
+} from './gift-card-admin-actions';
 
 export const giftCards = Functions.router('giftCards', {
   /** Every card and this month's totals. */
@@ -69,6 +81,28 @@ export const giftCards = Functions.router('giftCards', {
     .asRoute<RevealGiftCardCodeRequest, RevealGiftCardCodeResponse>(
       revealGiftCardCode
     ),
+
+  /**
+   * A card sold at the register becomes a class certificate for one class
+   * type. Writes our record only; nothing changes in Square.
+   */
+  markClassCertificate: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .usingSecrets(...SQUARE_SECRET_NAMES)
+    .usingStrings(...SQUARE_STRING_NAMES)
+    .asRoute<MarkClassCertificateRequest, MarkClassCertificateResponse>(
+      markClassCertificate
+    ),
+
+  /**
+   * The studio gives a free card: makes a digital card in Square and loads it
+   * without a sale. Logged with who gave it and why, never with the code.
+   */
+  issueGiftCard: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .usingSecrets(...SQUARE_SECRET_NAMES)
+    .usingStrings(...SQUARE_STRING_NAMES)
+    .asRoute<IssueGiftCardRequest, IssueGiftCardResponse>(issueGiftCard),
 
   /**
    * Public (#301): what a gift card would pay toward a class at checkout.

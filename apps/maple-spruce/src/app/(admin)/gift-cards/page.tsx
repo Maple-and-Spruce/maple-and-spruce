@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Box, Button, Typography } from '@mui/material';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import type {
   GiftCardSummary,
@@ -13,21 +14,33 @@ import {
   GiftCardsHowItWorks,
   GiftCardsTable,
   GiftCardTotalsCards,
+  IssueGiftCardDialog,
+  MarkClassCertificateDialog,
   type GiftCardDetail,
 } from '../../../components/gift-cards';
-import { useGiftCards } from '../../../hooks';
+import { useClassCategories, useGiftCards } from '../../../hooks';
 
 /**
  * Gift Cards (#297): balances, history and codes, read live from Square.
- * Read-only; selling and loading cards happen in Square.
+ * Selling and loading cards happen in Square. Two things happen here (#310):
+ * giving a free card, and marking a register card as a class certificate.
  */
 export default function GiftCardsPage() {
-  const { giftCardsState, fetchGiftCards, fetchGiftCard, revealGiftCardCode } =
-    useGiftCards();
+  const {
+    giftCardsState,
+    fetchGiftCards,
+    fetchGiftCard,
+    revealGiftCardCode,
+    markClassCertificate,
+    issueGiftCard,
+  } = useGiftCards();
+  const { categoriesState } = useClassCategories();
   const [selected, setSelected] = useState<GiftCardSummary | null>(null);
   const [detailState, setDetailState] = useState<RequestState<GiftCardDetail>>({
     status: 'idle',
   });
+  const [issueOpen, setIssueOpen] = useState(false);
+  const [certificateCard, setCertificateCard] = useState<GiftCardSummary | null>(null);
 
   const totalsState = useMemo<RequestState<GiftCardTotals>>(
     () =>
@@ -64,6 +77,7 @@ export default function GiftCardsPage() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
           gap: 2,
           mb: 3,
         }}
@@ -76,13 +90,22 @@ export default function GiftCardsPage() {
             Every Maple &amp; Spruce gift card, read from Square.
           </Typography>
         </Box>
-        <Button
-          startIcon={<RefreshIcon />}
-          onClick={fetchGiftCards}
-          disabled={giftCardsState.status === 'loading'}
-        >
-          Refresh
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            startIcon={<RefreshIcon />}
+            onClick={fetchGiftCards}
+            disabled={giftCardsState.status === 'loading'}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<CardGiftcardIcon />}
+            onClick={() => setIssueOpen(true)}
+          >
+            Issue a gift card
+          </Button>
+        </Box>
       </Box>
 
       <GiftCardsHowItWorks />
@@ -96,6 +119,29 @@ export default function GiftCardsPage() {
           setSelected(null);
           setDetailState({ status: 'idle' });
         }}
+        onRevealCode={revealGiftCardCode}
+        onMakeClassCertificate={setCertificateCard}
+      />
+
+      <MarkClassCertificateDialog
+        card={certificateCard}
+        categoriesState={categoriesState}
+        onClose={() => setCertificateCard(null)}
+        onSubmit={markClassCertificate}
+        onDone={() => {
+          const card = certificateCard;
+          setCertificateCard(null);
+          fetchGiftCards();
+          if (card && selected?.id === card.id) openCard(card);
+        }}
+      />
+
+      <IssueGiftCardDialog
+        open={issueOpen}
+        categoriesState={categoriesState}
+        onClose={() => setIssueOpen(false)}
+        onIssue={issueGiftCard}
+        onIssued={() => fetchGiftCards()}
         onRevealCode={revealGiftCardCode}
       />
     </>

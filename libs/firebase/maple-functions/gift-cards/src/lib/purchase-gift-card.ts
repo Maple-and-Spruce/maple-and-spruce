@@ -45,7 +45,7 @@ import {
   describeGiftCardPurchase,
   formatGiftCardCode,
   formatGiftCardDollars,
-  type GiftCardPurchase,
+  type OnlineGiftCardPurchase,
   isGiftCertificateCategory,
 } from '@maple/ts/domain';
 import type {
@@ -298,7 +298,7 @@ export async function purchaseGiftCard(
 
   // 6. Record it. The card is paid for and live by now, so nothing below may
   // fail the sale: a lost record or email is logged for a person to fix.
-  const purchase: Omit<GiftCardPurchase, 'createdAt'> = {
+  const purchase: Omit<OnlineGiftCardPurchase, 'createdAt'> = {
     giftCardId: card.id,
     last4: card.last4,
     kind: data.kind,
@@ -416,7 +416,7 @@ async function refundAfterCardFailure(input: {
  * recipient, the buyer also gets a confirmation that shows only the last 4.
  */
 async function sendGiftCardEmails(input: {
-  purchase: Omit<GiftCardPurchase, 'createdAt'>;
+  purchase: Omit<OnlineGiftCardPurchase, 'createdAt'>;
   code: string;
   classCategoryName?: string;
   sendTo: string;

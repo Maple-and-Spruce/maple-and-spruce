@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import {
   Alert,
   Box,
@@ -17,20 +16,20 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
 import {
   giftCardActivityLabel,
   giftCardKindLabel,
+  giftCardPurchaseSource,
   giftCardStateLabel,
   type GiftCardActivityEntry,
   type GiftCardSummary,
   type RequestState,
 } from '@maple/ts/domain';
 import type { GiftCardPurchaseDetails } from '@maple/ts/firebase/api-types';
-import { fonts } from '@maple/react/theme';
+import { GiftCardCodeReveal } from './GiftCardCodeReveal';
 import {
   formatGiftCardChange,
-  formatGiftCardCode,
   formatGiftCardDate,
   formatGiftCardMoney,
 } from './format';
@@ -38,7 +37,10 @@ import {
 export interface GiftCardDetail {
   card: GiftCardSummary;
   activities: GiftCardActivityEntry[];
-  /** Set when the card was bought on our own buy page (#300). */
+  /**
+   * Set when we know more about the card than Square does: bought on our own
+   * buy page (#300), made a class certificate, or given free (#310).
+   */
   purchase?: GiftCardPurchaseDetails;
 }
 
@@ -51,15 +53,12 @@ interface GiftCardDetailDialogProps {
   onRevealCode: (id: string) => Promise<string>;
   /** Defaults to the browser clipboard; stories pass a spy. */
   copyToClipboard?: (text: string) => Promise<void>;
+  /**
+   * Opens the "Make it a class certificate" form (#310). The button only shows
+   * for an active card we have no record of yet.
+   */
+  onMakeClassCertificate?: (card: GiftCardSummary) => void;
 }
-
-type CodeState =
-  | { status: 'hidden' }
-  | { status: 'loading' }
-  | { status: 'shown'; code: string; copied: boolean }
-  | { status: 'error'; error: string };
-
-const browserCopy = (text: string) => navigator.clipboard.writeText(text);
 
 /**
  * One card: balance, history, and the code for a printed certificate. The
@@ -70,49 +69,19 @@ export function GiftCardDetailDialog({
   detailState,
   onClose,
   onRevealCode,
-  copyToClipboard = browserCopy,
+  copyToClipboard,
+  onMakeClassCertificate,
 }: GiftCardDetailDialogProps) {
-  const [codeState, setCodeState] = useState<CodeState>({ status: 'hidden' });
-
-  // A different card starts hidden again.
-  useEffect(() => {
-    setCodeState({ status: 'hidden' });
-  }, [card?.id]);
-
   const shown = detailState.status === 'success' ? detailState.data.card : card;
-
-  const reveal = async () => {
-    if (!shown) return;
-    setCodeState({ status: 'loading' });
-    let code: string;
-    try {
-      code = await onRevealCode(shown.id);
-    } catch (error) {
-      setCodeState({
-        status: 'error',
-        error: error instanceof Error ? error.message : 'Could not get the code',
-      });
-      return;
-    }
-    let copied = false;
-    try {
-      await copyToClipboard(code);
-      copied = true;
-    } catch {
-      // The code is on screen to copy by hand.
-    }
-    setCodeState({ status: 'shown', code, copied });
-  };
-
-  const copyAgain = async () => {
-    if (codeState.status !== 'shown') return;
-    try {
-      await copyToClipboard(codeState.code);
-      setCodeState({ ...codeState, copied: true });
-    } catch {
-      setCodeState({ ...codeState, copied: false });
-    }
-  };
+  const record =
+    detailState.status === 'success' ? detailState.data.purchase : undefined;
+  // Only once the record is known to be missing: before the detail loads, we
+  // cannot tell a register card from one that already has a record.
+  const canMakeCertificate =
+    onMakeClassCertificate !== undefined &&
+    detailState.status === 'success' &&
+    !record &&
+    detailState.data.card.state === 'active';
 
   return (
     <Dialog open={card !== null} onClose={onClose} fullWidth maxWidth="sm">
@@ -147,63 +116,34 @@ export function GiftCardDetailDialog({
           </Stack>
         )}
 
-        {detailState.status === 'success' && detailState.data.purchase && (
-          <BoughtOnline purchase={detailState.data.purchase} />
+        {record && <CardRecord purchase={record} />}
+
+        {canMakeCertificate && (
+          <Box
+            component="section"
+            aria-label="Class certificate"
+            sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
+          >
+            <Typography variant="body2" sx={{ mb: 1.5 }}>
+              Sold at the register as a gift for a class? Record which class
+              type it is for. Nothing changes in Square.
+            </Typography>
+            <Button
+              variant="outlined"
+              startIcon={<SchoolOutlinedIcon />}
+              onClick={() => onMakeClassCertificate(detailState.data.card)}
+            >
+              Make it a class certificate
+            </Button>
+          </Box>
         )}
 
-        <Box
-          component="section"
-          aria-label="Card code"
-          sx={{ p: 2, mb: 2, bgcolor: 'action.hover', borderRadius: 1 }}
-        >
-          <Typography variant="subtitle2" component="h3" sx={{ mb: 0.5 }}>
-            Code for a printed certificate
-          </Typography>
-          <Typography variant="body2" color="textSecondary" sx={{ mb: 1.5 }}>
-            Anyone with this code can spend the balance. Show it only to paste
-            into the certificate. Each time it is shown, that is logged.
-          </Typography>
-
-          {codeState.status === 'shown' ? (
-            <Stack spacing={1}>
-              <Typography
-                data-testid="gift-card-code"
-                sx={{ fontFamily: fonts.mono, fontSize: '1.25rem', letterSpacing: 1 }}
-              >
-                {formatGiftCardCode(codeState.code)}
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<ContentCopyIcon />}
-                  onClick={copyAgain}
-                >
-                  Copy again
-                </Button>
-                <Typography variant="body2" role="status" color={codeState.copied ? 'success' : 'textSecondary'}>
-                  {codeState.copied
-                    ? 'Copied. Paste it into the certificate.'
-                    : 'Copying did not work here. Select the code and copy it by hand.'}
-                </Typography>
-              </Box>
-            </Stack>
-          ) : (
-            <Button
-              variant="contained"
-              startIcon={<ContentCopyIcon />}
-              onClick={reveal}
-              disabled={!shown || codeState.status === 'loading'}
-            >
-              {codeState.status === 'loading' ? 'Getting code…' : 'Show and copy code'}
-            </Button>
-          )}
-          {codeState.status === 'error' && (
-            <Alert severity="error" sx={{ mt: 1.5 }}>
-              Couldn&apos;t get the code from Square: {codeState.error}
-            </Alert>
-          )}
-        </Box>
+        <GiftCardCodeReveal
+          key={shown?.id ?? 'none'}
+          giftCardId={shown?.id ?? null}
+          onRevealCode={onRevealCode}
+          copyToClipboard={copyToClipboard}
+        />
 
         <Divider sx={{ mb: 1 }} />
         <Typography variant="subtitle2" component="h3">
@@ -273,40 +213,83 @@ function History({ detailState }: { detailState: RequestState<GiftCardDetail> })
   );
 }
 
-/** Who bought a card on the website, who it was for, and what for. */
-function BoughtOnline({ purchase }: { purchase: GiftCardPurchaseDetails }) {
+const RECORD_LABELS = {
+  online: 'Bought online',
+  register: 'Class certificate',
+  issued: 'Given free by the studio',
+} as const;
+
+const RECORD_HEADINGS = {
+  online: 'Bought online',
+  register: 'Made a class certificate',
+  issued: 'Given free by the studio',
+} as const;
+
+/**
+ * What we know about a card beyond Square: who bought it online and for
+ * whom, which class type a certificate covers, or why the studio gave it.
+ */
+function CardRecord({ purchase }: { purchase: GiftCardPurchaseDetails }) {
+  const source = giftCardPurchaseSource(purchase);
+  const heading = RECORD_HEADINGS[source];
+  const label = RECORD_LABELS[source];
   const forWhom = purchase.recipientName
     ? purchase.recipientEmail
       ? `${purchase.recipientName} (${purchase.recipientEmail})`
       : purchase.recipientName
     : purchase.recipientEmail;
-  const sentTo =
-    purchase.deliverTo === 'recipient'
-      ? 'Emailed to them'
-      : 'Emailed to the buyer to print';
+  const classType = purchase.classCategoryName ?? purchase.className;
   return (
     <Box
       component="section"
-      aria-label="Bought online"
+      aria-label={label}
       sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
     >
       <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>
-        Bought online {formatGiftCardDate(purchase.createdAt)}
+        {heading} {formatGiftCardDate(purchase.createdAt)}
       </Typography>
       <Stack spacing={0.5}>
-        {purchase.kind === 'class' && (
+        {source === 'issued' && (
+          <>
+            <Typography variant="body2">
+              Free {formatGiftCardMoney(purchase.valueCents)} card. Nobody paid
+              for it; the studio covers it when it is spent.
+            </Typography>
+            {purchase.reason && (
+              <Typography variant="body2">Why: {purchase.reason}</Typography>
+            )}
+          </>
+        )}
+        {purchase.kind === 'class' &&
+          (source === 'online' ? (
+            <Typography variant="body2">
+              Class certificate: {purchase.className ?? 'a class'}
+              {purchase.classCategoryName ? ` (${purchase.classCategoryName})` : ''}
+            </Typography>
+          ) : (
+            <Typography variant="body2">
+              Class certificate for one {classType ?? ''} class, worth{' '}
+              {formatGiftCardMoney(purchase.valueCents)}
+              {source === 'register' ? ' (sold at the register)' : ''}
+            </Typography>
+          ))}
+        {source === 'online' && purchase.buyerName && (
           <Typography variant="body2">
-            Class certificate: {purchase.className ?? 'a class'}
-            {purchase.classCategoryName ? ` (${purchase.classCategoryName})` : ''}
+            Bought by {purchase.buyerName}
+            {purchase.buyerEmail ? ` (${purchase.buyerEmail})` : ''}
           </Typography>
         )}
-        <Typography variant="body2">
-          Bought by {purchase.buyerName} ({purchase.buyerEmail})
-        </Typography>
         {forWhom && <Typography variant="body2">For {forWhom}</Typography>}
-        <Typography variant="body2" color="textSecondary">
-          {sentTo}
-        </Typography>
+        {purchase.fromName && (
+          <Typography variant="body2">From {purchase.fromName}</Typography>
+        )}
+        {source === 'online' && purchase.deliverTo && (
+          <Typography variant="body2" color="textSecondary">
+            {purchase.deliverTo === 'recipient'
+              ? 'Emailed to them'
+              : 'Emailed to the buyer to print'}
+          </Typography>
+        )}
         {purchase.message && (
           <Typography variant="body2" sx={{ fontStyle: 'italic', whiteSpace: 'pre-line' }}>
             &ldquo;{purchase.message}&rdquo;

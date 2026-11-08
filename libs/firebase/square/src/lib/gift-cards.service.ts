@@ -135,6 +135,50 @@ export class GiftCardsService {
   }
 
   /**
+   * Put money on a new card that was not sold through a Square order: a free
+   * card the studio gives (#310). Square's path for value from outside its
+   * Orders API is an `ACTIVATE` with the amount, a `referenceId` tying it to
+   * our record, and `buyerPaymentInstrumentIds`, which Square uses for its
+   * compliance checks. A free card has no payment instrument, so the caller
+   * passes its own reference there too.
+   *
+   * Square takes the amount from this call, so the caller must have checked it.
+   * Do not use this to sell a card: a sale goes through an order and
+   * `activateGiftCard`, so Square records it as a gift card sale.
+   *
+   * @see https://developer.squareup.com/docs/gift-cards/using-gift-cards-api#activate-a-gift-card
+   */
+  async activateGiftCardWithoutOrder(input: {
+    giftCardId: string;
+    locationId: string;
+    amountCents: number;
+    referenceId: string;
+    buyerPaymentInstrumentIds: string[];
+    idempotencyKey: string;
+  }): Promise<{ balanceCents: number }> {
+    if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) {
+      throw new Error('Gift card amount must be a positive whole number of cents');
+    }
+    const response = await this.client.giftCards.activities.create({
+      idempotencyKey: input.idempotencyKey,
+      giftCardActivity: {
+        type: 'ACTIVATE',
+        locationId: input.locationId,
+        giftCardId: input.giftCardId,
+        activateActivityDetails: {
+          amountMoney: { amount: BigInt(input.amountCents), currency: 'USD' },
+          referenceId: input.referenceId,
+          buyerPaymentInstrumentIds: input.buyerPaymentInstrumentIds,
+        },
+      },
+    });
+    throwIfGiftCardErrors(response.errors, 'activate gift card');
+    return {
+      balanceCents: cents(response.giftCardActivity?.giftCardBalanceMoney) ?? 0,
+    };
+  }
+
+  /**
    * The card behind a Web Payments SDK gift card token, to read its id and
    * balance before charging it. Undefined if the token matches no card.
    */

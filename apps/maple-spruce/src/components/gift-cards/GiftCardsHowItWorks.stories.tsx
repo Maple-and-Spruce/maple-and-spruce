@@ -20,6 +20,9 @@ export const Open: Story = {
     await expect(canvas.getByText('Treat the code like cash')).toBeVisible();
     await expect(canvas.getByText(/Music Together is a separate Square/)).toBeVisible();
     await expect(canvas.getByText(/is not a sale, has no sales tax/)).toBeVisible();
+    await expect(canvas.getByText('Make it a class certificate')).toBeVisible();
+    await expect(canvas.getByText('Giving a card for free')).toBeVisible();
+    await expect(canvas.getByText(/nobody pays for it/)).toBeVisible();
   },
 };
 

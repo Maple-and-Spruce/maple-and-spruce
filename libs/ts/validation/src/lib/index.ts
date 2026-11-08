@@ -128,6 +128,12 @@ export {
   type GiftCardPurchaseValidationInput,
 } from './gift-card-purchase.validation';
 export {
+  issueGiftCardValidation,
+  markClassCertificateValidation,
+  type IssueGiftCardValidationInput,
+  type MarkClassCertificateValidationInput,
+} from './gift-card-admin.validation';
+export {
   giftCardSettingsValidation,
   type GiftCardSettingsValidationInput,
 } from './gift-card-settings.validation';
