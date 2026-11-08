@@ -2,19 +2,26 @@
  * Webflow Code Component: Gift Card (#300)
  *
  * Wraps the GiftCardWidget for use in the Webflow Designer. Put it on the
- * gift card page. To sell a class as a gift, link to that page with
- * `?giftClass=<classId>`, or set the Class ID prop on a page made for one
- * class. See docs/guides/gift-cards.md.
+ * gift card page. The amounts come from Admin > Settings and the class types
+ * from Admin > Class Categories (#309). A link with `?giftClass=<classId>`
+ * (or the Class ID prop) preselects that class's type. The heading, intro and
+ * fine print are props, so they are in the server-rendered page HTML. See
+ * docs/guides/gift-cards.md.
  */
 import { declareComponent } from '@webflow/react';
 import { props } from '@webflow/data-types';
 import { emotionShadowDomDecorator } from '@webflow/emotion-utils';
-import { GiftCardWidget } from './GiftCardWidget';
+import {
+  GIFT_CARD_DEFAULT_FINE_PRINT,
+  GIFT_CARD_DEFAULT_HEADING,
+  GIFT_CARD_DEFAULT_INTRO,
+  GiftCardWidget,
+} from './GiftCardWidget';
 
 export default declareComponent(GiftCardWidget, {
   name: 'Gift Card',
   description:
-    'Buy a Maple & Spruce gift card: a dollar amount or one class, emailed to the recipient or to the buyer to print. Pays with Square.',
+    'Buy a Maple & Spruce gift card: a dollar amount or a class gift certificate, emailed to the recipient or to the buyer to print. Amounts and class types are set in the admin. Pays with Square.',
   decorators: [emotionShadowDomDecorator],
   props: {
     squareAppId: props.Text({
@@ -33,6 +40,18 @@ export default declareComponent(GiftCardWidget, {
     classId: props.Text({
       name: 'Class ID (optional)',
       defaultValue: '',
+    }),
+    heading: props.Text({
+      name: 'Heading',
+      defaultValue: GIFT_CARD_DEFAULT_HEADING,
+    }),
+    intro: props.Text({
+      name: 'Intro',
+      defaultValue: GIFT_CARD_DEFAULT_INTRO,
+    }),
+    finePrint: props.Text({
+      name: 'Fine print',
+      defaultValue: GIFT_CARD_DEFAULT_FINE_PRINT,
     }),
   },
 });
