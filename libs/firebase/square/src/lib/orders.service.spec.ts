@@ -150,6 +150,37 @@ describe('OrdersService', () => {
       expect(result.lineItems[0].basePriceCents).toBeUndefined();
     });
 
+    it('keeps the line item type so a gift card sale can be told apart', async () => {
+      mockClient.orders.get.mockResolvedValue({
+        order: {
+          id: 'order-gc',
+          totalMoney: { amount: BigInt(9500) },
+          lineItems: [
+            {
+              name: 'Gift Card',
+              itemType: 'GIFT_CARD',
+              quantity: '1',
+              totalMoney: { amount: BigInt(5000) },
+            },
+            {
+              catalogObjectId: 'VAR_MUG',
+              name: 'Mug',
+              itemType: 'ITEM',
+              quantity: '1',
+              totalMoney: { amount: BigInt(4500) },
+            },
+          ],
+        },
+      });
+
+      const result = await service.getOrder('order-gc');
+
+      expect(result.lineItems.map((li) => li.itemType)).toEqual([
+        'GIFT_CARD',
+        'ITEM',
+      ]);
+    });
+
     it('handles an order with no line items', async () => {
       mockClient.orders.get.mockResolvedValue({
         order: { id: 'order-3', totalMoney: { amount: BigInt(100) } },

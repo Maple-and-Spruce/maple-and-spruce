@@ -306,11 +306,17 @@ export const processPosSale = onDocumentWritten(
       // 5. Walk the line items. A class variation → a `source:'pos'`
       // registration. A configured lesson item → attribute to a student
       // (auto by customer email, else a review-queue entry). Everything else
-      // (retail products, misc POS items) is ignored.
+      // (retail products, misc POS items, gift cards sold) is ignored.
       let created = 0;
       let lessonsAttributed = 0;
       let lessonsPending = 0;
       for (const lineItem of order.lineItems) {
+        // Selling a gift card is not a class, a lesson or merchandise: Square
+        // holds the balance and the sale happens when the card is spent. Skip
+        // it before any catalog lookup so it can never be mistaken for one.
+        // (Spending a gift card is a payment source, not a line item, so an
+        // order PAID with a gift card is processed like any other.)
+        if (lineItem.itemType === 'GIFT_CARD') continue;
         if (!lineItem.catalogObjectId) continue;
 
         const classEntity = await ClassRepository.findBySquareVariationId(
