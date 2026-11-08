@@ -1,22 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildIcs,
-  escapeIcsText,
-  foldIcsLine,
-  googleCalendarUrl,
-  isIosNonSafari,
-  outlookCalendarUrl,
-  type CalendarEvent,
-} from './add-to-calendar';
-
-const EVENT: CalendarEvent = {
-  start: '2030-05-14T22:00:00.000Z',
-  end: '2030-05-15T01:00:00.000Z',
-  title: 'Basket Weaving, Beginners; Session 1',
-  location: 'Maple & Spruce Folk Arts',
-  description: 'Class at Maple & Spruce Folk Arts. Confirmation: MS-TEST1',
-  uid: 'MS-TEST1@mapleandsprucefolkarts.com',
-};
+import { isIosNonSafari } from './add-to-calendar';
 
 const UA = {
   iphoneSafari:
@@ -57,83 +40,5 @@ describe('isIosNonSafari', () => {
     expect(isIosNonSafari(UA.macChrome)).toBe(false);
     expect(isIosNonSafari(UA.ipadDesktopSafari, 0)).toBe(false);
     expect(isIosNonSafari(UA.androidChrome, 5)).toBe(false);
-  });
-});
-
-describe('buildIcs', () => {
-  const ics = buildIcs(EVENT, new Date('2030-01-01T12:00:00Z'));
-
-  it('carries the UID and DTSTAMP that RFC 5545 requires', () => {
-    expect(ics).toContain('UID:MS-TEST1@mapleandsprucefolkarts.com');
-    expect(ics).toContain('DTSTAMP:20300101T120000Z');
-  });
-
-  it('writes the times in UTC', () => {
-    expect(ics).toContain('DTSTART:20300514T220000Z');
-    expect(ics).toContain('DTEND:20300515T010000Z');
-  });
-
-  it('escapes commas and semicolons in text', () => {
-    expect(ics).toContain('SUMMARY:Basket Weaving\\, Beginners\\; Session 1');
-  });
-
-  it('uses CRLF line endings throughout', () => {
-    expect(ics.replace(/\r\n/g, '')).not.toMatch(/[\r\n]/);
-  });
-
-  it('leaves out LOCATION when there is none', () => {
-    expect(buildIcs({ ...EVENT, location: undefined })).not.toContain(
-      'LOCATION:'
-    );
-  });
-});
-
-describe('escapeIcsText', () => {
-  it('escapes backslashes and newlines', () => {
-    expect(escapeIcsText('a\\b\nc')).toBe('a\\\\b\\nc');
-  });
-});
-
-describe('foldIcsLine', () => {
-  it('leaves short lines alone', () => {
-    expect(foldIcsLine('SUMMARY:short')).toBe('SUMMARY:short');
-  });
-
-  it('folds long lines into 75-character pieces that unfold back', () => {
-    const line = 'DESCRIPTION:' + 'x'.repeat(200);
-    const folded = foldIcsLine(line);
-    for (const part of folded.split('\r\n')) {
-      expect(part.length).toBeLessThanOrEqual(75);
-    }
-    expect(folded.replace(/\r\n /g, '')).toBe(line);
-  });
-});
-
-describe('googleCalendarUrl', () => {
-  it('pre-fills title, UTC dates, details and location', () => {
-    const url = new URL(googleCalendarUrl(EVENT));
-    expect(url.origin + url.pathname).toBe(
-      'https://calendar.google.com/calendar/render'
-    );
-    expect(url.searchParams.get('action')).toBe('TEMPLATE');
-    expect(url.searchParams.get('text')).toBe(EVENT.title);
-    expect(url.searchParams.get('dates')).toBe(
-      '20300514T220000Z/20300515T010000Z'
-    );
-    expect(url.searchParams.get('details')).toBe(EVENT.description);
-    expect(url.searchParams.get('location')).toBe(EVENT.location);
-  });
-});
-
-describe('outlookCalendarUrl', () => {
-  it('pre-fills subject, ISO times, body and location', () => {
-    const url = new URL(outlookCalendarUrl(EVENT));
-    expect(url.hostname).toBe('outlook.live.com');
-    expect(url.searchParams.get('rru')).toBe('addevent');
-    expect(url.searchParams.get('subject')).toBe(EVENT.title);
-    expect(url.searchParams.get('startdt')).toBe('2030-05-14T22:00:00.000Z');
-    expect(url.searchParams.get('enddt')).toBe('2030-05-15T01:00:00.000Z');
-    expect(url.searchParams.get('body')).toBe(EVENT.description);
-    expect(url.searchParams.get('location')).toBe(EVENT.location);
   });
 });

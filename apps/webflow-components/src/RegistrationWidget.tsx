@@ -43,7 +43,11 @@ import type {
   PreviewGiftCardForClassRequest,
   PreviewGiftCardForClassResponse,
 } from '@maple/ts/firebase/api-types';
-import { formatCentsAsDollars } from '@maple/ts/domain';
+import {
+  classCalendarEntries,
+  formatCentsAsDollars,
+  type ClassCalendarEntry,
+} from '@maple/ts/domain';
 import { getWidgetFunctions, routeCallable } from './firebase-init';
 import {
   trackAddClassToCart,
@@ -55,7 +59,6 @@ import { readGaAttribution } from './lib/ga-attribution';
 import { warmup } from './lib/warmup';
 import { scrollToConfirmation } from './lib/scroll-to-confirmation';
 import { AddToCalendarButton, AddToCalendarOptions } from './AddToCalendar';
-
 
 /**
  * Format duration in minutes to a human-readable string.
@@ -254,7 +257,8 @@ interface ConfirmedState {
   pricePaidCents: number;
   quantity: number;
   classDate: string;
-  classEndDate: string;
+  /** One per session the buyer attends, for Add to Calendar. */
+  calendarEntries: ClassCalendarEntry[];
   classDurationMinutes: number;
   skillLevel: string;
   location?: string;
@@ -290,8 +294,6 @@ function buildConfirmedState(
 ): ConfirmedState {
   const firstSessionIso =
     details.slotStart ?? pc.sessions?.[0]?.dateTime ?? '';
-  const startDate = new Date(firstSessionIso);
-  const endDate = new Date(startDate.getTime() + pc.durationMinutes * 60 * 1000);
   return {
     status: 'confirmed',
     confirmationNumber: details.confirmationNumber,
@@ -301,7 +303,14 @@ function buildConfirmedState(
     pricePaidCents: details.pricePaidCents,
     quantity: details.quantity,
     classDate: firstSessionIso,
-    classEndDate: endDate.toISOString(),
+    calendarEntries: classCalendarEntries({
+      name: pc.name,
+      sessions: pc.sessions ?? [],
+      durationMinutes: pc.durationMinutes,
+      location: pc.location,
+      confirmationNumber: details.confirmationNumber,
+      slotStart: details.slotStart,
+    }),
     classDurationMinutes: pc.durationMinutes,
     skillLevel: pc.skillLevel,
     location: pc.location,
@@ -845,14 +854,7 @@ export function RegistrationWidget({
             </Box>
             <AddToCalendarOptions
               open={calendarOpen}
-              event={{
-                start: state.classDate,
-                end: state.classEndDate,
-                title: state.className,
-                location: state.location ?? 'Maple & Spruce Folk Arts',
-                description: `Class at Maple & Spruce Folk Arts. Confirmation: ${state.confirmationNumber}`,
-                uid: `${state.confirmationNumber}@mapleandsprucefolkarts.com`,
-              }}
+              entries={state.calendarEntries}
             />
 
             {/* Email confirmation notice */}

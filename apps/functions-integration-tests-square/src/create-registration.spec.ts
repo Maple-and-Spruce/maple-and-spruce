@@ -276,6 +276,9 @@ describe('createRegistration', () => {
       const mailDocs = await listFirestoreDocs('mail');
       type MailDocData = {
         to?: string;
+        message?: {
+          attachments?: { filename?: string; content?: string; contentType?: string }[];
+        };
         template?: {
           name?: string;
           data?: Record<string, unknown>;
@@ -309,6 +312,18 @@ describe('createRegistration', () => {
       // Class details only — no payment fields.
       expect(attendeeMail?.template?.data?.amountPaid).toBeUndefined();
       expect(attendeeMail?.template?.data?.subtotal).toBeUndefined();
+
+      // Both carry the class as an .ics, so the mail client offers "Add to
+      // Calendar" whatever browser the buyer used.
+      for (const mail of [registrantMail, attendeeMail]) {
+        const [ics] = mail?.message?.attachments ?? [];
+        expect(ics?.filename).toBe('class.ics');
+        expect(ics?.contentType).toContain('text/calendar');
+        expect(ics?.content).toContain('BEGIN:VEVENT');
+        expect(ics?.content).toContain(
+          `UID:${result.data?.confirmationNumber}-1@`
+        );
+      }
     });
 
     it('should reject when quantity disagrees with additionalAttendees length', async () => {

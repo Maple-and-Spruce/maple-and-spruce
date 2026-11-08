@@ -101,3 +101,4 @@ export * from './lib/app-user';
 
 // State management
 export * from './lib/request-state';
+export * from './lib/class-calendar';

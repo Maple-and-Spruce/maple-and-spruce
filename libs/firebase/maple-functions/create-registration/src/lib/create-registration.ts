@@ -59,6 +59,10 @@ import {
   readUsableGiftCard,
   type UsableGiftCard,
 } from './gift-card-payment';
+import {
+  confirmationCalendarAttachments,
+  type MailAttachment,
+} from './calendar-attachment';
 
 /**
  * Generate a referral discount code shared via the confirmation email.
@@ -472,6 +476,24 @@ export const createRegistration = Functions.endpoint
             : `${classEntity.durationMinutes} minutes`;
         const classLocation = classEntity.location || 'Maple & Spruce';
 
+        // Every session as an .ics, so the mail client offers "Add to
+        // Calendar" whatever browser the buyer checked out in. A failure here
+        // must not cost the buyer their confirmation email.
+        let calendarAttachments: MailAttachment[] = [];
+        try {
+          calendarAttachments = confirmationCalendarAttachments(
+            classEntity,
+            confirmationNumber,
+            data.slotStart
+          );
+        } catch (calendarError) {
+          console.error('Failed to build confirmation .ics:', calendarError);
+        }
+        const calendarMessage =
+          calendarAttachments.length > 0
+            ? { message: { attachments: calendarAttachments } }
+            : {};
+
         // Partition attendees: those with email get their own confirmation,
         // those without become a "remind your N friends" prompt to the
         // registrant so they aren't left wondering how their friend hears about it.
@@ -495,6 +517,7 @@ export const createRegistration = Functions.endpoint
 
         await db.collection('mail').add({
           to: data.customerEmail,
+          ...calendarMessage,
           template: {
             name: 'registration-confirmation',
             data: {
@@ -547,6 +570,7 @@ export const createRegistration = Functions.endpoint
           try {
             await db.collection('mail').add({
               to: attendee.email,
+              ...calendarMessage,
               template: {
                 name: 'registration-confirmation-attendee',
                 data: {
