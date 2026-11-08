@@ -81,7 +81,11 @@ async function mailTo(address: string): Promise<Array<Record<string, unknown>>> 
 }
 
 describe('giftCards/purchaseGiftCard', () => {
-  beforeAll(async () => {
+  // The Square mock restarts its card ids at `gftc:mock-1` on every reset, so
+  // Firestore is cleared too: otherwise an earlier test's purchase record for
+  // the same id would look like a retry. (Real Square ids never repeat.)
+  beforeEach(async () => {
+    await fetch(`${SQUARE_MOCK}/_mock/reset`, { method: 'POST' });
     await clearFirestoreEmulator();
     await setFirestoreDoc('classCategories', CATEGORY_ID, {
       name: 'Pottery',
@@ -101,10 +105,6 @@ describe('giftCards/purchaseGiftCard', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
-  });
-
-  beforeEach(async () => {
-    await fetch(`${SQUARE_MOCK}/_mock/reset`, { method: 'POST' });
   });
 
   afterAll(async () => {
