@@ -11,14 +11,14 @@ describe('isAllowedGiftCardAmount', () => {
     expect(isAllowedGiftCardAmount(cents)).toBe(true);
   });
 
-  it.each([
+  it.each<[unknown, string]>([
     [900, 'under $10'],
     [50100, 'over $500'],
     [2550, 'not whole dollars'],
     [25.5, 'not an integer'],
     ['2500', 'not a number'],
     [undefined, 'missing'],
-  ])('refuses %s (%s)', (cents, _reason) => {
+  ])('refuses %s (%s)', (cents) => {
     expect(isAllowedGiftCardAmount(cents)).toBe(false);
   });
 });

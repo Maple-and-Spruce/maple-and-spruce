@@ -108,7 +108,7 @@ async function priceRequest(data: PurchaseGiftCardRequest): Promise<Priced> {
       'A private-hours class cannot be bought as a gift certificate. Choose a dollar amount instead.'
     );
   }
-  if (!classEntity.categoryId || !(classEntity.priceCents > 0)) {
+  if (!classEntity.categoryId || classEntity.priceCents <= 0) {
     throwInvalidArgument('That class is not available for a gift certificate.');
   }
 
@@ -259,7 +259,8 @@ export async function purchaseGiftCard(
       adminAlertEmail: strings.ADMIN_ALERT_EMAIL,
     });
     throw new Error(
-      `We could not create your gift card, so we refunded your payment. Please try again, or call us at ${STUDIO_PHONE}.`
+      `We could not create your gift card, so we refunded your payment. Please try again, or call us at ${STUDIO_PHONE}.`,
+      { cause: error }
     );
   }
 
