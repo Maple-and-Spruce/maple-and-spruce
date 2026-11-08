@@ -13,6 +13,12 @@ vi.mock('@maple/firebase/square', () => ({
   }),
 }));
 
+const repos = vi.hoisted(() => ({
+  GiftCardPurchaseRepository: { findByGiftCardId: vi.fn() },
+  ClassCategoryRepository: { findById: vi.fn() },
+}));
+vi.mock('@maple/firebase/database', () => repos);
+
 vi.mock('@maple/firebase/functions', () => ({
   throwInvalidArgument: (message: string) => {
     throw Object.assign(new Error(message), { code: 'invalid-argument' });
@@ -83,6 +89,48 @@ describe('getGiftCard', () => {
       beginTime: new Date('2026-11-02T15:00:00Z'),
     });
     expect(result).toEqual({ card, activities: [] });
+  });
+
+  it('adds the online purchase record, with the class type for a certificate', async () => {
+    giftCardsService.getGiftCard.mockResolvedValue(card);
+    giftCardsService.listActivities.mockResolvedValue([]);
+    repos.GiftCardPurchaseRepository.findByGiftCardId.mockResolvedValue({
+      giftCardId: 'gc-1',
+      last4: '1111',
+      kind: 'class',
+      valueCents: 6500,
+      classId: 'class-1',
+      classCategoryId: 'cat-1',
+      className: 'Beginner Wheel',
+      buyerName: 'Robin Ashfield',
+      buyerEmail: 'robin@example.com',
+      deliverTo: 'buyer',
+      squareOrderId: 'o',
+      squarePaymentId: 'p',
+      createdAt: new Date('2026-11-02T15:00:00Z'),
+    });
+    repos.ClassCategoryRepository.findById.mockResolvedValue({ id: 'cat-1', name: 'Pottery' });
+
+    const result = await getGiftCard({ id: 'gc-1' }, {}, secrets, strings);
+
+    expect(result.purchase).toMatchObject({
+      kind: 'class',
+      className: 'Beginner Wheel',
+      classCategoryName: 'Pottery',
+      createdAt: '2026-11-02T15:00:00.000Z',
+    });
+  });
+
+  it('leaves the purchase off when the record cannot be read', async () => {
+    giftCardsService.getGiftCard.mockResolvedValue(card);
+    giftCardsService.listActivities.mockResolvedValue([]);
+    repos.GiftCardPurchaseRepository.findByGiftCardId.mockRejectedValue(new Error('down'));
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const result = await getGiftCard({ id: 'gc-1' }, {}, secrets, strings);
+
+    expect(result).toEqual({ card, activities: [] });
+    err.mockRestore();
   });
 
   it('is not-found for an unknown card', async () => {
