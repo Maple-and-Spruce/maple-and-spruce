@@ -202,6 +202,87 @@ describe('GiftCardsService writes', () => {
     expect(result).toEqual({ balanceCents: 5000 });
   });
 
+  it('activates a free card with an amount and no order (#310)', async () => {
+    client.giftCards.activities.create.mockResolvedValue({
+      giftCardActivity: { giftCardBalanceMoney: { amount: BigInt(2500) } },
+    });
+
+    const result = await service.activateGiftCardWithoutOrder({
+      giftCardId: 'gc-free',
+      locationId: 'L1',
+      amountCents: 2500,
+      referenceId: 'comp-abc123',
+      buyerPaymentInstrumentIds: ['comp-abc123'],
+      idempotencyKey: 'k3',
+    });
+
+    expect(client.giftCards.activities.create).toHaveBeenCalledWith({
+      idempotencyKey: 'k3',
+      giftCardActivity: {
+        type: 'ACTIVATE',
+        locationId: 'L1',
+        giftCardId: 'gc-free',
+        activateActivityDetails: {
+          amountMoney: { amount: BigInt(2500), currency: 'USD' },
+          referenceId: 'comp-abc123',
+          buyerPaymentInstrumentIds: ['comp-abc123'],
+        },
+      },
+    });
+    const details =
+      client.giftCards.activities.create.mock.calls[0][0].giftCardActivity
+        .activateActivityDetails;
+    expect(details).not.toHaveProperty('orderId');
+    expect(result).toEqual({ balanceCents: 2500 });
+  });
+
+  it.each([0, -100, 12.5])(
+    'refuses to activate a free card with %s cents, before calling Square',
+    async (amountCents) => {
+      await expect(
+        service.activateGiftCardWithoutOrder({
+          giftCardId: 'gc-free',
+          locationId: 'L1',
+          amountCents,
+          referenceId: 'comp-x',
+          buyerPaymentInstrumentIds: ['comp-x'],
+          idempotencyKey: 'k3',
+        })
+      ).rejects.toThrow('positive whole number');
+      expect(client.giftCards.activities.create).not.toHaveBeenCalled();
+    }
+  );
+
+  it('fails loudly when Square refuses a free card activation', async () => {
+    client.giftCards.activities.create.mockResolvedValue({
+      errors: [{ code: 'INVALID_GIFT_CARD_STATE', detail: 'already active' }],
+    });
+    await expect(
+      service.activateGiftCardWithoutOrder({
+        giftCardId: 'gc-free',
+        locationId: 'L1',
+        amountCents: 2500,
+        referenceId: 'comp-x',
+        buyerPaymentInstrumentIds: ['comp-x'],
+        idempotencyKey: 'k3',
+      })
+    ).rejects.toThrow('Square could not activate gift card: already active');
+  });
+
+  it('reports a zero balance when Square leaves the balance out', async () => {
+    client.giftCards.activities.create.mockResolvedValue({ giftCardActivity: {} });
+    await expect(
+      service.activateGiftCardWithoutOrder({
+        giftCardId: 'gc-free',
+        locationId: 'L1',
+        amountCents: 2500,
+        referenceId: 'comp-x',
+        buyerPaymentInstrumentIds: ['comp-x'],
+        idempotencyKey: 'k3',
+      })
+    ).resolves.toEqual({ balanceCents: 0 });
+  });
+
   it('reads the card behind a payment token', async () => {
     client.giftCards.getFromNonce.mockResolvedValue({
       giftCard: { id: 'gc', type: 'DIGITAL', state: 'ACTIVE', gan: '7783320000006666', balanceMoney: { amount: BigInt(4000) } },

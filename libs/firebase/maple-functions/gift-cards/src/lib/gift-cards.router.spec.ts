@@ -65,6 +65,11 @@ const handlers = vi.hoisted(() => ({
 vi.mock('./gift-cards.handlers', () => handlers);
 const purchase = vi.hoisted(() => ({ purchaseGiftCard: vi.fn() }));
 vi.mock('./purchase-gift-card', () => purchase);
+const adminActions = vi.hoisted(() => ({
+  issueGiftCard: vi.fn(),
+  markClassCertificate: vi.fn(),
+}));
+vi.mock('./gift-card-admin-actions', () => adminActions);
 
 import { giftCards } from './gift-cards.router';
 
@@ -79,10 +84,12 @@ type Route = {
 const routes = giftCards as unknown as Record<string, Route>;
 
 describe('giftCards router', () => {
-  it('has the three admin reads and the public purchase', () => {
+  it('has the three admin reads, the two admin actions and the public purchase', () => {
     expect(Object.keys(routes).sort()).toEqual([
       'getGiftCard',
       'getGiftCards',
+      'issueGiftCard',
+      'markClassCertificate',
       'purchaseGiftCard',
       'revealGiftCardCode',
     ]);
@@ -106,7 +113,13 @@ describe('giftCards router', () => {
     expect(route.handler).toBe(purchase.purchaseGiftCard);
   });
 
-  it.each(['getGiftCards', 'getGiftCard', 'revealGiftCardCode'])(
+  it.each([
+    'getGiftCards',
+    'getGiftCard',
+    'revealGiftCardCode',
+    'markClassCertificate',
+    'issueGiftCard',
+  ])(
     '%s is admin only, with the Square credentials',
     (name) => {
       expect(routes[name].roles).toBe('admin');
@@ -120,5 +133,14 @@ describe('giftCards router', () => {
     expect(handlers.getGiftCards).toHaveBeenCalledWith({}, {}, { a: 1 }, { b: 2 });
     expect(routes['getGiftCard'].handler).toBe(handlers.getGiftCard);
     expect(routes['revealGiftCardCode'].handler).toBe(handlers.revealGiftCardCode);
+    expect(routes['markClassCertificate'].handler).toBe(adminActions.markClassCertificate);
+    expect(routes['issueGiftCard'].handler).toBe(adminActions.issueGiftCard);
+  });
+
+  it('the admin actions are not public: no App Check bypass, no throttle', () => {
+    for (const name of ['markClassCertificate', 'issueGiftCard']) {
+      expect(routes[name].appCheck).toBeUndefined();
+      expect(routes[name].throttle).toBeUndefined();
+    }
   });
 });
