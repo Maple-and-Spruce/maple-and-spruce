@@ -108,11 +108,7 @@ export async function markClassCertificate(
     );
   }
 
-  // Square defaults an activity search to the last year; a card can be older.
-  const activities = await giftCards.listActivities({
-    giftCardId: card.id,
-    beginTime: new Date(card.createdAt || 0),
-  });
+  const activities = await giftCards.listCardHistory(card.id, card.createdAt);
   const valueCents = originalGiftCardValueCents(activities);
   if (!valueCents) {
     throwFailedPrecondition(

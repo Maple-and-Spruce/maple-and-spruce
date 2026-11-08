@@ -91,12 +91,8 @@ export async function getGiftCard(
   const card = await giftCards.getGiftCard(data.id);
   if (!card) throwNotFound('Gift card', data.id);
 
-  // Square defaults an activity search to the last year; a card can be older.
   const [activities, purchase] = await Promise.all([
-    giftCards.listActivities({
-      giftCardId: data.id,
-      beginTime: new Date(card.createdAt || 0),
-    }),
+    giftCards.listCardHistory(data.id, card.createdAt),
     readPurchase(data.id),
   ]);
   return purchase ? { card, activities, purchase } : { card, activities };
