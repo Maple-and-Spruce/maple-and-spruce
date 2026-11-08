@@ -32,10 +32,8 @@
 - **#304 (stacked on #302):** lesson series and "same time next week" stepped by 7 × 24h, so
   times moved an hour across a clock change. ESLint now flags the shortcut in browser code. A
   task story plays Katie's own "move him to Thursday 4:30".
-- **To do:** check prod for series created before Nov 1 whose later lessons sit an hour early:
-  `npx tsx tools/check-dst-shifted-series.ts --prod` (read-only; needs
-  `gcloud auth application-default login` first). Note: a series Katie deliberately moved by
-  an hour will also show up, so look before changing anything.
+- **Checked prod (2026-11-08):** `tools/check-dst-shifted-series.ts --prod` found 0 of 19
+  series with lessons shifted by a clock change, so no existing lessons need fixing.
 - See "Dates and Clock Changes" in `docs/architecture/PATTERNS-AND-PRACTICES.md`.
 
 ### Contractor agreement: real checkboxes, per-instructor pay, audit trail (2026-11-07)
