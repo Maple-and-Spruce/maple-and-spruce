@@ -39,7 +39,7 @@ checkout" fallback (used when Square's card field cannot load, mostly Safari).
 - "Have a gift card?" opens Square's gift card field. **Apply** checks the card and shows
   "Gift card ending 4821: −$60.00", any "Class certificate covers: −$6.00", and "Left to pay".
 - If the gift card covers everything, the card field disappears and the button reads
-  "Register — paid by gift card".
+  "Register with gift card".
 - Otherwise they enter a card for the rest. The success screen and the confirmation email
   show the gift card part (last 4 only), the card part, and any certificate cover.
 

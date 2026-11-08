@@ -248,7 +248,7 @@ export const FullyCovered: Story = {
 
     await fillCustomer(canvasElement);
     await userEvent.click(
-      canvas.getByRole('button', { name: 'Register — paid by gift card' })
+      canvas.getByRole('button', { name: 'Register with gift card' })
     );
     await waitFor(() => expect(args.onSubmit).toHaveBeenCalledTimes(1));
     await expect(args.onSubmit).toHaveBeenCalledWith(

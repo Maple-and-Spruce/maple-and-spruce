@@ -1211,7 +1211,7 @@ describe('RegistrationCheckoutForm — gift cards (#301)', () => {
 
     fillCustomer();
     await user.click(
-      screen.getByRole('button', { name: 'Register — paid by gift card' })
+      screen.getByRole('button', { name: 'Register with gift card' })
     );
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onSubmit.mock.calls[0][0]).toMatchObject({

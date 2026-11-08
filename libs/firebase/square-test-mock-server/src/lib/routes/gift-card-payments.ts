@@ -182,7 +182,8 @@ export function registerGiftCardPaymentRoutes(server: SquareMockServer): void {
   server.post('/v2/payments', (req) => {
     const body = (req.body ?? {}) as Body;
     const sourceId = field<string>(body, 'source_id', 'sourceId') ?? '';
-    const card = cardsByNonce.get(sourceId);
+    // Square takes either a gift card token or the gift card's id.
+    const card = cardsByNonce.get(sourceId) ?? cardsById.get(sourceId);
     if (!card) return null; // a card payment: the general route takes it
 
     const key = field<string>(body, 'idempotency_key', 'idempotencyKey');

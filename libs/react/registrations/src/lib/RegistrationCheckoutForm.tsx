@@ -1434,7 +1434,7 @@ export function RegistrationCheckoutForm({
                 {isSubmitting.value
                   ? 'Processing...'
                   : nothingLeftToPay.value
-                    ? 'Register — paid by gift card'
+                    ? 'Register with gift card'
                     : appliedGiftCard.value
                       ? `Register & Pay $${(appliedGiftCard.value.leftToPayCents / 100).toFixed(2)}`
                       : `Register & Pay ${costBreakdown.value ? `$${(costBreakdown.value.totalCents / 100).toFixed(2)}` : ''}`}

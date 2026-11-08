@@ -147,7 +147,10 @@ export async function chargeWithGiftCard(
   let giftPayment;
   try {
     giftPayment = await square.paymentsService.createPayment({
-      sourceId: input.giftCardNonce,
+      // Charge the card by its id, read from the token in readUsableGiftCard.
+      // Square takes a gift card id as a payment source, and it avoids
+      // depending on whether a token is still chargeable after it was looked up.
+      sourceId: giftCard.card.id,
       amountCents: askGiftCardCents,
       idempotencyKey: keys.giftCardPayment,
       locationId: square.locationId,

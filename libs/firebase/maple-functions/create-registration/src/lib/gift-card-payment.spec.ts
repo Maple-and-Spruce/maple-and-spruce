@@ -207,7 +207,7 @@ describe('chargeWithGiftCard', () => {
     expect(square.paymentsService.createPayment).toHaveBeenCalledTimes(1);
     expect(square.paymentsService.createPayment).toHaveBeenCalledWith(
       expect.objectContaining({
-        sourceId: 'gftok:abc',
+        sourceId: 'gc-1',
         amountCents: 5300,
         orderId: 'order-1',
         autocomplete: false,
@@ -245,7 +245,7 @@ describe('chargeWithGiftCard', () => {
 
     expect(square.paymentsService.createPayment).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ amountCents: 6000, sourceId: 'gftok:abc' })
+      expect.objectContaining({ amountCents: 6000, sourceId: 'gc-1' })
     );
     expect(square.paymentsService.createPayment).toHaveBeenNthCalledWith(
       2,
