@@ -9,6 +9,12 @@
  *
  * Selecting which class to load:
  *   ?classId=<id>       — required (seeded ahead of time)
+ *   ?giftCards=show     — turn on "Have a gift card?" in class checkout
+ *                         (the Webflow `giftCardsEnabled` switch)
+ *
+ * Gift card buy page instead of a class:
+ *   ?giftCard=1         — mounts the production `GiftCardWidget`
+ *   ?giftClass=<classId> — with ?giftCard=1, preselects that class's type
  *
  * Digital wallets (off unless asked for, as on Webflow):
  *   ?wallets=show               — Google Pay inline + the Apple Pay popup button
@@ -48,6 +54,8 @@ import { CacheProvider } from '@emotion/react';
 import { RegistrationWidget } from '../../webflow-components/src/RegistrationWidget';
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { MusicTogetherRegistrationWidget } from '../../webflow-components/src/MusicTogetherRegistrationWidget';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { GiftCardWidget } from '../../webflow-components/src/GiftCardWidget';
 
 const targetEnv = import.meta.env['VITE_TARGET_ENV'] ?? 'emulator';
 
@@ -182,6 +190,25 @@ function App() {
     return <MusicTogetherApp sectionId={mtSectionId} />;
   }
 
+  if (params.get('giftCard') === '1') {
+    if (!squareApplicationId || !squareLocationId) {
+      return <div style={{ padding: 24 }}>Missing Square sandbox credentials.</div>;
+    }
+    const giftCard = (
+      <GiftCardWidget
+        squareAppId={squareApplicationId}
+        squareLocationId={squareLocationId}
+        env={targetEnv}
+      />
+    );
+    return (
+      <>
+        <HarnessBanner label="Gift card test harness" />
+        {shadow ? <ShadowMount width={width}>{giftCard}</ShadowMount> : giftCard}
+      </>
+    );
+  }
+
   if (!classId) {
     return (
       <div style={{ padding: 24, fontFamily: 'system-ui' }}>
@@ -219,6 +246,7 @@ function App() {
       env={targetEnv}
       showDigitalWallets={showDigitalWallets}
       applePayCheckoutUrl={applePayCheckoutUrl}
+      giftCardsEnabled={params.get('giftCards') === 'show' ? 'show' : 'hide'}
     />
   );
 
