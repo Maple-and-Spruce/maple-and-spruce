@@ -684,6 +684,12 @@ export type {
   MarkClassCertificateResponse,
   IssueGiftCardRequest,
   IssueGiftCardResponse,
+  PrintGiftCertificatesRequest,
+  PrintGiftCertificatesResponse,
+  PrintedCertificateCard,
+  GetCertificateBatchRequest,
+  GetCertificateBatchResponse,
+  PrintableCertificate,
 } from './gift-card.types';
 // Paying for classes with a gift card (#301)
 export type {

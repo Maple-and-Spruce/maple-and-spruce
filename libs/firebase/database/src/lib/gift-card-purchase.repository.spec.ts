@@ -5,11 +5,16 @@ const mocks = vi.hoisted(() => ({
   doc: vi.fn(),
   create: vi.fn(),
   get: vi.fn(),
+  where: vi.fn(),
+  queryGet: vi.fn(),
 }));
 
 vi.mock('./utilities/database.config', () => {
   const docRef = { create: mocks.create, get: mocks.get };
-  const collectionRef = { doc: mocks.doc.mockReturnValue(docRef) };
+  const collectionRef = {
+    doc: mocks.doc.mockReturnValue(docRef),
+    where: mocks.where.mockReturnValue({ get: mocks.queryGet }),
+  };
   return {
     getDb: () => ({ collection: mocks.collection.mockReturnValue(collectionRef) }),
     toDate: (value: unknown): Date => (value instanceof Date ? value : new Date(String(value))),
@@ -133,5 +138,70 @@ describe('GiftCardPurchaseRepository', () => {
   it('returns undefined for a card bought somewhere else', async () => {
     mocks.get.mockResolvedValue({ exists: false });
     await expect(GiftCardPurchaseRepository.findByGiftCardId('nope')).resolves.toBeUndefined();
+  });
+
+  it('reads back a printed certificate with its batch and design (#314)', async () => {
+    const createdAt = new Date('2026-11-20T15:00:00Z');
+    mocks.get.mockResolvedValue({
+      exists: true,
+      id: 'gftc-3',
+      data: () => ({
+        last4: '0042',
+        kind: 'amount',
+        valueCents: 2500,
+        source: 'stock',
+        batchId: 'batch-abc',
+        batchIndex: 3,
+        design: 'stained-glass',
+        recordedByUid: 'admin-1',
+        createdAt,
+      }),
+    });
+
+    await expect(
+      GiftCardPurchaseRepository.findByGiftCardId('gftc-3')
+    ).resolves.toMatchObject({
+      source: 'stock',
+      batchId: 'batch-abc',
+      batchIndex: 3,
+      design: 'stained-glass',
+    });
+  });
+
+  const queryDoc = (id: string, data: Record<string, unknown>) => ({
+    exists: true,
+    id,
+    data: () => ({ last4: '0001', kind: 'amount', valueCents: 2500, createdAt: new Date(), ...data }),
+  });
+
+  it('reads records from several sources in one query (#314)', async () => {
+    mocks.queryGet.mockResolvedValue({
+      docs: [queryDoc('a', { source: 'stock' }), queryDoc('b', { source: 'issued' })],
+    });
+
+    const records = await GiftCardPurchaseRepository.findBySources(['issued', 'stock']);
+
+    expect(mocks.where).toHaveBeenCalledTimes(1);
+    expect(mocks.where).toHaveBeenCalledWith('source', 'in', ['issued', 'stock']);
+    expect(records.map((r) => r.giftCardId)).toEqual(['a', 'b']);
+  });
+
+  it('asks nothing for no sources', async () => {
+    await expect(GiftCardPurchaseRepository.findBySources([])).resolves.toEqual([]);
+    expect(mocks.where).not.toHaveBeenCalled();
+  });
+
+  it('reads one batch in batch order (#314)', async () => {
+    mocks.queryGet.mockResolvedValue({
+      docs: [
+        queryDoc('second', { batchId: 'b1', batchIndex: 1 }),
+        queryDoc('first', { batchId: 'b1', batchIndex: 0 }),
+      ],
+    });
+
+    const batch = await GiftCardPurchaseRepository.findByBatchId('b1');
+
+    expect(mocks.where).toHaveBeenCalledWith('batchId', '==', 'b1');
+    expect(batch.map((r) => r.giftCardId)).toEqual(['first', 'second']);
   });
 });

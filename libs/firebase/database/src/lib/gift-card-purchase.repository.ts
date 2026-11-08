@@ -4,7 +4,8 @@
  * One document per gift card we know more about than Square does, keyed by
  * the Square gift card id: `giftCardPurchases/{giftCardId}`. Written when a
  * card is bought on our own buy page (#300), when Katie marks a register card
- * as a class certificate, or when the studio gives a free card (#310).
+ * as a class certificate, when the studio gives a free card (#310), or when
+ * Katie prints a batch of certificates (#314).
  * Square owns the balance and the code; this keeps what Square cannot (who it
  * was for, the message, for a class certificate which class type it covers,
  * and how it came about).
@@ -12,7 +13,10 @@
  * Never store the full card code here.
  */
 import { getDb, toDate } from './utilities/database.config';
-import type { GiftCardPurchase } from '@maple/ts/domain';
+import type {
+  GiftCardPurchase,
+  GiftCardPurchaseSource,
+} from '@maple/ts/domain';
 
 const COLLECTION = 'giftCardPurchases';
 
@@ -41,6 +45,9 @@ function docToGiftCardPurchase(
     squarePaymentId: data.squarePaymentId ?? undefined,
     reason: data.reason ?? undefined,
     recordedByUid: data.recordedByUid ?? undefined,
+    batchId: data.batchId ?? undefined,
+    batchIndex: data.batchIndex ?? undefined,
+    design: data.design ?? undefined,
     createdAt: toDate(data.createdAt),
   };
 }
@@ -74,5 +81,35 @@ export const GiftCardPurchaseRepository = {
   ): Promise<GiftCardPurchase | undefined> {
     const doc = await getDb().collection(COLLECTION).doc(giftCardId).get();
     return docToGiftCardPurchase(doc);
+  },
+
+  /**
+   * Every record from the given sources, in one query (a single-field `in`
+   * filter, so no composite index). The Gift Cards page reads free cards and
+   * printed stock this way to split its totals (#314).
+   */
+  async findBySources(
+    sources: readonly GiftCardPurchaseSource[]
+  ): Promise<GiftCardPurchase[]> {
+    if (sources.length === 0) return [];
+    const snapshot = await getDb()
+      .collection(COLLECTION)
+      .where('source', 'in', [...sources])
+      .get();
+    return snapshot.docs
+      .map(docToGiftCardPurchase)
+      .filter((p): p is GiftCardPurchase => p !== undefined);
+  },
+
+  /** Every certificate printed in one batch, in batch order (#314). */
+  async findByBatchId(batchId: string): Promise<GiftCardPurchase[]> {
+    const snapshot = await getDb()
+      .collection(COLLECTION)
+      .where('batchId', '==', batchId)
+      .get();
+    return snapshot.docs
+      .map(docToGiftCardPurchase)
+      .filter((p): p is GiftCardPurchase => p !== undefined)
+      .sort((a, b) => (a.batchIndex ?? 0) - (b.batchIndex ?? 0));
   },
 };

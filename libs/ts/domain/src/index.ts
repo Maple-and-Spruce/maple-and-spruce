@@ -94,6 +94,7 @@ export * from './lib/gift-card-redemption';
 export * from './lib/gift-card-purchase';
 export * from './lib/gift-card-admin';
 export * from './lib/gift-certificate-item';
+export * from './lib/gift-certificate-print';
 
 // User & role administration
 export * from './lib/app-user';

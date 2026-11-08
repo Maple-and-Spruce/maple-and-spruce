@@ -134,6 +134,10 @@ export {
   type MarkClassCertificateValidationInput,
 } from './gift-card-admin.validation';
 export {
+  printGiftCertificatesValidation,
+  type PrintGiftCertificatesValidationInput,
+} from './gift-certificate-print.validation';
+export {
   giftCardSettingsValidation,
   type GiftCardSettingsValidationInput,
 } from './gift-card-settings.validation';

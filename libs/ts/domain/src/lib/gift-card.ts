@@ -72,10 +72,41 @@ export interface GiftCardTotals {
   outstandingCents: number;
   /** Active cards with money left on them. */
   cardsWithBalance: number;
-  /** Money put on cards (sold or reloaded) since the 1st of this month. */
+  /**
+   * Money put on cards (sold or reloaded) since the 1st of this month. Free
+   * cards and printed certificates are left out: neither is a sale (#314).
+   */
   loadedThisMonthCents: number;
   /** Money spent from cards since the 1st of this month. */
   spentThisMonthCents: number;
+  /** Money put on cards the studio gave free since the 1st (#314). */
+  givenFreeThisMonthCents: number;
+  /**
+   * Money on printed certificates nobody has used yet (#314): stock cards
+   * still holding exactly what was loaded. Spendable, but probably still in
+   * the drawer, so kept apart from what is owed to customers.
+   */
+  printedUnusedCents: number;
+  /** How many printed certificates are still unused. */
+  printedUnusedCount: number;
+}
+
+/**
+ * What the totals need to know about a card from our own records: how it came
+ * about and what was loaded on it. Cards with no record are register or Square
+ * sales.
+ */
+export type GiftCardRecordForTotals = Pick<
+  GiftCardPurchase,
+  'giftCardId' | 'source' | 'valueCents'
+>;
+
+/** A card in the admin list, with what our records say about it (#314). */
+export interface GiftCardListItem extends GiftCardSummary {
+  /** Set when we have a record of the card. Missing means sold in Square. */
+  source?: GiftCardPurchaseSource;
+  /** For a printed certificate: the batch it was printed in. */
+  batchId?: string;
 }
 
 const ADDS_MONEY: ReadonlySet<GiftCardActivityType> = new Set([
@@ -196,29 +227,69 @@ function timeZoneOffsetMs(at: Date, timeZone: string): number {
 }
 
 /**
- * The page totals from every card and this month's activities.
+ * Whether a card is printed stock nobody has used: a `stock` card, active,
+ * still holding exactly what was loaded when it was printed (#314).
+ */
+export function isUnusedPrintedCertificate(
+  card: Pick<GiftCardSummary, 'state' | 'balanceCents'>,
+  record: GiftCardRecordForTotals | undefined
+): boolean {
+  return (
+    record?.source === 'stock' &&
+    card.state === 'active' &&
+    card.balanceCents === record.valueCents
+  );
+}
+
+/**
+ * The page totals from every card, this month's activities and our records of
+ * cards (#314).
  *
  * Only active cards count toward the outstanding balance: a blocked or turned
- * off card cannot be spent, and a pending one was never paid for.
+ * off card cannot be spent, and a pending one was never paid for. Printed
+ * certificates nobody has used yet are counted on their own, not as owed.
+ *
+ * Loading a free card is "given free", not "sold". Loading a printed
+ * certificate is neither: it is sold later at the register as the "Gift
+ * certificate" item, which is not a gift card activity.
  */
 export function summarizeGiftCards(
   cards: readonly GiftCardSummary[],
-  activitiesThisMonth: readonly GiftCardActivityEntry[]
+  activitiesThisMonth: readonly GiftCardActivityEntry[],
+  records: readonly GiftCardRecordForTotals[] = []
 ): GiftCardTotals {
+  const recordById = new Map(records.map((r) => [r.giftCardId, r]));
+
   let outstandingCents = 0;
   let cardsWithBalance = 0;
+  let printedUnusedCents = 0;
+  let printedUnusedCount = 0;
   for (const card of cards) {
     if (card.state !== 'active') continue;
+    if (isUnusedPrintedCertificate(card, recordById.get(card.id))) {
+      printedUnusedCents += card.balanceCents;
+      printedUnusedCount += 1;
+      continue;
+    }
     outstandingCents += card.balanceCents;
     if (card.balanceCents > 0) cardsWithBalance += 1;
   }
 
   let loadedThisMonthCents = 0;
   let spentThisMonthCents = 0;
+  let givenFreeThisMonthCents = 0;
   for (const activity of activitiesThisMonth) {
     const amount = Math.abs(activity.amountCents ?? 0);
     if (activity.type === 'activate' || activity.type === 'load') {
-      loadedThisMonthCents += amount;
+      const source = recordById.get(activity.giftCardId)?.source;
+      // A free card is only free when it is first loaded; a top-up is a sale.
+      if (source === 'issued' && activity.type === 'activate') {
+        givenFreeThisMonthCents += amount;
+      } else if (source === 'stock' && activity.type === 'activate') {
+        // Printed stock: not sold until it is rung up at the register.
+      } else {
+        loadedThisMonthCents += amount;
+      }
     } else if (activity.type === 'redeem') {
       spentThisMonthCents += amount;
     } else if (
@@ -235,6 +306,9 @@ export function summarizeGiftCards(
     cardsWithBalance,
     loadedThisMonthCents,
     spentThisMonthCents: Math.max(0, spentThisMonthCents),
+    givenFreeThisMonthCents,
+    printedUnusedCents,
+    printedUnusedCount,
   };
 }
 
@@ -257,8 +331,11 @@ export type GiftCardDeliverTo = 'recipient' | 'buyer';
  *   certificate by Katie on the admin Gift Cards page.
  * - `issued`: given free by the studio from the admin page. No money changed
  *   hands; the value comes out of the studio's pocket when it is spent.
+ * - `stock`: a printed certificate (#314), made and loaded in a batch from the
+ *   admin page and kept in the shop. Spendable as soon as it is printed; sold
+ *   at the register as the "Gift certificate" item.
  */
-export type GiftCardPurchaseSource = 'online' | 'register' | 'issued';
+export type GiftCardPurchaseSource = 'online' | 'register' | 'issued' | 'stock';
 
 /**
  * What we know about a gift card that Square cannot hold. Square still owns
@@ -308,8 +385,14 @@ export interface GiftCardPurchase {
   squarePaymentId?: string;
   /** Issued only: why the studio gave it, in Katie's words. */
   reason?: string;
-  /** Register or issued: the admin who recorded it. */
+  /** Register, issued or stock: the admin who recorded it. */
   recordedByUid?: string;
+  /** Stock only: the printing batch (#314). */
+  batchId?: string;
+  /** Stock only: the card's place in its batch, from 0. */
+  batchIndex?: number;
+  /** Stock only: the certificate design it was printed with. */
+  design?: string;
   createdAt: Date;
 }
 
