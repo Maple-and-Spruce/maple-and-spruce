@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const giftCardsService = vi.hoisted(() => ({
   getGiftCard: vi.fn(),
   listActivities: vi.fn(),
+  listCardHistory: vi.fn(),
   createDigitalGiftCard: vi.fn(),
   activateGiftCardWithoutOrder: vi.fn(),
 }));
@@ -87,7 +88,7 @@ describe('markClassCertificate', () => {
     repos.GiftCardPurchaseRepository.findByGiftCardId.mockResolvedValue(undefined);
     repos.ClassCategoryRepository.findById.mockResolvedValue(pottery);
     giftCardsService.getGiftCard.mockResolvedValue(activeCard);
-    giftCardsService.listActivities.mockResolvedValue([
+    giftCardsService.listCardHistory.mockResolvedValue([
       {
         id: 'a2',
         giftCardId: 'gc-1',
@@ -110,10 +111,7 @@ describe('markClassCertificate', () => {
   it('records a register card as a class certificate at what was loaded, not the balance', async () => {
     const result = await markClassCertificate(request, context, secrets, strings);
 
-    expect(giftCardsService.listActivities).toHaveBeenCalledWith({
-      giftCardId: 'gc-1',
-      beginTime: new Date('2026-11-02T15:00:00Z'),
-    });
+    expect(giftCardsService.listCardHistory).toHaveBeenCalledWith('gc-1', '2026-11-02T15:00:00Z');
     expect(repos.GiftCardPurchaseRepository.create).toHaveBeenCalledWith({
       giftCardId: 'gc-1',
       last4: '1111',
@@ -209,7 +207,7 @@ describe('markClassCertificate', () => {
   });
 
   it('refuses a card whose history shows no amount loaded', async () => {
-    giftCardsService.listActivities.mockResolvedValue([]);
+    giftCardsService.listCardHistory.mockResolvedValue([]);
     await expect(markClassCertificate(request, context, secrets, strings)).rejects.toMatchObject({
       code: 'failed-precondition',
       message: expect.stringContaining("doesn't show how much"),
