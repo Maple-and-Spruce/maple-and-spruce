@@ -79,6 +79,7 @@ function docToInstructor(
     payoutDetails: data.payoutDetails,
     bio: data.bio,
     specialties: data.specialties,
+    programs: data.programs ?? undefined,
     payRate: data.payRate,
     payRateType: data.payRateType,
     lessonRates: data.lessonRates,

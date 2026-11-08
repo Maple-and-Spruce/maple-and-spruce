@@ -108,6 +108,31 @@ export type InstructorReadinessStatus =
   | { kind: 'not-ready'; missing: InstructorReadinessItem[] };
 
 /**
+ * What an instructor teaches, which decides the public pages they appear on.
+ *
+ * - `suzuki`: listed on the Suzuki school page.
+ * - `music-lessons`: listed on the private music lessons page.
+ * - `craft-classes`: teaches craft classes.
+ *
+ * An instructor can have several. Synced to Webflow as one switch per
+ * program (`teaches-<program>`), because a Webflow collection list can filter
+ * on a switch but not on membership in a list.
+ */
+export type InstructorProgram = 'suzuki' | 'music-lessons' | 'craft-classes';
+
+export const INSTRUCTOR_PROGRAMS: readonly InstructorProgram[] = [
+  'suzuki',
+  'music-lessons',
+  'craft-classes',
+];
+
+export const INSTRUCTOR_PROGRAM_LABELS: Record<InstructorProgram, string> = {
+  suzuki: 'Suzuki school',
+  'music-lessons': 'Private music lessons',
+  'craft-classes': 'Craft classes',
+};
+
+/**
  * Instructor entity - implements Payee interface
  */
 export interface Instructor extends Omit<Payee, 'email'> {
@@ -128,6 +153,11 @@ export interface Instructor extends Omit<Payee, 'email'> {
   bio?: string;
   /** Areas of expertise (e.g., ['weaving', 'natural dyeing']) */
   specialties?: string[];
+  /**
+   * What they teach, which decides the public pages they are listed on.
+   * Unset or empty means they are listed on none of the program pages.
+   */
+  programs?: InstructorProgram[];
   /**
    * Payment rate in cents (for flat/hourly) or decimal (for percentage).
    * - flat: per-class payment in cents (e.g., 5000 = $50 per class)

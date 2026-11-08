@@ -15,6 +15,7 @@ import {
   ISSUED_GIFT_CARD_MIN_CENTS,
   ISSUED_GIFT_CARD_REASON_MAX_LENGTH,
   ISSUED_GIFT_CARD_REASON_MIN_LENGTH,
+  customGiftCardCodeProblem,
   isAllowedIssuedGiftCardAmount,
 } from '@maple/ts/domain';
 import { staticSuite } from './static-suite';
@@ -32,6 +33,7 @@ export interface IssueGiftCardValidationInput extends CertificateTextInput {
   classCategoryId?: string;
   valueCents?: unknown;
   reason?: string;
+  code?: string;
   idempotencyKey?: string;
 }
 
@@ -87,6 +89,12 @@ export const issueGiftCardValidation = staticSuite(
       });
       test('valueCents', AMOUNT_MESSAGE, () => {
         enforce(isAllowedIssuedGiftCardAmount(data.valueCents)).isTruthy();
+      });
+    });
+
+    skipWhen(!data.code?.trim(), () => {
+      test('code', customGiftCardCodeProblem(data.code ?? '') ?? 'Check the code', () => {
+        enforce(customGiftCardCodeProblem(data.code ?? '')).isUndefined();
       });
     });
 

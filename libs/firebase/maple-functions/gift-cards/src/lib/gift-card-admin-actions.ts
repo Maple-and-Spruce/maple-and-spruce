@@ -16,6 +16,7 @@ import { createHash } from 'crypto';
 import {
   type FunctionContext,
   throwFailedPrecondition,
+  throwInvalidArgument,
   throwNotFound,
   throwValidationError,
 } from '@maple/firebase/functions';
@@ -32,6 +33,7 @@ import {
   formatGiftCardDollars,
   type GiftCardPurchase,
   giftCardPurchaseSource,
+  normalizeGiftCardCode,
   originalGiftCardValueCents,
 } from '@maple/ts/domain';
 import type {
@@ -203,9 +205,11 @@ export async function issueGiftCard(
   const giftCards = square.giftCardsService;
   let card: { id: string; last4: string };
   try {
+    const code = data.code?.trim() ? normalizeGiftCardCode(data.code) : undefined;
     const created = await giftCards.createDigitalGiftCard({
       locationId: square.locationId,
       idempotencyKey: keys.create,
+      gan: code,
     });
     card = { id: created.id, last4: created.last4 };
   } catch (error) {
@@ -217,6 +221,14 @@ export async function issueGiftCard(
         error: error instanceof Error ? error.message : String(error),
       })
     );
+    const detail = error instanceof Error ? error.message : '';
+    if (data.code?.trim() && /gan|already|exists|invalid/i.test(detail)) {
+      // Square's own words say what is wrong with a chosen code (in use, a
+      // bank-card prefix); the message never contains anyone's other codes.
+      throwInvalidArgument(
+        `Square would not use that code: ${detail.replace(/^Square could not create gift card: /, '')}. Nothing was given.`
+      );
+    }
     throw new Error('Square could not make the gift card. Nothing was given; try again.', {
       cause: error,
     });

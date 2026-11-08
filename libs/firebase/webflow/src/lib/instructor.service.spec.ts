@@ -126,7 +126,7 @@ describe('mapInstructorToFieldData', () => {
   it('includes only expected synced fields with all data present', () => {
     const fieldData = mapInstructorToFieldData(mockInstructor, prodOptions);
     const keys = Object.keys(fieldData);
-    expect(keys).toHaveLength(7);
+    expect(keys).toHaveLength(10);
     expect(keys).toContain('firebase-id');
     expect(keys).toContain('name');
     expect(keys).toContain('slug');
@@ -145,11 +145,38 @@ describe('mapInstructorToFieldData', () => {
     };
     const fieldData = mapInstructorToFieldData(minimalInstructor, prodOptions);
     const keys = Object.keys(fieldData);
-    expect(keys).toHaveLength(4);
+    expect(keys).toHaveLength(7);
     expect(keys).toContain('firebase-id');
     expect(keys).toContain('name');
     expect(keys).toContain('slug');
     expect(keys).toContain('is-dev-environment');
+  });
+
+  it('sends every program switch off when no programs are set', () => {
+    const fieldData = mapInstructorToFieldData(mockInstructor, prodOptions);
+    expect(fieldData['teaches-suzuki']).toBe(false);
+    expect(fieldData['teaches-music-lessons']).toBe(false);
+    expect(fieldData['teaches-craft-classes']).toBe(false);
+  });
+
+  it('turns on the switch for each program the instructor teaches', () => {
+    const fieldData = mapInstructorToFieldData(
+      { ...mockInstructor, programs: ['suzuki', 'music-lessons'] },
+      prodOptions
+    );
+    expect(fieldData['teaches-suzuki']).toBe(true);
+    expect(fieldData['teaches-music-lessons']).toBe(true);
+    expect(fieldData['teaches-craft-classes']).toBe(false);
+  });
+
+  it('a craft-only instructor is off the music pages', () => {
+    const fieldData = mapInstructorToFieldData(
+      { ...mockInstructor, programs: ['craft-classes'] },
+      prodOptions
+    );
+    expect(fieldData['teaches-suzuki']).toBe(false);
+    expect(fieldData['teaches-music-lessons']).toBe(false);
+    expect(fieldData['teaches-craft-classes']).toBe(true);
   });
 
   it('handles instructor with special characters in name', () => {

@@ -10,12 +10,14 @@
  * - Firebase `photoUrl` -> Webflow `profile-image` (URL reference)
  * - Firebase `bio` -> Webflow `bio` (rich text)
  * - Firebase `specialties` -> Webflow `specialties` (plain text, comma-separated)
+ * - Firebase `programs` -> Webflow `teaches-suzuki` / `teaches-music-lessons` /
+ *   `teaches-craft-classes` (switches; page collection lists filter on them)
  *
  * @see docs/decisions/ADR-016-webflow-integration-strategy.md
  */
 import { WebflowClient } from 'webflow-api';
 import type { CollectionItem } from 'webflow-api/api';
-import type { Instructor } from '@maple/ts/domain';
+import type { Instructor, InstructorProgram } from '@maple/ts/domain';
 import { generateSlug } from './artist.service';
 
 /**
@@ -66,6 +68,9 @@ export interface InstructorWebflowFieldData {
   };
   bio?: string;
   specialties?: string;
+  'teaches-suzuki': boolean;
+  'teaches-music-lessons': boolean;
+  'teaches-craft-classes': boolean;
   [key: string]: unknown;
 }
 
@@ -89,6 +94,8 @@ export interface MapInstructorOptions {
  * - is-dev-environment: True if synced from dev environment
  * - bio: Instructor bio text
  * - specialties: Comma-separated list of specialties
+ * - teaches-<program>: one switch per program, always sent so that removing a
+ *   program also takes the instructor off that page
  *
  * @param instructor - Firebase instructor to map
  * @param options - Mapping options (isDev flag)
@@ -98,11 +105,17 @@ export function mapInstructorToFieldData(
   instructor: Instructor,
   options: MapInstructorOptions
 ): InstructorWebflowFieldData {
+  const teaches = (program: InstructorProgram): boolean =>
+    instructor.programs?.includes(program) ?? false;
+
   const fieldData: InstructorWebflowFieldData = {
     'firebase-id': instructor.id,
     name: instructor.name,
     slug: generateSlug(instructor.name),
     'is-dev-environment': options.isDev,
+    'teaches-suzuki': teaches('suzuki'),
+    'teaches-music-lessons': teaches('music-lessons'),
+    'teaches-craft-classes': teaches('craft-classes'),
   };
 
   // Add profile image if available
