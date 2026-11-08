@@ -116,10 +116,10 @@ export function GiftCertificatePage({
           component="p"
           sx={{
             color: CERTIFICATE_COLORS.sage,
-            fontSize: '20pt',
+            fontSize: '19pt',
             lineHeight: 1.3,
             mt: '6pt',
-            px: '8pt',
+            textWrap: 'balance',
           }}
         >
           {design.copy}
