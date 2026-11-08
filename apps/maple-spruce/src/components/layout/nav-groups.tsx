@@ -28,6 +28,7 @@ import CardMembershipIcon from '@mui/icons-material/CardMembership';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import PaletteIcon from '@mui/icons-material/Palette';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import { createIntentHref } from './create-intent';
 import type { NavAction, NavGroup, NavItem } from '@maple/react/layout';
 import type { UserRole } from '@maple/ts/domain';
@@ -250,6 +251,12 @@ function roleNavGroups(
           label: 'Artist Payouts',
           href: '/payouts/artist-payouts',
           icon: <AccountBalanceWalletIcon />,
+        },
+        {
+          // Square holds every card; this page reads them back (#297).
+          label: 'Gift Cards',
+          href: '/gift-cards',
+          icon: <CardGiftcardIcon />,
         },
       ],
     },

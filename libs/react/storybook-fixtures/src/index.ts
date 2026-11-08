@@ -21,3 +21,4 @@ export * from './teacher-payouts';
 export * from './class-instructor-payouts';
 export * from './sales';
 export * from './sync-conflicts';
+export * from './gift-cards';

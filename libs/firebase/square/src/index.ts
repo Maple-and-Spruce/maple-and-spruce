@@ -97,3 +97,11 @@ export {
   type UpsertCustomerInput,
   type SquareCustomer,
 } from './lib/customers.service';
+
+// Gift cards service (Square owns every balance, code and history — #295)
+export {
+  GiftCardsService,
+  toGiftCardSummary,
+  toGiftCardActivityEntry,
+  type ListGiftCardActivitiesInput,
+} from './lib/gift-cards.service';

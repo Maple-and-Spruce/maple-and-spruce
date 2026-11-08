@@ -41,6 +41,7 @@ const PAGE_ROLES: Record<string, string[]> = {
   '/hope': [],
   '/payouts': [],
   '/pos-lessons': [],
+  '/gift-cards': [],
   '/music-together': MT,
   '/music-together/discounts': MT,
   '/events': ['mt-teacher', 'clerk'],
@@ -91,12 +92,13 @@ describe('nav areas', () => {
     },
   );
 
-  it('puts Hope Billing and POS Lessons under Money', () => {
+  it('puts Hope Billing, POS Lessons and Gift Cards under Money', () => {
     expect(labels(['admin']).Money).toEqual([
       'Hope Billing',
       'POS Lessons',
       'Teacher Payouts',
       'Artist Payouts',
+      'Gift Cards',
     ]);
   });
 

@@ -9,6 +9,7 @@ export { useMyDay } from './lib/useMyDay';
 export { useStudioDay } from './lib/useStudioDay';
 export { useInbox } from './lib/useInbox';
 export { useBusinessPaymentConfig } from './lib/useBusinessPaymentConfig';
+export { useGiftCards } from './lib/useGiftCards';
 export { useSyncConflictSummary } from './lib/useSyncConflictSummary';
 export { usePosLessonAttributions } from './lib/usePosLessonAttributions';
 export { usePosLessonAttributionSummary } from './lib/usePosLessonAttributionSummary';

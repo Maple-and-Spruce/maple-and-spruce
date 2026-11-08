@@ -18,6 +18,7 @@
     "firebase-maple-functions-calendar-family-music-together-feed": "maple-calendar",
     "firebase-maple-functions-calendar-private-feed": "maple-calendar",
     "firebase-maple-functions-product-catalog": "maple-square",
+    "firebase-maple-functions-gift-cards": "maple-square",
     "firebase-maple-functions-square-webhook": "maple-square-webhook",
     "firebase-maple-functions-process-catalog-sync-request": "maple-square",
     "firebase-maple-functions-process-pos-sale": "maple-square",

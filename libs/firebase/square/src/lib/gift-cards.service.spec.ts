@@ -1,0 +1,256 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  GiftCardsService,
+  toGiftCardActivityEntry,
+  toGiftCardSummary,
+} from './gift-cards.service';
+
+/** An async-iterable stand-in for the SDK's Page. */
+function page<T>(items: T[]): AsyncIterable<T> {
+  return {
+    async *[Symbol.asyncIterator]() {
+      for (const item of items) yield item;
+    },
+  };
+}
+
+interface MockClient {
+  giftCards: {
+    list: ReturnType<typeof vi.fn>;
+    get: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    getFromNonce: ReturnType<typeof vi.fn>;
+    activities: { list: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  };
+}
+
+describe('GiftCardsService', () => {
+  let client: MockClient;
+  let service: GiftCardsService;
+
+  beforeEach(() => {
+    client = {
+      giftCards: {
+        list: vi.fn(),
+        get: vi.fn(),
+        create: vi.fn(),
+        getFromNonce: vi.fn(),
+        activities: { list: vi.fn(), create: vi.fn() },
+      },
+    };
+    service = new GiftCardsService(client as never);
+  });
+
+  it('lists every card newest first, without the full code', async () => {
+    client.giftCards.list.mockResolvedValue(
+      page([
+        {
+          id: 'old',
+          type: 'DIGITAL',
+          state: 'ACTIVE',
+          gan: '7783320000001111',
+          balanceMoney: { amount: BigInt(2500), currency: 'USD' },
+          createdAt: '2026-11-01T10:00:00Z',
+        },
+        {
+          id: 'new',
+          type: 'PHYSICAL',
+          state: 'PENDING',
+          gan: '7783320000002222',
+          createdAt: '2026-11-05T10:00:00Z',
+        },
+      ])
+    );
+
+    const cards = await service.listGiftCards();
+
+    expect(cards.map((c) => c.id)).toEqual(['new', 'old']);
+    expect(cards[1]).toEqual({
+      id: 'old',
+      last4: '1111',
+      kind: 'egift',
+      state: 'active',
+      balanceCents: 2500,
+      createdAt: '2026-11-01T10:00:00Z',
+    });
+    expect(cards[0]).toMatchObject({ kind: 'plastic', state: 'pending', balanceCents: 0 });
+    expect(JSON.stringify(cards)).not.toContain('7783320000001111');
+  });
+
+  it('returns the full code only from getGiftCardCode', async () => {
+    client.giftCards.get.mockResolvedValue({
+      giftCard: { id: 'gc', type: 'DIGITAL', gan: '7783320000003333' },
+    });
+    await expect(service.getGiftCardCode('gc')).resolves.toBe('7783320000003333');
+    expect(client.giftCards.get).toHaveBeenCalledWith({ id: 'gc' });
+  });
+
+  it('treats an unknown card id as not found', async () => {
+    client.giftCards.get.mockRejectedValue(
+      Object.assign(new Error('Not found'), { statusCode: 404 })
+    );
+    await expect(service.getGiftCard('missing')).resolves.toBeUndefined();
+    await expect(service.getGiftCardCode('missing')).resolves.toBeUndefined();
+  });
+
+  it('rethrows other Square failures', async () => {
+    client.giftCards.get.mockRejectedValue(
+      Object.assign(new Error('boom'), { statusCode: 500 })
+    );
+    await expect(service.getGiftCard('gc')).rejects.toThrow('boom');
+  });
+
+  it('passes the window and card to the activity list, newest first', async () => {
+    client.giftCards.activities.list.mockResolvedValue(
+      page([
+        {
+          id: 'a1',
+          type: 'REDEEM',
+          locationId: 'L1',
+          giftCardId: 'gc',
+          redeemActivityDetails: { amountMoney: { amount: BigInt(1500) } },
+          giftCardBalanceMoney: { amount: BigInt(1000) },
+          createdAt: '2026-11-03T12:00:00Z',
+        },
+      ])
+    );
+    const begin = new Date('2026-11-01T04:00:00Z');
+
+    const entries = await service.listActivities({ giftCardId: 'gc', beginTime: begin });
+
+    expect(client.giftCards.activities.list).toHaveBeenCalledWith(
+      expect.objectContaining({
+        giftCardId: 'gc',
+        beginTime: '2026-11-01T04:00:00.000Z',
+        sortOrder: 'DESC',
+      })
+    );
+    expect(entries).toEqual([
+      {
+        id: 'a1',
+        giftCardId: 'gc',
+        type: 'redeem',
+        amountCents: -1500,
+        balanceAfterCents: 1000,
+        createdAt: '2026-11-03T12:00:00Z',
+      },
+    ]);
+  });
+});
+
+describe('GiftCardsService writes', () => {
+  let client: MockClient;
+  let service: GiftCardsService;
+
+  beforeEach(() => {
+    client = {
+      giftCards: {
+        list: vi.fn(),
+        get: vi.fn(),
+        create: vi.fn(),
+        getFromNonce: vi.fn(),
+        activities: { list: vi.fn(), create: vi.fn() },
+      },
+    };
+    service = new GiftCardsService(client as never);
+  });
+
+  it('creates an eGift card and returns its code once', async () => {
+    client.giftCards.create.mockResolvedValue({
+      giftCard: { id: 'gc-new', type: 'DIGITAL', gan: '7783320000005555', state: 'PENDING' },
+    });
+
+    const card = await service.createDigitalGiftCard({ locationId: 'L1', idempotencyKey: 'k1' });
+
+    expect(client.giftCards.create).toHaveBeenCalledWith({
+      idempotencyKey: 'k1',
+      locationId: 'L1',
+      giftCard: { type: 'DIGITAL' },
+    });
+    expect(card).toEqual({ id: 'gc-new', gan: '7783320000005555', last4: '5555' });
+  });
+
+  it('fails loudly when Square reports an error creating a card', async () => {
+    client.giftCards.create.mockResolvedValue({ errors: [{ code: 'BAD_REQUEST', detail: 'nope' }] });
+    await expect(
+      service.createDigitalGiftCard({ locationId: 'L1', idempotencyKey: 'k1' })
+    ).rejects.toThrow('Square could not create gift card: nope');
+  });
+
+  it('activates a card from the order line that sold it', async () => {
+    client.giftCards.activities.create.mockResolvedValue({
+      giftCardActivity: { giftCardBalanceMoney: { amount: BigInt(5000) } },
+    });
+
+    const result = await service.activateGiftCard({
+      giftCardId: 'gc-new',
+      locationId: 'L1',
+      orderId: 'order-1',
+      lineItemUid: 'line-1',
+      idempotencyKey: 'k2',
+    });
+
+    expect(client.giftCards.activities.create).toHaveBeenCalledWith({
+      idempotencyKey: 'k2',
+      giftCardActivity: {
+        type: 'ACTIVATE',
+        locationId: 'L1',
+        giftCardId: 'gc-new',
+        activateActivityDetails: { orderId: 'order-1', lineItemUid: 'line-1' },
+      },
+    });
+    expect(result).toEqual({ balanceCents: 5000 });
+  });
+
+  it('reads the card behind a payment token', async () => {
+    client.giftCards.getFromNonce.mockResolvedValue({
+      giftCard: { id: 'gc', type: 'DIGITAL', state: 'ACTIVE', gan: '7783320000006666', balanceMoney: { amount: BigInt(4000) } },
+    });
+    await expect(service.getGiftCardFromNonce('gftok')).resolves.toMatchObject({
+      id: 'gc',
+      balanceCents: 4000,
+      last4: '6666',
+    });
+  });
+
+  it('returns undefined for a token that matches no card', async () => {
+    client.giftCards.getFromNonce.mockRejectedValue(Object.assign(new Error('x'), { statusCode: 404 }));
+    await expect(service.getGiftCardFromNonce('bad')).resolves.toBeUndefined();
+  });
+});
+
+describe('toGiftCardSummary', () => {
+  it('skips a card with no id', () => {
+    expect(toGiftCardSummary({ type: 'DIGITAL' } as never)).toBeUndefined();
+  });
+
+  it('reads blocked and turned-off states', () => {
+    expect(toGiftCardSummary({ id: 'x', type: 'DIGITAL', state: 'BLOCKED' })?.state).toBe('blocked');
+    expect(toGiftCardSummary({ id: 'x', type: 'DIGITAL', state: 'DEACTIVATED' })?.state).toBe('deactivated');
+  });
+});
+
+describe('toGiftCardActivityEntry', () => {
+  it('signs money put on the card as positive', () => {
+    const entry = toGiftCardActivityEntry({
+      id: 'a',
+      type: 'ACTIVATE',
+      locationId: 'L1',
+      giftCardId: 'gc',
+      activateActivityDetails: { amountMoney: { amount: BigInt(5000) } },
+      giftCardBalanceMoney: { amount: BigInt(5000) },
+    });
+    expect(entry).toMatchObject({ type: 'activate', amountCents: 5000, balanceAfterCents: 5000 });
+  });
+
+  it('keeps a no-money activity with a null amount', () => {
+    const entry = toGiftCardActivityEntry({ id: 'b', type: 'BLOCK', locationId: 'L1' });
+    expect(entry).toMatchObject({ type: 'block', amountCents: null, balanceAfterCents: null });
+  });
+
+  it('skips activity types it does not know', () => {
+    expect(
+      toGiftCardActivityEntry({ id: 'c', type: 'SOMETHING_NEW' as never, locationId: 'L1' })
+    ).toBeUndefined();
+  });
+});

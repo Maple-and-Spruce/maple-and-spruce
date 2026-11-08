@@ -131,6 +131,9 @@
       "@maple/firebase/maple-functions/discounts": [
         "libs/firebase/maple-functions/discounts/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/gift-cards": [
+        "libs/firebase/maple-functions/gift-cards/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/agreements": [
         "libs/firebase/maple-functions/agreements/src/index.ts"
       ],
