@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   INBOX_INSTRUCTOR_READINESS_WINDOW_DAYS,
   INBOX_KIND_LABELS,
+  INBOX_NOTE_EXCERPT_LENGTH,
+  INBOX_NOTE_LOOKBACK_DAYS,
   INBOX_REFUND_LOOKBACK_DAYS,
   INBOX_UNDER_MINIMUM_WINDOW_DAYS,
   buildInboxItems,
@@ -10,6 +12,7 @@ import {
   inboxRank,
   isWellFormedInboxKey,
   nextSessionAt,
+  noteExcerpt,
   sortInboxItems,
   withoutDismissed,
 } from './inbox';
@@ -40,6 +43,9 @@ function sources(overrides: Partial<InboxSources> = {}): InboxSources {
     instructorsNotReady: [],
     minimumClasses: [],
     confirmedSeats: new Map(),
+    notedRegistrations: [],
+    notedMusicTogetherRegistrations: [],
+    sectionNames: new Map(),
     timeZone: 'America/New_York',
     ...overrides,
   };
@@ -886,5 +892,140 @@ describe('classes under their minimum', () => {
       NOW
     );
     expect(picked.map((c) => c.id)).toEqual(['a']);
+  });
+});
+
+describe('customer notes on registrations', () => {
+  const cls = { id: 'cls-wreath', name: 'Wreath Making', sessions: [] };
+  const reg = (
+    overrides: Partial<InboxSources['notedRegistrations'][number]> = {}
+  ): InboxSources['notedRegistrations'][number] => ({
+    id: 'reg-1',
+    classId: 'cls-wreath',
+    customerName: 'Robin Ashfield',
+    status: 'confirmed',
+    notes: 'Coming with a friend in a wheelchair, is the room step-free?',
+    createdAt: ago(2 * HOUR),
+    ...overrides,
+  });
+  const mt = (
+    overrides: Partial<InboxSources['notedMusicTogetherRegistrations'][number]> = {}
+  ): InboxSources['notedMusicTogetherRegistrations'][number] => ({
+    id: 'mtr-1',
+    sectionId: 'sec-tue',
+    adultFirstName: 'Olive',
+    adultLastName: 'Thompson',
+    status: 'confirmed',
+    accommodations: 'Peanut allergy',
+    createdAt: ago(DAY),
+    ...overrides,
+  });
+  const build = (overrides: Partial<InboxSources>) =>
+    buildInboxItems(sources({ classes: [cls], ...overrides })).filter(
+      (i) => i.kind === 'registration-note'
+    );
+
+  it('lists a class registration with a note, linking to it on the roster', () => {
+    const [item] = build({ notedRegistrations: [reg()] });
+    expect(item).toMatchObject({
+      key: 'registration-note:reg-1',
+      title: 'Wreath Making',
+      detail: '“Coming with a friend in a wheelchair, is the room step-free?” · Robin Ashfield',
+      href: '/classes/cls-wreath/roster?registration=reg-1',
+      actionLabel: 'Read',
+      occurredAt: ago(2 * HOUR).toISOString(),
+      urgent: false,
+    });
+    expect(INBOX_KIND_LABELS['registration-note']).toBe('Note');
+  });
+
+  it('skips registrations without a note, or with only whitespace', () => {
+    expect(build({ notedRegistrations: [reg({ notes: undefined }), reg({ notes: '  \n ' })] })).toEqual([]);
+  });
+
+  it('skips cancelled, refunded and unpaid registrations', () => {
+    expect(
+      build({
+        notedRegistrations: [
+          reg({ id: 'a', status: 'cancelled' }),
+          reg({ id: 'b', status: 'refunded' }),
+          reg({ id: 'c', status: 'pending' }),
+        ],
+      })
+    ).toEqual([]);
+  });
+
+  it('keeps a no-show: the note was there to be read before the class', () => {
+    expect(build({ notedRegistrations: [reg({ status: 'no-show' })] })).toHaveLength(1);
+  });
+
+  it('stops listing a note older than the lookback', () => {
+    const edge = INBOX_NOTE_LOOKBACK_DAYS * DAY;
+    expect(build({ notedRegistrations: [reg({ createdAt: ago(edge - HOUR) })] })).toHaveLength(1);
+    expect(build({ notedRegistrations: [reg({ createdAt: ago(edge + HOUR) })] })).toEqual([]);
+  });
+
+  it('keys on the registration, so a staff edit to the note does not bring it back', () => {
+    const [before] = build({ notedRegistrations: [reg()] });
+    const [after] = build({ notedRegistrations: [reg({ notes: 'Edited by staff: handled' })] });
+    expect(after.key).toBe(before.key);
+    expect(isWellFormedInboxKey(before.key)).toBe(true);
+    expect(inboxKindOfKey(before.key)).toBe('registration-note');
+  });
+
+  it('falls back to a generic title when the class is not loaded', () => {
+    const [item] = build({ classes: [], notedRegistrations: [reg()] });
+    expect(item.title).toBe('Class registration');
+  });
+
+  it('lists Music Together accommodations under the section name', () => {
+    const [item] = build({
+      notedMusicTogetherRegistrations: [mt()],
+      sectionNames: new Map([['sec-tue', 'Fall 2026 · Tuesdays 10am']]),
+    });
+    expect(item).toMatchObject({
+      key: 'registration-note:mt-mtr-1',
+      title: 'Music Together · Fall 2026 · Tuesdays 10am',
+      detail: '“Peanut allergy” · Olive Thompson',
+      href: '/music-together',
+    });
+    expect(isWellFormedInboxKey(item.key)).toBe(true);
+  });
+
+  it('skips Music Together registrations with no accommodations or that were cancelled', () => {
+    expect(
+      build({
+        notedMusicTogetherRegistrations: [
+          mt({ id: 'a', accommodations: undefined }),
+          mt({ id: 'b', accommodations: ' ' }),
+          mt({ id: 'c', status: 'cancelled' }),
+          mt({ id: 'd', status: 'pending' }),
+        ],
+      })
+    ).toEqual([]);
+  });
+
+  it('ranks notes with everything else, oldest waiting first', () => {
+    const items = build({
+      notedRegistrations: [reg({ id: 'new', createdAt: ago(HOUR) }), reg({ id: 'old', createdAt: ago(3 * DAY) })],
+    });
+    expect(items.map((i) => i.key)).toEqual(['registration-note:old', 'registration-note:new']);
+    expect(inboxRank({ kind: 'registration-note', urgent: false })).toBe(4);
+  });
+});
+
+describe('noteExcerpt', () => {
+  it('folds a multi-line note onto one line', () => {
+    expect(noteExcerpt('  Line one\n\nline   two ')).toBe('Line one line two');
+  });
+
+  it('clips a long note with an ellipsis', () => {
+    const clipped = noteExcerpt('word '.repeat(60));
+    expect(clipped.length).toBeLessThanOrEqual(INBOX_NOTE_EXCERPT_LENGTH);
+    expect(clipped.endsWith('…')).toBe(true);
+  });
+
+  it('leaves a short note alone', () => {
+    expect(noteExcerpt('Left-handed')).toBe('Left-handed');
   });
 });

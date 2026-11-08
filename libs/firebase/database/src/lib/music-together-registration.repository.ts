@@ -119,6 +119,20 @@ export const MusicTogetherRegistrationRepository = {
       .filter((r): r is MusicTogetherRegistration => r !== undefined);
   },
 
+  /**
+   * Registrations made since `since`, for the Inbox's accommodations rows.
+   * A single range filter → automatic single-field index.
+   */
+  async findCreatedSince(since: Date): Promise<MusicTogetherRegistration[]> {
+    const snapshot = await getDb()
+      .collection(COLLECTION)
+      .where('createdAt', '>=', since)
+      .get();
+    return snapshot.docs
+      .map((doc) => docToRegistration(doc))
+      .filter((r): r is MusicTogetherRegistration => r !== undefined);
+  },
+
   async findById(id: string): Promise<MusicTogetherRegistration | undefined> {
     const doc = await getDb().collection(COLLECTION).doc(id).get();
     return docToRegistration(doc);

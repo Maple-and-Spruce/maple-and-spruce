@@ -97,6 +97,7 @@ const config: StorybookConfig = {
           '@mui/icons-material/Send',
           '@mui/icons-material/Stars',
           '@mui/icons-material/WarningAmber',
+          '@mui/icons-material/StickyNote2Outlined',
         ],
       },
     });

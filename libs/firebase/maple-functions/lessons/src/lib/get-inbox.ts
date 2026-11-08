@@ -12,6 +12,9 @@
  * `getNeedsAttention` function (`collectNeedsAttention`), whose students,
  * lessons and charges are reused for failed charges rather than read twice.
  *
+ * Customer notes are read as every registration of the last month (classes
+ * and Music Together), filtered by the builder to those with a note.
+ *
  * Dismissed items are filtered here by reading exactly the keys about to be
  * shown, so "Mark done" holds for everyone at the studio.
  */
@@ -22,6 +25,8 @@ import {
   InboxDismissalRepository,
   InstructorRepository,
   LessonInquiryRepository,
+  MusicTogetherRegistrationRepository,
+  MusicTogetherSectionRepository,
   RegistrationRepository,
   SyncConflictRepository,
 } from '@maple/firebase/database';
@@ -30,6 +35,7 @@ import {
   buildInboxItems,
   hasOpenPartialRefund,
   hasOpenRefundReview,
+  INBOX_NOTE_LOOKBACK_DAYS,
   INBOX_REFUND_LOOKBACK_DAYS,
   classesForMinimumCheck,
   instructorsNotReadyToTeach,
@@ -68,6 +74,8 @@ export async function getInbox(): Promise<GetInboxResponse> {
     upcomingClasses,
     refundedRegistrations,
     flaggedRefunds,
+    recentRegistrations,
+    recentMusicTogetherRegistrations,
   ] = await Promise.all([
     // The whole studio: the inbox is admin-only.
     collectNeedsAttention(undefined, now),
@@ -85,23 +93,47 @@ export async function getInbox(): Promise<GetInboxResponse> {
     RegistrationRepository.findWithRefundReviewSince(
       new Date(now.getTime() - INBOX_REFUND_LOOKBACK_DAYS * 86_400_000)
     ),
+    // Customer notes: the last month of registrations, kept below if noted.
+    RegistrationRepository.findCreatedSince(
+      new Date(now.getTime() - INBOX_NOTE_LOOKBACK_DAYS * 86_400_000)
+    ),
+    MusicTogetherRegistrationRepository.findCreatedSince(
+      new Date(now.getTime() - INBOX_NOTE_LOOKBACK_DAYS * 86_400_000)
+    ),
   ]);
   const partialRefunds = refundedRegistrations.filter(hasOpenPartialRefund);
   const refundReviews = flaggedRefunds.filter(hasOpenRefundReview);
+  const notedRegistrations = recentRegistrations.filter((r) => r.notes?.trim());
+  const notedMusicTogetherRegistrations = recentMusicTogetherRegistrations.filter(
+    (r) => r.accommodations?.trim()
+  );
 
-  // Only the classes a pending request or a partial refund names.
+  // Only the classes a pending request, a refund or a note names.
   const classIds = [
     ...new Set(
       [
         ...pendingAgreements.map((r) => r.classId),
         ...partialRefunds.map((r) => r.classId),
         ...refundReviews.map((r) => r.classId),
+        ...notedRegistrations.map((r) => r.classId),
       ].filter((id): id is string => Boolean(id))
     ),
   ];
   const classes: InboxClass[] = (
     await Promise.all(classIds.map((id) => ClassRepository.findById(id)))
   ).filter((c): c is NonNullable<typeof c> => c !== undefined);
+
+  const sectionIds = [
+    ...new Set(notedMusicTogetherRegistrations.map((r) => r.sectionId)),
+  ];
+  const sections = await Promise.all(
+    sectionIds.map((id) => MusicTogetherSectionRepository.findById(id))
+  );
+  const sectionNames = new Map(
+    sections
+      .filter((s): s is NonNullable<typeof s> => s !== undefined)
+      .map((s) => [s.id, s.name])
+  );
 
   // Seats only for the few classes inside the under-minimum window.
   const minimumClasses = classesForMinimumCheck(upcomingClasses, now);
@@ -134,6 +166,9 @@ export async function getInbox(): Promise<GetInboxResponse> {
     ),
     minimumClasses,
     confirmedSeats,
+    notedRegistrations,
+    notedMusicTogetherRegistrations,
+    sectionNames,
   });
 
   const dismissals = await InboxDismissalRepository.findByKeys(

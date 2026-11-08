@@ -42,6 +42,11 @@ export const Data: Story = {
     await expect(canvas.getAllByText('Wheel Throwing Basics · Tonight')).toHaveLength(3);
     await expect(canvas.getByText('1h ago')).toBeInTheDocument();
     await expect(canvas.getAllByText('New')).toHaveLength(3);
+    // Priya left a note: one marker, and her row opens her registration.
+    await expect(canvas.getAllByRole('img', { name: 'Left a note' })).toHaveLength(1);
+    await expect(
+      canvas.getByText('Priya Wexford').closest('a')
+    ).toHaveAttribute('href', '/classes/cls-wheel/roster?registration=reg-3');
     // Only the five most recent are listed.
     await expect(canvas.queryByText('Lena Brightwater')).not.toBeInTheDocument();
     await expect(

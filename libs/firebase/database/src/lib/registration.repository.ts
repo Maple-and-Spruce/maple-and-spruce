@@ -311,6 +311,22 @@ export const RegistrationRepository = {
   },
 
   /**
+   * Registrations made since `since`, for the Inbox's customer notes. A
+   * single range filter → automatic single-field index. Firestore cannot
+   * filter on "has a note" cheaply, so the caller keeps the ones with one; a
+   * month of registrations is a small read.
+   */
+  async findCreatedSince(since: Date): Promise<Registration[]> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('createdAt', '>=', since)
+      .get();
+    return snapshot.docs
+      .map((doc) => docToRegistration(doc))
+      .filter((r): r is Registration => r !== undefined);
+  },
+
+  /**
    * Registrations with a Square refund flagged for review since `since`. A
    * single range filter → automatic single-field index.
    */
