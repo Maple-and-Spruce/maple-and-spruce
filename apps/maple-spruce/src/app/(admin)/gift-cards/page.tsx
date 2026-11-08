@@ -1,10 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Box, Button, Typography } from '@mui/material';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import PrintIcon from '@mui/icons-material/Print';
 import type {
+  GiftCardListItem,
   GiftCardSummary,
   GiftCardTotals,
   RequestState,
@@ -16,14 +19,16 @@ import {
   GiftCardTotalsCards,
   IssueGiftCardDialog,
   MarkClassCertificateDialog,
+  PrintGiftCertificatesDialog,
   type GiftCardDetail,
 } from '../../../components/gift-cards';
 import { useClassCategories, useGiftCards } from '../../../hooks';
 
 /**
  * Gift Cards (#297): balances, history and codes, read live from Square.
- * Selling and loading cards happen in Square. Two things happen here (#310):
- * giving a free card, and marking a register card as a class certificate.
+ * Selling and loading cards happen in Square. Three things happen here:
+ * giving a free card and marking a register card as a class certificate
+ * (#310), and printing a batch of pre-loaded certificates (#314).
  */
 export default function GiftCardsPage() {
   const {
@@ -33,13 +38,16 @@ export default function GiftCardsPage() {
     revealGiftCardCode,
     markClassCertificate,
     issueGiftCard,
+    printGiftCertificates,
   } = useGiftCards();
+  const router = useRouter();
   const { categoriesState } = useClassCategories();
   const [selected, setSelected] = useState<GiftCardSummary | null>(null);
   const [detailState, setDetailState] = useState<RequestState<GiftCardDetail>>({
     status: 'idle',
   });
   const [issueOpen, setIssueOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
   const [certificateCard, setCertificateCard] = useState<GiftCardSummary | null>(null);
 
   const totalsState = useMemo<RequestState<GiftCardTotals>>(
@@ -49,7 +57,7 @@ export default function GiftCardsPage() {
         : giftCardsState,
     [giftCardsState]
   );
-  const cardsState = useMemo<RequestState<GiftCardSummary[]>>(
+  const cardsState = useMemo<RequestState<GiftCardListItem[]>>(
     () =>
       giftCardsState.status === 'success'
         ? { status: 'success', data: giftCardsState.data.cards }
@@ -90,13 +98,20 @@ export default function GiftCardsPage() {
             Every Maple &amp; Spruce gift card, read from Square.
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button
             startIcon={<RefreshIcon />}
             onClick={fetchGiftCards}
             disabled={giftCardsState.status === 'loading'}
           >
             Refresh
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PrintIcon />}
+            onClick={() => setPrintOpen(true)}
+          >
+            Print gift certificates
           </Button>
           <Button
             variant="contained"
@@ -143,6 +158,17 @@ export default function GiftCardsPage() {
         onIssue={issueGiftCard}
         onIssued={() => fetchGiftCards()}
         onRevealCode={revealGiftCardCode}
+      />
+
+      <PrintGiftCertificatesDialog
+        open={printOpen}
+        categoriesState={categoriesState}
+        onClose={() => setPrintOpen(false)}
+        onPrint={printGiftCertificates}
+        onPrinted={(batch) => {
+          setPrintOpen(false);
+          router.push(`/gift-cards/print/${encodeURIComponent(batch.batchId)}`);
+        }}
       />
     </>
   );

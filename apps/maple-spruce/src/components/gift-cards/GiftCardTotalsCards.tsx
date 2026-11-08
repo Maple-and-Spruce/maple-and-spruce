@@ -15,34 +15,47 @@ function tiles(totals: GiftCardTotals): Tile[] {
     {
       label: 'Owed to customers',
       value: formatGiftCardMoney(totals.outstandingCents),
-      explain: 'Paid for and not spent yet, on every active card.',
+      explain:
+        'Not spent yet, on every active card, apart from printed certificates nobody has used.',
     },
     {
       label: 'Cards with money on them',
       value: String(totals.cardsWithBalance),
-      explain: 'Active cards that still have a balance.',
+      explain: 'Active cards that still have a balance, apart from unused printed certificates.',
     },
     {
       label: 'Sold this month',
       value: formatGiftCardMoney(totals.loadedThisMonthCents),
-      explain: 'Put on cards since the 1st: new cards and top-ups.',
+      explain: 'Put on cards since the 1st: new cards and top-ups. Not free cards or printed stock.',
     },
     {
       label: 'Spent this month',
       value: formatGiftCardMoney(totals.spentThisMonthCents),
       explain: 'Paid with gift cards since the 1st, less refunds.',
     },
+    {
+      label: 'Given free this month',
+      value: formatGiftCardMoney(totals.givenFreeThisMonthCents),
+      explain: 'Free cards the studio gave since the 1st. Nobody paid for these.',
+    },
+    {
+      label: 'Printed certificates not yet used',
+      value: formatGiftCardMoney(totals.printedUnusedCents),
+      explain: `${totals.printedUnusedCount} ${
+        totals.printedUnusedCount === 1 ? 'certificate' : 'certificates'
+      } printed and loaded, still holding their full value. Spendable now, so keep them safe.`,
+    },
   ];
 }
 
 const GRID = {
   display: 'grid',
-  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
+  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
   gap: 2,
   mb: 3,
 } as const;
 
-/** The four numbers at the top of the Gift Cards page, each explained. */
+/** The six numbers at the top of the Gift Cards page, each explained. */
 export function GiftCardTotalsCards({
   totalsState,
 }: {
@@ -59,7 +72,7 @@ export function GiftCardTotalsCards({
   if (totalsState.status !== 'success') {
     return (
       <Box sx={GRID} aria-busy="true" aria-label="Loading gift card totals">
-        {[0, 1, 2, 3].map((i) => (
+        {[0, 1, 2, 3, 4, 5].map((i) => (
           <Paper key={i} variant="outlined" sx={{ p: 2 }}>
             <Skeleton width="60%" />
             <Skeleton variant="text" sx={{ fontSize: '2rem' }} width="40%" />

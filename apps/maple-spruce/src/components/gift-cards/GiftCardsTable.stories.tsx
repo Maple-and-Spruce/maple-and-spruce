@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, within } from 'storybook/test';
-import { mockGiftCards } from '@maple/react/storybook-fixtures';
+import { mockGiftCards, mockLabelledGiftCards } from '@maple/react/storybook-fixtures';
 import { GiftCardsTable } from './GiftCardsTable';
 
 const meta = {
@@ -23,6 +23,20 @@ export const WithCards: Story = {
 
     await userEvent.click(canvas.getByRole('row', { name: 'Gift card ending 0937' }));
     await expect(args.onSelect).toHaveBeenCalledWith(mockGiftCards[1]);
+  },
+};
+
+/** Printed certificates and free cards say so (#314). */
+export const PrintedAndFreeCards: Story = {
+  args: { cardsState: { status: 'success', data: mockLabelledGiftCards } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const printed = canvas.getByRole('row', { name: 'Gift card ending 5150' });
+    await expect(within(printed).getByText('Printed certificate (batch 5f6071)')).toBeVisible();
+    const free = canvas.getByRole('row', { name: 'Gift card ending 6262' });
+    await expect(within(free).getByText('Given free')).toBeVisible();
+    const sold = canvas.getByRole('row', { name: 'Gift card ending 4821' });
+    await expect(within(sold).queryByText(/Printed certificate|Given free/)).toBeNull();
   },
 };
 

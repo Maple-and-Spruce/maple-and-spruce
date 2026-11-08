@@ -8,3 +8,9 @@ export {
 export { GiftCardCodeReveal } from './GiftCardCodeReveal';
 export { IssueGiftCardDialog } from './IssueGiftCardDialog';
 export { MarkClassCertificateDialog } from './MarkClassCertificateDialog';
+export {
+  PrintGiftCertificatesDialog,
+  newCertificateBatchKey,
+} from './PrintGiftCertificatesDialog';
+export { GiftCertificateSheet } from './GiftCertificateSheet';
+export { GiftCertificatePage } from './GiftCertificatePage';

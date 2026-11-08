@@ -23,9 +23,9 @@ const SECTIONS: Section[] = [
     body: (
       <>
         Each card&apos;s balance, code and history live in Square. This page
-        reads them from Square each time it opens. Selling, adding money and
-        refunds all happen in Square. The one card this page makes is a free
-        one (see below).
+        reads them from Square each time it opens. Selling at the register,
+        adding money and refunds happen in Square. This page makes two kinds
+        of card itself: free ones and printed certificates (see below).
       </>
     ),
   },
@@ -33,10 +33,11 @@ const SECTIONS: Section[] = [
     title: 'Where people buy them',
     body: (
       <>
-        <strong>Online</strong> on Square&apos;s eGift card page, which emails
-        the card to the buyer or the person it&apos;s for.{' '}
-        <strong>In the shop</strong> at the register: Gift Cards, then eGift
-        Card. Square asks for an email address and sends the card there.
+        <strong>Online</strong> on the gift card page of our own website,
+        which emails the code to the buyer or the person it&apos;s for.{' '}
+        <strong>In the shop</strong>, a printed certificate from the stack (see
+        below), or an eGift card at the register: Gift Cards, then eGift Card.
+        Square asks for an email address and sends the card there.
       </>
     ),
   },
@@ -44,21 +45,42 @@ const SECTIONS: Section[] = [
     title: 'Where they can be spent',
     body: (
       <>
-        At the register, by scanning or typing the code, on anything in the
-        shop. Only Maple &amp; Spruce: Music Together is a separate Square
-        account and cannot take these cards. Paying for classes online with a
-        gift card is not switched on yet.
+        At the register, by scanning the barcode or typing the code, on
+        anything in the shop, and online when booking a class. Only Maple
+        &amp; Spruce: Music Together is a separate Square account and cannot
+        take these cards.
       </>
     ),
   },
   {
-    title: 'Making a printed certificate',
+    title: 'Printed certificates',
     body: (
       <Box component="ol" sx={{ m: 0, pl: 2.5 }}>
         <li>
-          Sell an eGift card at the register. When Square asks for an email,
-          enter the buyer&apos;s or the shop&apos;s.
+          Click <strong>Print gift certificates</strong> at the top. Choose the
+          design, a dollar amount or a class type, and how many.
         </li>
+        <li>
+          Each one is made and loaded in Square straight away, so it can be
+          spent as soon as it is printed. Print them, then keep the stack
+          somewhere safe, like cash.
+        </li>
+        <li>
+          To sell one, ring up the <strong>Gift certificate</strong> item at the
+          register, type the amount on the certificate, and leave tax off. That
+          is all: nothing to do on this page.
+        </li>
+        <li>
+          Until one is spent, it counts under &quot;Printed certificates not yet
+          used&quot;, not as owed to a customer.
+        </li>
+      </Box>
+    ),
+  },
+  {
+    title: 'An eGift card sold at the register',
+    body: (
+      <Box component="ol" sx={{ m: 0, pl: 2.5 }}>
         <li>
           Find the card below. The newest is at the top, or search by its last
           4 digits.
@@ -69,8 +91,7 @@ const SECTIONS: Section[] = [
           type. That records which class it is for, worth what was put on it.
           Nothing changes in Square.
         </li>
-        <li>Open it and click Show and copy code.</li>
-        <li>Paste the code into the Canva certificate and print it.</li>
+        <li>To write it on a card, open it and click Show and copy code.</li>
       </Box>
     ),
   },
@@ -82,8 +103,8 @@ const SECTIONS: Section[] = [
         <strong>Issue a gift card</strong> at the top. Choose an amount, or a
         class type and its value, and say why. Square makes the card with the
         money on it, but nobody pays for it: when it is spent, the studio
-        covers it. Then click Show and copy code for the certificate. Each free
-        card is logged with who gave it and why.
+        covers it. It counts under &quot;Given free this month&quot;, not as
+        sold. Each free card is logged with who gave it and why.
       </>
     ),
   },
@@ -91,9 +112,10 @@ const SECTIONS: Section[] = [
     title: 'Treat the code like cash',
     body: (
       <>
-        Anyone with the code can spend the balance, so only show it when you are
-        making a certificate, and don&apos;t text or post it. Each time a code
-        is shown here, it is logged with who asked.
+        Anyone with the code can spend the balance. Don&apos;t text or post it,
+        and keep printed certificates out of sight until they are sold. Each
+        time codes are shown here, for one card or a printed batch, it is
+        logged with who asked.
       </>
     ),
   },
@@ -102,9 +124,9 @@ const SECTIONS: Section[] = [
     body: (
       <>
         Money people have paid for gift cards and not spent yet. It is not
-        income until it is spent: selling a gift card is not a sale, has no
-        sales tax and pays no artist. When a card pays for a piece, that sale
-        pays the artist their usual split.
+        income until it is spent: selling a gift card or a printed certificate
+        is not a sale, has no sales tax and pays no artist. When a card pays
+        for a piece, that sale pays the artist their usual split.
       </>
     ),
   },

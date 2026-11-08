@@ -20,7 +20,13 @@ export const Loaded: Story = {
     await expect(canvas.getByText('$62.50')).toBeVisible();
     await expect(canvas.getByText('$125.00')).toBeVisible();
     await expect(canvas.getByText('$42.50')).toBeVisible();
-    await expect(canvas.getByText(/Paid for and not spent yet/)).toBeVisible();
+    await expect(canvas.getByText(/apart from printed certificates nobody has used/)).toBeVisible();
+    // Free cards and printed stock are their own tiles, not sales (#314).
+    await expect(canvas.getByText('Given free this month')).toBeVisible();
+    await expect(canvas.getByText('$25.00')).toBeVisible();
+    await expect(canvas.getByText('Printed certificates not yet used')).toBeVisible();
+    await expect(canvas.getByText('$250.00')).toBeVisible();
+    await expect(canvas.getByText(/10 certificates printed and loaded/)).toBeVisible();
   },
 };
 
