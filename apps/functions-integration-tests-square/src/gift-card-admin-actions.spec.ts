@@ -347,7 +347,9 @@ describe('giftCards admin actions (#310)', () => {
       const writesToSquare = (await squareRequests()).filter(
         (r) =>
           r.method === 'POST' &&
-          r.path.startsWith('/v2/') &&
+          // Only gift card money paths: a background catalog sync may write
+          // to Square on its own schedule and is not this action.
+          /^\/v2\/(orders|payments|refunds|gift-cards)/.test(r.path) &&
           !String(r.body['idempotency_key'] ?? '').startsWith('register-')
       );
       expect(writesToSquare).toEqual([]);
