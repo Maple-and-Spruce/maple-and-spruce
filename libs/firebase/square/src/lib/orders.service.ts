@@ -120,6 +120,25 @@ export interface GetOrderResult {
 }
 
 /**
+ * Input for paying an order with payments that were only authorized.
+ */
+export interface PayOrderInput {
+  orderId: string;
+  /** Every payment on the order, each created with `autocomplete: false`. */
+  paymentIds: string[];
+  idempotencyKey: string;
+}
+
+/**
+ * Result of paying an order.
+ */
+export interface PayOrderResult {
+  orderId: string;
+  /** Square order state, `COMPLETED` once paid. */
+  state: string;
+}
+
+/**
  * Orders service for Square API operations
  */
 export class OrdersService {
@@ -178,6 +197,34 @@ export class OrdersService {
       totalCents: Number(order.totalMoney?.amount ?? 0),
       taxCents: Number(order.totalTaxMoney?.amount ?? 0),
     };
+  }
+
+  /**
+   * Complete an order paid by more than one payment (a gift card plus a
+   * card). Square completes every listed payment together, so money moves
+   * only once all of them are approved.
+   *
+   * @see https://developer.squareup.com/docs/orders-api/pay-for-orders
+   */
+  async payOrder(input: PayOrderInput): Promise<PayOrderResult> {
+    const response = await this.client.orders.pay({
+      orderId: input.orderId,
+      idempotencyKey: input.idempotencyKey,
+      paymentIds: input.paymentIds,
+    });
+
+    if (response.errors && response.errors.length > 0) {
+      const errorMessages = response.errors
+        .map((e: Square.Error_) => e.detail || e.code || 'Unknown error')
+        .join(', ');
+      throw new Error(`Square pay order error: ${errorMessages}`);
+    }
+
+    const order = response.order;
+    if (!order || !order.id) {
+      throw new Error('Square pay order failed: no order in response');
+    }
+    return { orderId: order.id, state: order.state ?? 'UNKNOWN' };
   }
 
   /**

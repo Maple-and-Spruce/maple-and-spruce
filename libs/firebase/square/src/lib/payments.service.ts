@@ -135,6 +135,17 @@ export interface CreatePaymentInput {
   referenceId?: string;
   /** Square order ID to associate with this payment */
   orderId?: string;
+  /**
+   * Complete the payment at once (the default). Pass false to only authorize
+   * it, for a split payment that `OrdersService.payOrder` completes together.
+   */
+  autocomplete?: boolean;
+  /**
+   * Let Square approve less than asked when the source cannot cover it. A gift
+   * card payment needs this (and `autocomplete: false`); read the approved
+   * amount back from `amountCents`.
+   */
+  acceptPartialAuthorization?: boolean;
 }
 
 /**
@@ -149,6 +160,11 @@ export interface CreatePaymentResult {
   receiptUrl?: string;
   /** Total amount charged in cents */
   totalCents: number;
+  /**
+   * What Square approved, in cents (`amount_money`). Lower than asked when a
+   * partial authorization was accepted (a gift card with less on it).
+   */
+  amountCents: number;
 }
 
 /**
@@ -228,7 +244,10 @@ export class PaymentsService {
         },
         locationId: input.locationId,
         customerId: input.customerId,
-        autocomplete: true,
+        autocomplete: input.autocomplete ?? true,
+        ...(input.acceptPartialAuthorization !== undefined && {
+          acceptPartialAuthorization: input.acceptPartialAuthorization,
+        }),
         buyerEmailAddress: input.buyerEmailAddress,
         note: input.note,
         referenceId: input.referenceId,
@@ -262,7 +281,43 @@ export class PaymentsService {
       status: payment.status || 'UNKNOWN',
       receiptUrl: payment.receiptUrl ?? undefined,
       totalCents: Number(payment.totalMoney?.amount ?? 0),
+      amountCents: Number(
+        payment.amountMoney?.amount ?? payment.totalMoney?.amount ?? 0
+      ),
     };
+  }
+
+  /**
+   * Void a payment that was only authorized (`autocomplete: false`), so no
+   * money moves. A gift card's held amount goes back onto the card.
+   *
+   * @see https://developer.squareup.com/reference/square/payments-api/cancel-payment
+   */
+  async cancelPayment(paymentId: string): Promise<void> {
+    const response = await this.client.payments.cancel({ paymentId });
+    if (response.errors && response.errors.length > 0) {
+      const errorMessages = response.errors
+        .map((e: Square.Error_) => e.detail || e.code || 'Unknown error')
+        .join(', ');
+      throw new Error(`Square cancel payment error: ${errorMessages}`);
+    }
+  }
+
+  /**
+   * Void a payment by the idempotency key that created it. For when the
+   * create call failed in a way that leaves it unknown whether Square took
+   * the payment (a timeout): Square cancels it if it exists.
+   */
+  async cancelPaymentByIdempotencyKey(idempotencyKey: string): Promise<void> {
+    const response = await this.client.payments.cancelByIdempotencyKey({
+      idempotencyKey,
+    });
+    if (response.errors && response.errors.length > 0) {
+      const errorMessages = response.errors
+        .map((e: Square.Error_) => e.detail || e.code || 'Unknown error')
+        .join(', ');
+      throw new Error(`Square cancel payment error: ${errorMessages}`);
+    }
   }
 
   /**

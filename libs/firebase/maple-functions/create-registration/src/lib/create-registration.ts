@@ -51,6 +51,14 @@ import type {
 } from '@maple/ts/firebase/api-types';
 import type { PercentDiscountData } from '@maple/ts/domain';
 import { randomBytes } from 'crypto';
+import {
+  CLASS_CERTIFICATE_DISCOUNT_NAME,
+  chargeWithGiftCard,
+  classCertificateCoverCents,
+  giftCardIdempotencyKeys,
+  readUsableGiftCard,
+  type UsableGiftCard,
+} from './gift-card-payment';
 
 /**
  * Generate a referral discount code shared via the confirmation email.
@@ -93,6 +101,15 @@ export const createRegistration = Functions.endpoint
           Record<(typeof SQUARE_STRING_NAMES)[number], string>
       );
 
+      // 0. Gift card (#301): read it from Square before holding a spot, so an
+      // unknown, turned-off or empty card is refused without reserving a seat
+      // or using up a single-use discount code. Only a read; nothing is
+      // charged until the order exists.
+      const giftCardNonce = data.giftCardNonce?.trim() || undefined;
+      const giftCard: UsableGiftCard | undefined = giftCardNonce
+        ? await readUsableGiftCard(square, giftCardNonce)
+        : undefined;
+
       // 1-5. Validate, price, and atomically reserve a `pending` spot. Shared
       // with the hosted-checkout fallback so both paths reserve identically.
       const {
@@ -120,8 +137,100 @@ export const createRegistration = Functions.endpoint
       let squarePaymentId: string | undefined;
       let squareReceiptUrl: string | undefined;
       let squareOrderId: string | undefined;
+      // Set only when a gift card paid: what each source paid and the
+      // studio-covered certificate amount (#301).
+      let giftCardFields:
+        | {
+            squareGiftCardPaymentId: string;
+            giftCardId: string;
+            giftCardLast4: string;
+            giftCardPaidCents: number;
+            cardPaidCents: number;
+            classCertificateCoverCents: number | null;
+            pricePaidCents: number;
+            taxAmountCents: number;
+          }
+        | undefined;
       try {
-        if (subtotalCents > 0) {
+        if (subtotalCents > 0 && giftCard && giftCardNonce) {
+          // Gift card checkout (#301). See gift-card-payment.ts for how the
+          // money moves and how a failure is unwound.
+          const coverCents = classCertificateCoverCents({
+            giftCard,
+            classEntity,
+            subtotalCents,
+          });
+          const discounts = [
+            ...(discountAmountCents > 0
+              ? [
+                  {
+                    name: discountCode || 'Discount',
+                    amountCents: discountAmountCents,
+                    scope: 'ORDER' as const,
+                  },
+                ]
+              : []),
+            ...(coverCents > 0
+              ? [
+                  {
+                    name: CLASS_CERTIFICATE_DISCOUNT_NAME,
+                    amountCents: coverCents,
+                    scope: 'ORDER' as const,
+                  },
+                ]
+              : []),
+          ];
+          const orderResult = await square.ordersService.createOrder({
+            locationId: square.locationId,
+            idempotencyKey: giftCardIdempotencyKeys(registrationDocRef.id).order,
+            referenceId: registrationDocRef.id,
+            lineItems: [
+              {
+                name: lineItemName(classEntity, data.slotStart),
+                quantity: data.quantity.toString(),
+                basePriceCents: classEntity.priceCents,
+              },
+            ],
+            taxes: [
+              {
+                name: 'WV Sales Tax',
+                percentage: taxRatePercent.toString(),
+                scope: 'ORDER',
+              },
+            ],
+            discounts: discounts.length > 0 ? discounts : undefined,
+          });
+          squareOrderId = orderResult.orderId;
+
+          const charge = await chargeWithGiftCard({
+            square,
+            registrationId: registrationDocRef.id,
+            orderId: orderResult.orderId,
+            orderTotalCents: orderResult.totalCents,
+            giftCard,
+            giftCardNonce,
+            cardNonce: data.paymentNonce,
+            buyerEmailAddress: data.customerEmail,
+            note: `Registration for ${classEntity.name} - ${confirmationNumber}`,
+          });
+
+          // The card payment is what a card refund goes back to; when the
+          // gift card paid it all, its own payment is.
+          squarePaymentId = charge.cardPaymentId ?? charge.giftCardPaymentId;
+          squareReceiptUrl = charge.receiptUrl;
+          giftCardFields = {
+            squareGiftCardPaymentId: charge.giftCardPaymentId,
+            giftCardId: giftCard.card.id,
+            giftCardLast4: giftCard.card.last4,
+            giftCardPaidCents: charge.giftCardPaidCents,
+            cardPaidCents: charge.cardPaidCents,
+            classCertificateCoverCents: coverCents > 0 ? coverCents : null,
+            // What the family actually paid. `subtotalCents` keeps the class
+            // price after any discount code, before the certificate cover.
+            pricePaidCents: charge.giftCardPaidCents + charge.cardPaidCents,
+            taxAmountCents: orderResult.taxCents,
+          };
+        } else if (subtotalCents > 0) {
           // Create Square Order with line item and tax
           const orderResult = await square.ordersService.createOrder({
             locationId: square.locationId,
@@ -177,6 +286,7 @@ export const createRegistration = Functions.endpoint
           squarePaymentId: squarePaymentId || null,
           squareOrderId: squareOrderId || null,
           squareReceiptUrl: squareReceiptUrl || null,
+          ...giftCardFields,
           updatedAt: new Date(),
         });
       } catch (paymentError) {
@@ -336,6 +446,9 @@ export const createRegistration = Functions.endpoint
           `Skipping confirmation email queue for E2E test recipient ${data.customerEmail}`
         );
       }
+      // What was actually paid, and how, for the email (#301).
+      const amountPaidCents = giftCardFields?.pricePaidCents ?? pricePaidCents;
+      const taxPaidCents = giftCardFields?.taxAmountCents ?? taxAmountCents;
       if (!skipMail) try {
         const formatCurrency = (cents: number): string =>
           `$${(cents / 100).toFixed(2)}`;
@@ -393,8 +506,20 @@ export const createRegistration = Functions.endpoint
               confirmationNumber,
               subtotal: formatCurrency(subtotalCents),
               taxRate: taxRatePercent,
-              taxAmount: formatCurrency(taxAmountCents),
-              amountPaid: formatCurrency(pricePaidCents),
+              taxAmount: formatCurrency(taxPaidCents),
+              amountPaid: formatCurrency(amountPaidCents),
+              // Gift card checkout (#301): last 4 only, never the full number.
+              ...(giftCardFields && {
+                giftCardLast4: giftCardFields.giftCardLast4,
+                giftCardPaid: formatCurrency(giftCardFields.giftCardPaidCents),
+                cardPaid:
+                  giftCardFields.cardPaidCents > 0
+                    ? formatCurrency(giftCardFields.cardPaidCents)
+                    : undefined,
+                classCertificateCover: giftCardFields.classCertificateCoverCents
+                  ? formatCurrency(giftCardFields.classCertificateCoverCents)
+                  : undefined,
+              }),
               quantity: data.quantity,
               receiptUrl: squareReceiptUrl?.includes('squareupsandbox.com')
                 ? undefined
