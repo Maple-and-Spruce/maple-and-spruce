@@ -19,11 +19,17 @@ interface RouteHandler {
   method: string;
   /** Path pattern — supports :param placeholders */
   pattern: string;
+  /**
+   * Return `null` to pass the request on to the next matching route. Lets a
+   * routes file handle only the requests it owns (a gift card payment) and
+   * leave the rest (a card payment) to the general routes.
+   */
   handler: (
     req: ParsedRequest
   ) =>
     | { status: number; body: unknown }
-    | Promise<{ status: number; body: unknown }>;
+    | null
+    | Promise<{ status: number; body: unknown } | null>;
 }
 
 interface ParsedRequest {
@@ -120,6 +126,7 @@ export class SquareMockServer {
                 body,
                 headers: req.headers,
               });
+              if (result === null) continue;
               res.writeHead(result.status, {
                 'Content-Type': 'application/json',
               });
