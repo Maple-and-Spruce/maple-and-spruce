@@ -46,9 +46,10 @@ const SECTIONS: Section[] = [
     body: (
       <>
         At the register, by scanning the barcode or typing the code, on
-        anything in the shop, and online when booking a class. Only Maple
-        &amp; Spruce: Music Together is a separate Square account and cannot
-        take these cards.
+        anything in the shop. Paying for a class online with a gift card is
+        built but not switched on yet; until it is, book the class for them at
+        the register. Only Maple &amp; Spruce: Music Together is a separate
+        Square account and cannot take these cards.
       </>
     ),
   },
