@@ -18,7 +18,7 @@ describe('isAllowedGiftCardAmount', () => {
     [25.5, 'not an integer'],
     ['2500', 'not a number'],
     [undefined, 'missing'],
-  ])('refuses %s (%s)', (cents) => {
+  ])('refuses %s (%s)', (cents, _reason) => {
     expect(isAllowedGiftCardAmount(cents)).toBe(false);
   });
 });
