@@ -123,3 +123,7 @@ export {
 } from './music-together-semester.validation';
 export * from './lesson-billing-rule.validation';
 export * from './inbox-dismissal.validation';
+export {
+  giftCardPurchaseValidation,
+  type GiftCardPurchaseValidationInput,
+} from './gift-card-purchase.validation';

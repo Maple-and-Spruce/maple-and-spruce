@@ -59,6 +59,72 @@ describe('OrdersService', () => {
     });
   });
 
+  describe('createOrder', () => {
+    it('sells a gift card as an untaxed GIFT_CARD line and returns its uid', async () => {
+      mockClient.orders.create.mockResolvedValue({
+        order: {
+          id: 'order-gc',
+          totalMoney: { amount: BigInt(5000) },
+          totalTaxMoney: { amount: BigInt(0) },
+          lineItems: [{ uid: 'line-1', name: 'Gift card', itemType: 'GIFT_CARD' }],
+        },
+      });
+
+      const result = await service.createOrder({
+        locationId: 'LOC',
+        idempotencyKey: 'key-1',
+        referenceId: 'giftcard-abc',
+        lineItems: [
+          { name: 'Gift card', quantity: '1', basePriceCents: 5000, itemType: 'GIFT_CARD' },
+        ],
+        taxes: [],
+      });
+
+      const sent = mockClient.orders.create.mock.calls[0][0];
+      expect(sent.order.lineItems).toEqual([
+        {
+          name: 'Gift card',
+          quantity: '1',
+          itemType: 'GIFT_CARD',
+          basePriceMoney: { amount: BigInt(5000), currency: 'USD' },
+        },
+      ]);
+      expect(sent.order.taxes).toEqual([]);
+      expect(result).toEqual({
+        orderId: 'order-gc',
+        totalCents: 5000,
+        taxCents: 0,
+        lineItems: [{ uid: 'line-1', name: 'Gift card', itemType: 'GIFT_CARD' }],
+      });
+    });
+
+    it('leaves itemType off an ordinary line', async () => {
+      mockClient.orders.create.mockResolvedValue({
+        order: { id: 'order-1', totalMoney: { amount: BigInt(4770) } },
+      });
+
+      const result = await service.createOrder({
+        locationId: 'LOC',
+        idempotencyKey: 'key-2',
+        lineItems: [{ name: 'Pottery', quantity: '1', basePriceCents: 4500 }],
+        taxes: [{ name: 'WV Sales Tax', percentage: '6', scope: 'ORDER' }],
+      });
+
+      const line = mockClient.orders.create.mock.calls[0][0].order.lineItems[0];
+      expect(line).not.toHaveProperty('itemType');
+      expect(result.lineItems).toEqual([]);
+    });
+
+    it('throws Square errors', async () => {
+      mockClient.orders.create.mockResolvedValue({
+        errors: [{ code: 'BAD_REQUEST', detail: 'nope' }],
+      });
+      await expect(
+        service.createOrder({ locationId: 'L', idempotencyKey: 'k', lineItems: [], taxes: [] })
+      ).rejects.toThrow('Square order error: nope');
+    });
+  });
+
   describe('getOrder', () => {
     it('fetches an order and maps its fields', async () => {
       mockClient.orders.get.mockResolvedValue({

@@ -8,12 +8,17 @@ import {
   throwNotFound,
 } from '@maple/firebase/functions';
 import {
+  ClassCategoryRepository,
+  GiftCardPurchaseRepository,
+} from '@maple/firebase/database';
+import {
   Square,
   type SquareSecrets,
   type SquareStrings,
 } from '@maple/firebase/square';
 import { startOfMonthInTimeZone, summarizeGiftCards } from '@maple/ts/domain';
 import type {
+  GiftCardPurchaseDetails,
   GetGiftCardRequest,
   GetGiftCardResponse,
   GetGiftCardsRequest,
@@ -45,6 +50,34 @@ export async function getGiftCards(
   };
 }
 
+/**
+ * The record of a card bought on our own buy page, with the class type's name
+ * for a class certificate. Undefined for a card sold any other way. A failed
+ * read leaves it off rather than failing the whole dialog.
+ */
+async function readPurchase(
+  giftCardId: string
+): Promise<GiftCardPurchaseDetails | undefined> {
+  try {
+    const purchase = await GiftCardPurchaseRepository.findByGiftCardId(giftCardId);
+    if (!purchase) return undefined;
+    let classCategoryName: string | undefined;
+    if (purchase.classCategoryId) {
+      classCategoryName = (
+        await ClassCategoryRepository.findById(purchase.classCategoryId)
+      )?.name;
+    }
+    return {
+      ...purchase,
+      createdAt: purchase.createdAt.toISOString(),
+      classCategoryName,
+    };
+  } catch (error) {
+    console.error('[getGiftCard] could not read the purchase record', error);
+    return undefined;
+  }
+}
+
 /** One card and its history. */
 export async function getGiftCard(
   data: GetGiftCardRequest,
@@ -59,11 +92,14 @@ export async function getGiftCard(
   if (!card) throwNotFound('Gift card', data.id);
 
   // Square defaults an activity search to the last year; a card can be older.
-  const activities = await giftCards.listActivities({
-    giftCardId: data.id,
-    beginTime: new Date(card.createdAt || 0),
-  });
-  return { card, activities };
+  const [activities, purchase] = await Promise.all([
+    giftCards.listActivities({
+      giftCardId: data.id,
+      beginTime: new Date(card.createdAt || 0),
+    }),
+    readPurchase(data.id),
+  ]);
+  return purchase ? { card, activities, purchase } : { card, activities };
 }
 
 /**

@@ -10,6 +10,7 @@ import {
   registerGiftCardPaymentRoutes,
   resetGiftCardPaymentState,
 } from './routes/gift-card-payments';
+import { registerGiftCardRoutes, resetGiftCardState } from './routes/gift-cards';
 
 export interface SquareMockInstance {
   server: SquareMockServer;
@@ -18,7 +19,10 @@ export interface SquareMockInstance {
 
 export function createSquareMockServer(): SquareMockInstance {
   const server = new SquareMockServer();
-  // First, so it can take the gift card requests it owns and pass the rest on.
+  // First: the gift card routes answer their own requests on shared paths
+  // (`POST /v2/orders`, `POST /v2/payments`) and pass the rest on. Gift card
+  // sales (#300) before gift card payments (#301), both before `square.ts`.
+  registerGiftCardRoutes(server);
   registerGiftCardPaymentRoutes(server);
   registerSquareRoutes(server);
 
@@ -28,6 +32,7 @@ export function createSquareMockServer(): SquareMockInstance {
       server.clearRequests();
       resetSquareState();
       resetGiftCardPaymentState();
+      resetGiftCardState();
     },
   };
 }

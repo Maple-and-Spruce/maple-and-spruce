@@ -26,6 +26,7 @@ import {
   type GiftCardSummary,
   type RequestState,
 } from '@maple/ts/domain';
+import type { GiftCardPurchaseDetails } from '@maple/ts/firebase/api-types';
 import { fonts } from '@maple/react/theme';
 import {
   formatGiftCardChange,
@@ -37,6 +38,8 @@ import {
 export interface GiftCardDetail {
   card: GiftCardSummary;
   activities: GiftCardActivityEntry[];
+  /** Set when the card was bought on our own buy page (#300). */
+  purchase?: GiftCardPurchaseDetails;
 }
 
 interface GiftCardDetailDialogProps {
@@ -142,6 +145,10 @@ export function GiftCardDetailDialog({
               <Typography component="div">{giftCardKindLabel(shown.kind)}</Typography>
             </Box>
           </Stack>
+        )}
+
+        {detailState.status === 'success' && detailState.data.purchase && (
+          <BoughtOnline purchase={detailState.data.purchase} />
         )}
 
         <Box
@@ -263,5 +270,49 @@ function History({ detailState }: { detailState: RequestState<GiftCardDetail> })
         </ListItem>
       ))}
     </List>
+  );
+}
+
+/** Who bought a card on the website, who it was for, and what for. */
+function BoughtOnline({ purchase }: { purchase: GiftCardPurchaseDetails }) {
+  const forWhom = purchase.recipientName
+    ? purchase.recipientEmail
+      ? `${purchase.recipientName} (${purchase.recipientEmail})`
+      : purchase.recipientName
+    : purchase.recipientEmail;
+  const sentTo =
+    purchase.deliverTo === 'recipient'
+      ? 'Emailed to them'
+      : 'Emailed to the buyer to print';
+  return (
+    <Box
+      component="section"
+      aria-label="Bought online"
+      sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
+    >
+      <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>
+        Bought online {formatGiftCardDate(purchase.createdAt)}
+      </Typography>
+      <Stack spacing={0.5}>
+        {purchase.kind === 'class' && (
+          <Typography variant="body2">
+            Class certificate: {purchase.className ?? 'a class'}
+            {purchase.classCategoryName ? ` (${purchase.classCategoryName})` : ''}
+          </Typography>
+        )}
+        <Typography variant="body2">
+          Bought by {purchase.buyerName} ({purchase.buyerEmail})
+        </Typography>
+        {forWhom && <Typography variant="body2">For {forWhom}</Typography>}
+        <Typography variant="body2" color="textSecondary">
+          {sentTo}
+        </Typography>
+        {purchase.message && (
+          <Typography variant="body2" sx={{ fontStyle: 'italic', whiteSpace: 'pre-line' }}>
+            &ldquo;{purchase.message}&rdquo;
+          </Typography>
+        )}
+      </Stack>
+    </Box>
   );
 }
