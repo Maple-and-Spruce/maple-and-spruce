@@ -201,6 +201,33 @@ describe('instructorValidation', () => {
     });
   });
 
+  describe('programs field', () => {
+    it('passes when unset or empty', () => {
+      expect(
+        instructorValidation({ ...validInstructor, programs: undefined }).hasErrors('programs')
+      ).toBe(false);
+      expect(
+        instructorValidation({ ...validInstructor, programs: [] }).hasErrors('programs')
+      ).toBe(false);
+    });
+
+    it('passes with known programs', () => {
+      const result = instructorValidation({
+        ...validInstructor,
+        programs: ['suzuki', 'music-lessons', 'craft-classes'],
+      });
+      expect(result.hasErrors('programs')).toBe(false);
+    });
+
+    it('rejects an unknown program', () => {
+      const result = instructorValidation({
+        ...validInstructor,
+        programs: ['suzuki', 'juggling' as never],
+      });
+      expect(result.getErrors('programs')).toContain('Choose from the listed programs');
+    });
+  });
+
   describe('specialties field', () => {
     it('passes when specialties is undefined (optional)', () => {
       const result = instructorValidation({

@@ -13,6 +13,7 @@ export const mockInstructor: Instructor = {
   status: 'active',
   bio: 'Master weaver with over 20 years of experience in natural fiber arts. Sarah specializes in traditional Appalachian weaving patterns and teaches workshops on both floor loom and rigid heddle techniques.',
   specialties: ['weaving', 'natural dyeing', 'fiber arts'],
+  programs: ['craft-classes'],
   payRate: 7500, // $75 flat rate per class
   payRateType: 'flat',
   notes: 'Prefers weekend classes. Has own loom for demonstrations.',

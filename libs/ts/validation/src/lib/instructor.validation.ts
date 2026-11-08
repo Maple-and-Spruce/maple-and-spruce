@@ -9,6 +9,7 @@ import { staticSuite } from './static-suite';
 import type { CreateInstructorInput } from '@maple/ts/domain';
 import {
   INSTRUCTOR_PAYMENT_SETUP_METHODS,
+  INSTRUCTOR_PROGRAMS,
   LESSON_LENGTHS,
   instrumentKeyFromLabel,
 } from '@maple/ts/domain';
@@ -85,6 +86,15 @@ export const instructorValidation = staticSuite(
       if (data.specialties && data.specialties.length > 0) {
         data.specialties.forEach((specialty) => {
           enforce(specialty).longerThanOrEquals(2);
+        });
+      }
+    });
+
+    test('programs', 'Choose from the listed programs', () => {
+      if (data.programs) {
+        enforce(data.programs).isArray();
+        data.programs.forEach((program) => {
+          enforce(program).inside([...INSTRUCTOR_PROGRAMS]);
         });
       }
     });
