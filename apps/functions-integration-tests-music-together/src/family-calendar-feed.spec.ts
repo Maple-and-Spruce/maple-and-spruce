@@ -18,6 +18,7 @@ import {
   listFirestoreDocs,
   callFunction,
   getFunctionUrl,
+  TRIGGER_WAIT_TIMEOUT_MS,
 } from '@maple/firebase/integration-test-utils';
 import type {
   CreateMusicTogetherRegistrationRequest,
@@ -25,6 +26,15 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 const FAMILY_TOKEN = 'famtok-integration-abc123';
+
+const SESSION_A1 = new Date('2030-09-10T14:00:00Z');
+const SESSION_A2 = new Date('2030-09-17T14:00:00Z');
+const SESSION_B1 = new Date('2030-09-11T14:00:00Z');
+
+/** The id `onMusicTogetherSectionWrite` gives a section session's event. */
+function sessionEventId(sectionId: string, session: Date): string {
+  return `mt-${sectionId}-${session.getTime()}`;
+}
 
 async function fetchFeed(
   token: string
@@ -34,27 +44,41 @@ async function fetchFeed(
   return { status: res.status, body: await res.text() };
 }
 
-function calendarEventDoc(
-  sectionId: string,
-  title: string,
-  startIso: string
-): Record<string, unknown> {
-  const start = new Date(startIso);
+/**
+ * A visible section, so `onMusicTogetherSectionWrite` gives every session a
+ * calendar event. The trigger is the only writer of these events: seeding them
+ * by hand races it, because it reconciles a section's events to the section
+ * and deletes any it did not produce.
+ */
+function sectionDoc(name: string, sessions: Date[]): Record<string, unknown> {
   return {
-    title,
-    description: 'Music Together session',
-    startDateTime: start,
-    endDateTime: new Date(start.getTime() + 45 * 60 * 1000),
-    recurrenceRule: null,
-    location: 'Spruce Room',
-    type: 'musictogether',
-    public: true,
-    room: 'spruce',
-    sourceRef: `musicTogetherSections/${sectionId}`,
-    createdBy: 'system',
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    name,
+    sessions: sessions.map((dateTime) => ({ dateTime })),
+    visible: true,
+    status: 'open',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
+}
+
+/** Poll until the trigger has written every one of these calendar events. */
+async function waitForCalendarEvents(
+  ids: string[],
+  timeoutMs = TRIGGER_WAIT_TIMEOUT_MS
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let missing = ids;
+  while (Date.now() < deadline) {
+    const found = await Promise.all(
+      ids.map((id) => getFirestoreDoc('calendarEvents', id))
+    );
+    missing = ids.filter((_, i) => !found[i]);
+    if (missing.length === 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(
+    `Timed out waiting for calendar events: ${missing.join(', ')}`
+  );
 }
 
 describe('calendarFamilyMusicTogetherFeed', () => {
@@ -63,32 +87,20 @@ describe('calendarFamilyMusicTogetherFeed', () => {
     await clearFirestoreEmulator();
 
     // Two sections. The family is confirmed in A only.
-    await setFirestoreDoc('musicTogetherSections', 'fam-sec-a', {
-      name: 'Family Section A',
-      sessions: [{ dateTime: new Date('2030-09-10T14:00:00Z') }],
-      status: 'open',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    await setFirestoreDoc('musicTogetherSections', 'fam-sec-b', {
-      name: 'Family Section B',
-      sessions: [{ dateTime: new Date('2030-09-11T14:00:00Z') }],
-      status: 'open',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-
-    // Live calendar events (as onMusicTogetherSectionWrite would produce).
     await setFirestoreDoc(
-      'calendarEvents',
-      'fam-evt-a1',
-      calendarEventDoc('fam-sec-a', 'Family Class A — Session 1', '2030-09-10T14:00:00Z')
+      'musicTogetherSections',
+      'fam-sec-a',
+      sectionDoc('Family Class A', [SESSION_A1])
     );
     await setFirestoreDoc(
-      'calendarEvents',
-      'fam-evt-b1',
-      calendarEventDoc('fam-sec-b', 'Family Class B — Session 1', '2030-09-11T14:00:00Z')
+      'musicTogetherSections',
+      'fam-sec-b',
+      sectionDoc('Family Class B', [SESSION_B1])
     );
+    await waitForCalendarEvents([
+      sessionEventId('fam-sec-a', SESSION_A1),
+      sessionEventId('fam-sec-b', SESSION_B1),
+    ]);
 
     // The family: confirmed in A, and a pending (unpaid) reservation in B with
     // the SAME token — B must NOT appear in the feed.
@@ -122,7 +134,7 @@ describe('calendarFamilyMusicTogetherFeed', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
-  });
+  }, TRIGGER_WAIT_TIMEOUT_MS + 15_000);
 
   afterAll(async () => {
     await clearAuthEmulator();
@@ -134,21 +146,24 @@ describe('calendarFamilyMusicTogetherFeed', () => {
 
     expect(status).toBe(200);
     expect(body).toContain('BEGIN:VCALENDAR');
-    expect(body).toContain('Family Class A — Session 1');
+    expect(body).toContain('Family Class A');
+    expect(body).toContain(`UID:${sessionEventId('fam-sec-a', SESSION_A1)}`);
     // The pending section B must be excluded.
     expect(body).not.toContain('Family Class B');
   });
 
   it('reflects a newly added session (feed auto-updates)', async () => {
+    // Add a session to the section; the trigger gives it an event.
     await setFirestoreDoc(
-      'calendarEvents',
-      'fam-evt-a2',
-      calendarEventDoc('fam-sec-a', 'Family Class A — Session 2', '2030-09-17T14:00:00Z')
+      'musicTogetherSections',
+      'fam-sec-a',
+      sectionDoc('Family Class A', [SESSION_A1, SESSION_A2])
     );
+    await waitForCalendarEvents([sessionEventId('fam-sec-a', SESSION_A2)]);
 
     const { body } = await fetchFeed(FAMILY_TOKEN);
-    expect(body).toContain('Family Class A — Session 1');
-    expect(body).toContain('Family Class A — Session 2');
+    expect(body).toContain(`UID:${sessionEventId('fam-sec-a', SESSION_A1)}`);
+    expect(body).toContain(`UID:${sessionEventId('fam-sec-a', SESSION_A2)}`);
   });
 
   it('returns an empty but valid calendar for an unknown token', async () => {
