@@ -1,21 +1,16 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { ManualInvoicePaymentSource } from '@maple/ts/domain';
+import {
+  addLocalDays,
+  startOfLocalWeek,
+  type ManualInvoicePaymentSource,
+} from '@maple/ts/domain';
 import { useMyDay, useMyWeek } from '@maple/react/data';
 import {
   MyWeekPageView,
   type MyDayCardAction,
 } from '../../../components/my-day';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** Local Sunday 00:00 for a given instant. */
-function startOfWeek(d: Date): Date {
-  const s = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  s.setDate(s.getDate() - s.getDay());
-  return s;
-}
 
 /**
  * The teacher's "My Week" page. The route stays `/my-day` so bookmarks keep
@@ -35,7 +30,7 @@ export default function MyWeekPage() {
   const [weekOffset, setWeekOffset] = useState(0);
 
   const weekStart = useMemo(
-    () => new Date(startOfWeek(new Date()).getTime() + weekOffset * 7 * DAY_MS),
+    () => addLocalDays(startOfLocalWeek(new Date()), weekOffset * 7),
     [weekOffset],
   );
   const { weekState } = useMyWeek(weekStart);

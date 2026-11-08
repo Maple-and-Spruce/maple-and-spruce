@@ -159,3 +159,22 @@ export const TogglesCategoryOff: Story = {
     );
   },
 };
+
+/**
+ * The week the clocks fall back (Sunday Nov 1 2026). That Sunday is 25 hours
+ * long, so stepping days by 24h labelled Monday "11/1" and ran every date one
+ * behind, ending the week on "Nov 6". Only meaningful in a timezone with
+ * daylight saving; the unit suite covers it in America/New_York on CI.
+ */
+export const FallBackWeekLabels: Story = {
+  args: {
+    weekStart: new Date(2026, 10, 1),
+    weekState: { status: 'success', data: mockMyWeekResponse },
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(/nov 1\s*–\s*nov 7/i)).toBeInTheDocument();
+    for (const label of ['11/1', '11/2', '11/7']) {
+      await expect(canvas.getByText(label)).toBeInTheDocument();
+    }
+  },
+};
