@@ -20,16 +20,18 @@ interface RouteHandler {
   /** Path pattern — supports :param placeholders */
   pattern: string;
   /**
-   * Return `null` to pass the request on to the next matching route. Lets a
-   * routes file handle only the requests it owns (a gift card payment) and
-   * leave the rest (a card payment) to the general routes.
+   * Returning `null` or `undefined` passes the request on to the next
+   * matching route. That lets a feature's routes file (gift card sales, gift
+   * card payments) answer the requests that are its own on a shared path such
+   * as `POST /v2/orders` and leave every other request to `routes/square.ts`.
    */
   handler: (
     req: ParsedRequest
   ) =>
     | { status: number; body: unknown }
     | null
-    | Promise<{ status: number; body: unknown } | null>;
+    | undefined
+    | Promise<{ status: number; body: unknown } | null | undefined>;
 }
 
 interface ParsedRequest {
@@ -126,7 +128,7 @@ export class SquareMockServer {
                 body,
                 headers: req.headers,
               });
-              if (result === null) continue;
+              if (result == null) continue;
               res.writeHead(result.status, {
                 'Content-Type': 'application/json',
               });

@@ -1317,6 +1317,177 @@ const mtFirstClass48hHtml = mtLayout(
 );
 
 // ---------------------------------------------------------------------------
+// Template: gift-card (#300)
+//
+// The email that carries a gift card's code. Sent by `giftCards/purchaseGiftCard`
+// to whoever the buyer chose: the recipient, or the buyer to print. The code
+// arrives already grouped in fours. Customer copy: no em dashes.
+// ---------------------------------------------------------------------------
+
+const giftCardSubject =
+  '{{#if forBuyer}}Your Maple & Spruce gift card{{else}}{{buyerName}} sent you a Maple & Spruce gift card{{/if}}';
+
+const giftCardHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Maple &amp; Spruce gift card</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Maple &amp; Spruce Folk Arts</h1>
+  </div>
+  <div class="content">
+    {{#if forBuyer}}
+    <h2>Your gift card is ready</h2>
+    <p>Hi {{buyerName}},</p>
+    <p>Thank you! Here is the gift card you bought{{#if giftFor}} for {{giftFor}}{{/if}}. Print this email or write the code on a card to give it.</p>
+    {{else}}
+    <h2>You have a gift card</h2>
+    <p>{{#if recipientName}}Hi {{recipientName}},{{else}}Hello,{{/if}}</p>
+    <p>{{buyerName}} sent you a gift card to Maple &amp; Spruce Folk Arts.</p>
+    {{/if}}
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">Gift card for</td>
+        <td>{{description}}</td>
+      </tr>
+      <tr>
+        <td class="label">From</td>
+        <td>{{buyerName}}</td>
+      </tr>
+    </table>
+
+    {{#if message}}
+    <div class="highlight-box">
+      <p style="margin: 0; white-space: pre-line;">{{message}}</p>
+      <p style="margin: 8px 0 0;">{{buyerName}}</p>
+    </div>
+    {{/if}}
+
+    <p style="text-align: center; margin: 24px 0 8px;">Gift card code</p>
+    <p style="text-align: center; margin: 0 0 24px;">
+      <span style="display: inline-block; background-color: #ffffff; border: 2px dashed #6B7B5E; color: #4A3728; font-family: 'Courier New', monospace; font-size: 22px; font-weight: bold; letter-spacing: 2px; padding: 12px 20px; border-radius: 4px;">{{code}}</span>
+    </p>
+
+    <h3 style="color: #4A3728; font-size: 18px; margin: 24px 0 8px;">How to use it</h3>
+    <ul>
+      <li>In the shop: show this email or the code at the register.</li>
+      <li>Classes: call or email us and we will book you in. Paying for classes online with the code is coming soon.</li>
+      {{#if isClass}}<li>It pays for one class of this type. Any money left over spends like a regular gift card.</li>{{/if}}
+      <li>It never expires.</li>
+    </ul>
+
+    {{#if forBuyer}}
+    <p>Keep the code safe: it works like cash.</p>
+    {{/if}}
+
+    <p>Questions? Reach us at
+      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>
+      or <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
+// Template: gift-card-purchase-confirmation (#300)
+//
+// Sent to the buyer when the gift went straight to the recipient. Shows only
+// the last 4 digits: the full code went to the recipient.
+// ---------------------------------------------------------------------------
+
+const giftCardPurchaseConfirmationSubject =
+  'Your gift card for {{#if recipientName}}{{recipientName}}{{else}}{{recipientEmail}}{{/if}} is on its way';
+
+const giftCardPurchaseConfirmationHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gift card sent</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Maple &amp; Spruce Folk Arts</h1>
+  </div>
+  <div class="content">
+    <h2>Your gift card is on its way</h2>
+    <p>Hi {{buyerName}},</p>
+    <p>Thank you! We emailed your gift card to {{#if recipientName}}{{recipientName}} at {{/if}}{{recipientEmail}}.</p>
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">Gift card for</td>
+        <td>{{description}}</td>
+      </tr>
+      <tr>
+        <td class="label">Card ending in</td>
+        <td>{{last4}}</td>
+      </tr>
+    </table>
+
+    {{#if message}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Your message</strong><br>
+      <span style="white-space: pre-line;">{{message}}</span>
+    </div>
+    {{/if}}
+
+    <p>If it does not arrive, ask them to check their spam folder, or reach us at
+      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>
+      or <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a> and we will resend it.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
+// Template: gift-card-refund-needed (#300, staff only)
+//
+// A buyer paid, the card could not be made, and the automatic refund failed
+// too. Goes to ADMIN_ALERT_EMAIL so a person refunds by hand.
+// ---------------------------------------------------------------------------
+
+const giftCardRefundNeededSubject = 'Action needed: refund a gift card purchase ({{amount}})';
+
+const giftCardRefundNeededHtml = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Gift card refund needed</title><style>${styles}</style></head>
+<body>
+<div class="wrapper">
+  <div class="content">
+    <h2>A gift card purchase needs a refund</h2>
+    <p>A customer paid {{amount}} for a gift card on the website, but Square could not create the card, and the automatic refund also failed. Please refund the payment in the Square Dashboard, or make the card by hand.</p>
+    <table class="detail-table">
+      <tr><td class="label">Buyer email</td><td>{{buyerEmail}}</td></tr>
+      <tr><td class="label">Square payment</td><td>{{squarePaymentId}}</td></tr>
+      <tr><td class="label">Square order</td><td>{{squareOrderId}}</td></tr>
+    </table>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
 
 interface EmailTemplate {
   subject: string;
@@ -1403,6 +1574,18 @@ const templates: Record<string, EmailTemplate> = {
   'music-together-first-class-48h': {
     subject: mtFirstClass48hSubject,
     html: mtFirstClass48hHtml,
+  },
+  'gift-card': {
+    subject: giftCardSubject,
+    html: giftCardHtml,
+  },
+  'gift-card-purchase-confirmation': {
+    subject: giftCardPurchaseConfirmationSubject,
+    html: giftCardPurchaseConfirmationHtml,
+  },
+  'gift-card-refund-needed': {
+    subject: giftCardRefundNeededSubject,
+    html: giftCardRefundNeededHtml,
   },
 };
 

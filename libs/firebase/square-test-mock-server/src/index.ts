@@ -8,3 +8,7 @@ export {
   registerSquareRoutes,
   resetSquareState,
 } from './lib/routes/square';
+export {
+  registerGiftCardRoutes,
+  resetGiftCardState,
+} from './lib/routes/gift-cards';

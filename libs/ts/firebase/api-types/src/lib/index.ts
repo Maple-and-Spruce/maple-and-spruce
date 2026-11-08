@@ -680,3 +680,8 @@ export type {
   PreviewGiftCardForClassRequest,
   PreviewGiftCardForClassResponse,
 } from './gift-card-redemption.types';
+export type {
+  PurchaseGiftCardRequest,
+  PurchaseGiftCardResponse,
+  GiftCardPurchaseDetails,
+} from './gift-card-purchase.types';

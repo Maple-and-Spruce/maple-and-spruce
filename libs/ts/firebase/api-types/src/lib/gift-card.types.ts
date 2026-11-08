@@ -6,6 +6,7 @@ import type {
   GiftCardSummary,
   GiftCardTotals,
 } from '@maple/ts/domain';
+import type { GiftCardPurchaseDetails } from './gift-card-purchase.types';
 
 export type GetGiftCardsRequest = Record<string, never>;
 
@@ -25,6 +26,8 @@ export interface GetGiftCardResponse {
   card: GiftCardSummary;
   /** The card's history, newest first. */
   activities: GiftCardActivityEntry[];
+  /** Set when the card was bought on our own buy page (#300). */
+  purchase?: GiftCardPurchaseDetails;
 }
 
 export interface RevealGiftCardCodeRequest {
