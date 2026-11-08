@@ -65,6 +65,7 @@ vi.mock('./calculate-registration-cost', () => ({
   calculateRegistrationCost: vi.fn(),
 }));
 vi.mock('./get-public-class', () => ({ getPublicClass: vi.fn() }));
+vi.mock('./get-gift-card-options', () => ({ getGiftCardOptions: vi.fn() }));
 vi.mock('./get-public-music-together-demos', () => ({
   getPublicMusicTogetherDemos: vi.fn(),
 }));
@@ -84,6 +85,7 @@ vi.mock('./lookup-discount', () => ({ lookupDiscount: vi.fn() }));
 
 import { publicSite } from './public-site.router';
 import { calculateRegistrationCost } from './calculate-registration-cost';
+import { getGiftCardOptions } from './get-gift-card-options';
 import { getPublicClass } from './get-public-class';
 import { getPublicMusicTogetherDemos } from './get-public-music-together-demos';
 import { getPublicMusicTogetherSection } from './get-public-music-together-section';
@@ -109,6 +111,7 @@ const router = publicSite as unknown as Router;
 
 const handlers: Record<string, unknown> = {
   calculateRegistrationCost,
+  getGiftCardOptions,
   getPublicClass,
   getPublicMusicTogetherDemos,
   getPublicMusicTogetherSection,
@@ -123,7 +126,7 @@ describe('publicSite router', () => {
     vi.unstubAllEnvs();
   });
 
-  it('is deployed as publicSite with exactly these eight routes', () => {
+  it('is deployed as publicSite with exactly these nine routes', () => {
     expect(router.name).toBe('publicSite');
     expect(Object.keys(router.routes).sort()).toEqual(
       Object.keys(handlers).sort(),

@@ -27,6 +27,8 @@ import { SQUARE_STRING_NAMES } from '@maple/firebase/square';
 import type {
   CalculateRegistrationCostRequest,
   CalculateRegistrationCostResponse,
+  GetGiftCardOptionsRequest,
+  GetGiftCardOptionsResponse,
   GetPublicClassRequest,
   GetPublicClassResponse,
   GetPublicMusicTogetherDemosRequest,
@@ -43,6 +45,7 @@ import type {
   LookupDiscountResponse,
 } from '@maple/ts/firebase/api-types';
 import { calculateRegistrationCost } from './calculate-registration-cost';
+import { getGiftCardOptions } from './get-gift-card-options';
 import { getPublicClass } from './get-public-class';
 import { getPublicMusicTogetherDemos } from './get-public-music-together-demos';
 import { getPublicMusicTogetherSection } from './get-public-music-together-section';
@@ -115,6 +118,17 @@ export const publicSite = Functions.router(
       GetPublicMusicTogetherDemosRequest,
       GetPublicMusicTogetherDemosResponse
     >(getPublicMusicTogetherDemos),
+
+    // ── Gift cards (GiftCardWidget) ───────────────────────────────────────
+
+    /**
+     * The dollar amounts and the class types sold as gift certificates
+     * (#309). The buy itself is `giftCards/purchaseGiftCard`.
+     */
+    getGiftCardOptions: Functions.endpoint.asRoute<
+      GetGiftCardOptionsRequest,
+      GetGiftCardOptionsResponse
+    >(getGiftCardOptions),
   },
   { minInstances: PUBLIC_SITE_MIN_INSTANCES, concurrency: 80 },
 );

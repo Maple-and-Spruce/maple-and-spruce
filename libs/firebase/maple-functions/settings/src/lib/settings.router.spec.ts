@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   setVenmoHandle: vi.fn(),
   getPosLesson: vi.fn(),
   setLessonCatalogObjectIds: vi.fn(),
+  getGiftCardSettings: vi.fn(),
+  setGiftCardSettings: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => {
@@ -32,6 +34,9 @@ vi.mock('@maple/firebase/functions', () => {
     throwInvalidArgument: (m: string) => {
       throw new HttpsError('invalid-argument', m);
     },
+    throwValidationError: (errors: Record<string, string[]>) => {
+      throw new HttpsError('invalid-argument', Object.values(errors).flat().join('; '));
+    },
   };
 });
 
@@ -52,6 +57,10 @@ vi.mock('@maple/firebase/database', () => ({
     get: mocks.getPosLesson,
     setLessonCatalogObjectIds: mocks.setLessonCatalogObjectIds,
   },
+  GiftCardSettingsRepository: {
+    get: mocks.getGiftCardSettings,
+    set: mocks.setGiftCardSettings,
+  },
 }));
 
 import { settings } from './settings.router';
@@ -69,6 +78,45 @@ const instruments = [
 
 describe('settings router (#161)', () => {
   beforeEach(() => vi.clearAllMocks());
+
+  describe('gift card amounts (#309)', () => {
+    const amounts = { presetCents: [2500, 5000, 10000], minCents: 1000, maxCents: 50000 };
+
+    it('is admin only, both ways', () => {
+      expect(routes['getGiftCardSettings'].roles).toBe('admin');
+      expect(routes['updateGiftCardSettings'].roles).toBe('admin');
+    });
+
+    it('returns the stored (or default) amounts', async () => {
+      mocks.getGiftCardSettings.mockResolvedValue(amounts);
+      await expect(routes['getGiftCardSettings'].handler({}, {})).resolves.toEqual({
+        settings: amounts,
+      });
+    });
+
+    it('saves valid amounts with the editor uid', async () => {
+      const next = { presetCents: [2000, 7500], minCents: 500, maxCents: 100000 };
+      mocks.setGiftCardSettings.mockResolvedValue(next);
+      await expect(
+        routes['updateGiftCardSettings'].handler({ ...next, extra: 'dropped' }, { uid: 'uid-katie' })
+      ).resolves.toEqual({ settings: next });
+      expect(mocks.setGiftCardSettings).toHaveBeenCalledWith(next, 'uid-katie');
+    });
+
+    it.each([
+      ['a lowest amount under $5', { ...amounts, minCents: 400, presetCents: [2500] }],
+      ['a highest amount over $1,000', { ...amounts, maxCents: 200000 }],
+      ['five presets', { ...amounts, presetCents: [1000, 2000, 3000, 4000, 5000] }],
+      ['a preset outside the range', { ...amounts, presetCents: [60000] }],
+      ['the highest below the lowest', { ...amounts, minCents: 5000, maxCents: 2000 }],
+      ['cents', { ...amounts, presetCents: [2550] }],
+    ])('refuses %s and saves nothing', async (_label, input) => {
+      await expect(
+        routes['updateGiftCardSettings'].handler(input, { uid: 'u' })
+      ).rejects.toMatchObject({ code: 'invalid-argument' });
+      expect(mocks.setGiftCardSettings).not.toHaveBeenCalled();
+    });
+  });
 
   describe('getInstruments', () => {
     it('is open to teachers, who add and edit students too', () => {
