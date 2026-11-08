@@ -85,6 +85,11 @@ const PUBLIC_ALLOWLIST = new Set<string>([
   'cancelCraftClubSubscription',
   'requestCraftClubAccess',
   'checkCraftClubEligibility',
+  // The Webflow gift card buy page (#300). A customer pays with their own card
+  // and gets a Square gift card for that amount, so like createRegistration it
+  // cannot require a login. Gated by App Check (enforce) and the payment
+  // throttles; it only ever creates a card the caller paid for.
+  'giftCards/purchaseGiftCard',
   // Token-based (magic-link / session-token) flows — auth is the signed
   // token, not a Firebase session.
   'getAgreementForSigning',

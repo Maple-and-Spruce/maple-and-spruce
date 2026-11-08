@@ -416,6 +416,19 @@ Square SDK integration for payments, catalog management, and sync conflict resol
   month's totals, month boundary in Eastern time), `giftCards/getGiftCard` (one card and its
   full history), `giftCards/revealGiftCardCode` (the full code for a printed certificate;
   each call logs `{"event":"gift_card_code_revealed"}` with the caller's uid, never the code).
+  `getGiftCard` also returns `purchase` (the `giftCardPurchases` record) for a card bought
+  online.
+- `giftCards/purchaseGiftCard` (#300) — the one **public** route on the router, for the
+  Webflow Gift Card component. App Check `enforce`, `paymentThrottles('buyerEmail')`, Square
+  secrets + strings + `ADMIN_ALERT_EMAIL`. Validates (`giftCardPurchaseValidation`), creates
+  an order with one untaxed `GIFT_CARD` line (`referenceId: giftcard-…`), pays it with the
+  card nonce, creates a digital gift card and activates it against that line, records
+  `giftCardPurchases/{giftCardId}`, and queues the `gift-card` /
+  `gift-card-purchase-confirmation` emails. If the card cannot be created or activated after
+  payment, the payment is refunded (`gift_card_purchase_refunded`); if the refund fails too,
+  `gift_card_refund_failed` is logged and `gift-card-refund-needed` goes to
+  `ADMIN_ALERT_EMAIL`. Every Square idempotency key is derived from the browser's key. The
+  full code is only ever in the gift email. See `docs/guides/gift-cards.md`.
 
 ### Square webhook
 - `squareWebhook` — HTTP endpoint _(memory: 512MiB, concurrency: 10)_. For `catalog.version.updated` events, the handler just bumps the singleton `catalogSyncRequests/pending` doc and acks 200 within Square's 10-second delivery timeout; the actual catalog re-sync runs in `processCatalogSyncRequest`. For `payment.created` / `payment.updated` events with a `COMPLETED` payment, it enqueues a `posSaleRequests/{paymentId}` doc (stays lean — no Square SDK) and returns; `processPosSale` does the work. Inventory and invoice events run inline (fast).

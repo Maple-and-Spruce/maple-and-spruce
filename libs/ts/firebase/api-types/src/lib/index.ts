@@ -675,3 +675,8 @@ export type {
   RevealGiftCardCodeRequest,
   RevealGiftCardCodeResponse,
 } from './gift-card.types';
+export type {
+  PurchaseGiftCardRequest,
+  PurchaseGiftCardResponse,
+  GiftCardPurchaseDetails,
+} from './gift-card-purchase.types';

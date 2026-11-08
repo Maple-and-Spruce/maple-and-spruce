@@ -117,3 +117,85 @@ export const HistoryFails: Story = {
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Square is unavailable');
   },
 };
+
+/** A card bought on the website: who bought it, for whom, and the message. */
+export const BoughtOnlineAmount: Story = {
+  args: {
+    detailState: {
+      status: 'success',
+      data: {
+        card,
+        activities: mockGiftCardActivities,
+        purchase: {
+          giftCardId: card.id,
+          last4: card.last4,
+          kind: 'amount',
+          valueCents: 5000,
+          buyerName: 'Robin Ashfield',
+          buyerEmail: 'robin@example.com',
+          recipientName: 'Olive Thompson',
+          recipientEmail: 'olive@example.com',
+          message: 'Happy birthday!',
+          deliverTo: 'recipient',
+          squareOrderId: 'order-1',
+          squarePaymentId: 'pay-1',
+          createdAt: '2026-11-02T15:00:00.000Z',
+        },
+      },
+    },
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    const section = within(canvas.getByRole('region', { name: 'Bought online' }));
+    await expect(section.getByText(/Bought by Robin Ashfield \(robin@example\.com\)/)).toBeVisible();
+    await expect(section.getByText(/For Olive Thompson \(olive@example\.com\)/)).toBeVisible();
+    await expect(section.getByText('Emailed to them')).toBeVisible();
+    await expect(section.getByText(/Happy birthday!/)).toBeVisible();
+    await expect(section.queryByText(/Class certificate/)).toBeNull();
+  },
+};
+
+/** A class certificate names the class and its type. */
+export const BoughtOnlineClassCertificate: Story = {
+  args: {
+    detailState: {
+      status: 'success',
+      data: {
+        card,
+        activities: mockGiftCardActivities,
+        purchase: {
+          giftCardId: card.id,
+          last4: card.last4,
+          kind: 'class',
+          valueCents: 6500,
+          classId: 'class-1',
+          classCategoryId: 'cat-1',
+          className: 'Beginner Wheel',
+          classCategoryName: 'Pottery',
+          buyerName: 'Robin Ashfield',
+          buyerEmail: 'robin@example.com',
+          recipientName: 'Olive Thompson',
+          deliverTo: 'buyer',
+          squareOrderId: 'order-1',
+          squarePaymentId: 'pay-1',
+          createdAt: '2026-11-02T15:00:00.000Z',
+        },
+      },
+    },
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    const section = within(canvas.getByRole('region', { name: 'Bought online' }));
+    await expect(section.getByText('Class certificate: Beginner Wheel (Pottery)')).toBeVisible();
+    await expect(section.getByText('For Olive Thompson')).toBeVisible();
+    await expect(section.getByText('Emailed to the buyer to print')).toBeVisible();
+  },
+};
+
+/** A card sold at the register has no purchase record and no section. */
+export const NotBoughtOnline: Story = {
+  play: async () => {
+    const canvas = await openDialog();
+    await expect(canvas.queryByRole('region', { name: 'Bought online' })).toBeNull();
+  },
+};
