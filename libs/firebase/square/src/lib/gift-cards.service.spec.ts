@@ -337,13 +337,6 @@ describe('toGiftCardActivityEntry', () => {
 });
 
 describe('GiftCardsService.listCardHistory', () => {
-  function page<T>(items: T[]): AsyncIterable<T> {
-    return {
-      async *[Symbol.asyncIterator]() {
-        for (const item of items) yield item;
-      },
-    };
-  }
   const activity = (id: string) => ({
     id,
     type: 'ACTIVATE',
