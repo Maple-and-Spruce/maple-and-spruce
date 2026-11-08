@@ -229,6 +229,9 @@ importers:
       ical-generator:
         specifier: ^11.1.2
         version: 11.1.2(@touch4it/ical-timezones@1.9.0)(@types/node@24.19.2)(luxon@3.7.2)
+      jsbarcode:
+        specifier: ^3.12.3
+        version: 3.12.3
       material-react-table:
         specifier: 3.2.1
         version: 3.2.1(patch_hash=918f0034a7a2ef5f005e8a0c29009d613b408ba7668eb9b99052426acf92f9fd)(975bd45d570e0d4d21637944c05b4f55)
@@ -6546,6 +6549,9 @@ packages:
   js-yaml@4.3.2:
     resolution: {integrity: sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==}
     hasBin: true
+
+  jsbarcode@3.12.3:
+    resolution: {integrity: sha512-CuHU9hC6dPsHF5oVFMo8NW76uQVjH4L22CsP4hW+dNnGywJHC/B0ThA1CTDVLnxKLrrpYdicBLnd2xsgTfRnvg==}
 
   jscpd-darwin-arm64@5.4.2:
     resolution: {integrity: sha512-EGoPYQZqESW2kJfxKZrUYsYWhzq2Irk6sBQQWZ7VPAGj2wwk3n8HtDP2FnJOiHWZtSz55I8zQWldzIrD55B5Vw==}
@@ -16228,6 +16234,8 @@ snapshots:
   js-yaml@4.3.2:
     dependencies:
       argparse: 2.0.1
+
+  jsbarcode@3.12.3: {}
 
   jscpd-darwin-arm64@5.4.2:
     optional: true
