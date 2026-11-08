@@ -23,6 +23,7 @@ import type {
   Class,
 } from '@maple/ts/domain';
 import { formatPrivateHourStart } from '@maple/ts/domain';
+import { RegistrationNoteLine } from './RegistrationNoteLine';
 
 interface RegistrationListProps {
   registrationsState: RequestState<Registration[]>;
@@ -135,6 +136,7 @@ export function RegistrationList({
                 <Typography variant="caption" color="textSecondary">
                   {registration.customerEmail}
                 </Typography>
+                <RegistrationNoteLine notes={registration.notes} />
               </TableCell>
               <TableCell>
                 {classMap.get(registration.classId) || registration.classId}
@@ -173,6 +175,7 @@ export function RegistrationList({
               <TableCell align="right">
                 <IconButton
                   size="small"
+                  aria-label={`View ${registration.customerName}`}
                   onClick={() => onViewDetail(registration)}
                 >
                   <VisibilityIcon fontSize="small" />

@@ -11,3 +11,7 @@ export type {
   SquareBillingContact,
   SquareInitErrorInfo,
 } from './lib/SquareCardForm';
+export {
+  RegistrationNoteLine,
+  registrationNoteText,
+} from './lib/RegistrationNoteLine';

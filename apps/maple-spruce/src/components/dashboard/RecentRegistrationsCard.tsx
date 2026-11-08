@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import NextLink from 'next/link';
 import { Box, Link, Typography } from '@mui/material';
+import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
 import { colors, fonts, text } from '@maple/react/theme';
 import type { Class, Registration, RequestState } from '@maple/ts/domain';
 import {
@@ -79,12 +80,20 @@ export function RecentRegistrationsCard({
           <Stat value={formatMoney(view.weekBookedCents)} label="booked" />
         </Box>
         {view.rows.map((row) => (
-          <DashboardRow key={row.id} href="/registrations">
+          <DashboardRow key={row.id} href={row.href}>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
                 <Typography sx={{ ...ellipsis, fontSize: 15, color: text.primary }}>
                   {row.name}
                 </Typography>
+                {row.hasNote && (
+                  // titleAccess names the icon (MUI hides icons otherwise)
+                  // and gives it a hover title.
+                  <StickyNote2OutlinedIcon
+                    titleAccess="Left a note"
+                    sx={{ fontSize: 16, color: 'warning.main', flexShrink: 0 }}
+                  />
+                )}
                 {row.isNew && <DashboardChip label="New" tone="class" />}
               </Box>
               <Typography color="textSecondary" sx={{ ...ellipsis, fontSize: 13 }}>

@@ -33,7 +33,7 @@ function booking(
 const [first, second, , fourth] = mockClassPrivateHours.sessions.map((s) => s.dateTime);
 
 const bookings: Registration[] = [
-  booking('reg-1', first),
+  booking('reg-1', first, { notes: 'Two of us are left-handed' }),
   booking('reg-2', second, {
     customerName: 'Olive Thompson',
     customerEmail: 'olive@example.com',
@@ -71,6 +71,8 @@ export const WithBookings: Story = {
     await expect(canvas.getByText('Olive Thompson')).toBeInTheDocument();
     await expect(canvas.getByText('Checking out')).toBeInTheDocument();
     await expect(canvas.queryByText('Wren Calloway')).toBeNull();
+    // A customer note shows on the hour it was left for.
+    await expect(canvas.getByRole('note')).toHaveTextContent('Two of us are left-handed');
 
     await userEvent.click(canvas.getByRole('button', { name: /View booking for 10:00–11:00 AM/ }));
     await expect(args.onViewDetail).toHaveBeenCalledWith(

@@ -379,6 +379,10 @@ export interface RecentRegistrationRow {
   detail: string;
   amount: string;
   when: string;
+  /** The customer left a note: the row shows a marker and opens it. */
+  hasNote: boolean;
+  /** The registration on its class roster. */
+  href: string;
 }
 
 export interface RecentRegistrationsView {
@@ -431,6 +435,8 @@ export function buildRecentRegistrations(
         detail,
         amount: formatMoney(r.pricePaidCents ?? 0),
         when: relativeTimeAgo(created, now),
+        hasNote: Boolean(r.notes?.trim()),
+        href: `/classes/${r.classId}/roster?registration=${r.id}`,
       };
     }),
   };

@@ -126,7 +126,10 @@ function registration(
 export const fixtureRegistrations: Registration[] = [
   registration('reg-1', 'cls-wheel', 'Avery Holloway', at(14, 14, 5), 9500),
   registration('reg-2', 'cls-weave', 'Jun Castellano', at(14, 9, 30), 4000, { status: 'pending' }),
-  registration('reg-3', 'cls-wheel', 'Priya Wexford', at(13, 20), 19000, { quantity: 2 }),
+  registration('reg-3', 'cls-wheel', 'Priya Wexford', at(13, 20), 19000, {
+    quantity: 2,
+    notes: 'Bringing my daughter, she is 11. Is that old enough?',
+  }),
   registration('reg-4', 'cls-spoon', 'Dmitri Oakley', at(12, 11), 6500),
   registration('reg-5', 'cls-wheel', 'Sage Whitcombe', at(11, 16), 9500),
   registration('reg-6', 'cls-spoon', 'Lena Brightwater', at(9, 10), 6500),

@@ -29,6 +29,7 @@ import type {
   Registration,
   RequestState,
 } from '@maple/ts/domain';
+import { RegistrationNoteLine } from './RegistrationNoteLine';
 
 interface PrivateHourRosterProps {
   classItem: Pick<Class, 'sessions' | 'durationMinutes'>;
@@ -128,6 +129,7 @@ export function PrivateHourRoster({
                           <Typography variant="caption" color="textSecondary">
                             {reg.customerEmail}
                           </Typography>
+                          <RegistrationNoteLine notes={reg.notes} />
                         </>
                       ) : (
                         <Typography variant="body2" color="textSecondary">
