@@ -2,8 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Alert, Box, Paper, Skeleton, Stack, Typography } from '@mui/material';
-import GlobalStyles from '@mui/material/GlobalStyles';
+import {
+  Alert,
+  Box,
+  GlobalStyles,
+  Paper,
+  Skeleton,
+  Stack,
+  Typography,
+} from '@mui/material';
 import type { RequestState } from '@maple/ts/domain';
 import type { GetCertificateBatchResponse } from '@maple/ts/firebase/api-types';
 import { certificateHeadline, GIFT_CERTIFICATE_DESIGNS } from './certificate-designs';

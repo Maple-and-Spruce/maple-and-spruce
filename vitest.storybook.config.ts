@@ -41,6 +41,8 @@ export default defineConfig({
       '@mui/icons-material/ChevronRight',
       '@mui/icons-material/Today',
       'qrcode.react',
+      // Printed gift certificate barcodes (#314).
+      'jsbarcode',
       // The student page tables (#84) and pay-ahead card (legacy #864). Paid is the one
       // that tripped a mid-run re-optimize; the rest are listed so the next
       // story to reach one first does not trip it again.
