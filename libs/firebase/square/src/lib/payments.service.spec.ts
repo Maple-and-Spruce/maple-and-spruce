@@ -588,6 +588,31 @@ describe('PaymentsService', () => {
       expect(result.status).toBe('COMPLETED');
     });
 
+    it('reads a payment made with a Square gift card (no card details)', async () => {
+      mockClient.payments.get.mockResolvedValue({
+        payment: {
+          id: 'pay-gc',
+          status: 'COMPLETED',
+          sourceType: 'SQUARE_GIFT_CARD',
+          orderId: 'order-gc',
+          totalMoney: { amount: BigInt(4500) },
+          refundedMoney: { amount: BigInt(0) },
+          createdAt: '2026-11-07T10:00:00Z',
+        },
+      });
+
+      const result = await service.getPayment('pay-gc');
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          paymentId: 'pay-gc',
+          status: 'COMPLETED',
+          amountCents: 4500,
+          orderId: 'order-gc',
+        })
+      );
+    });
+
     it('throws when response contains errors', async () => {
       mockClient.payments.get.mockResolvedValue({
         errors: [{ detail: 'Payment not found', code: 'NOT_FOUND' }],

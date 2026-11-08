@@ -95,6 +95,12 @@ export interface GetOrderLineItem {
   catalogObjectId?: string;
   /** Line item name (e.g., class name) */
   name?: string;
+  /**
+   * Square's line item type: `ITEM`, `CUSTOM_AMOUNT` or `GIFT_CARD`. A
+   * `GIFT_CARD` line is the SALE of a gift card (Square holds the balance), so
+   * it is never a class, a lesson or a product sale.
+   */
+  itemType?: string;
   /** Quantity as a number (Square stores it as a string). */
   quantity: number;
   /** Base price per unit in cents, if present on the line item. */
@@ -274,6 +280,7 @@ export class OrdersService {
       lineItems: (order.lineItems ?? []).map((item) => ({
         catalogObjectId: item.catalogObjectId ?? undefined,
         name: item.name ?? undefined,
+        itemType: item.itemType ?? undefined,
         // Square stores quantity as a string; coerce to a number.
         quantity: Number(item.quantity ?? '1'),
         basePriceCents: item.basePriceMoney?.amount
