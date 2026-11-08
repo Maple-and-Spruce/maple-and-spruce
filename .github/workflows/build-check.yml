@@ -508,6 +508,15 @@ jobs:
       - name: Run unit tests with coverage
         run: pnpm exec vitest run --coverage
 
+      # The runner is UTC, which has no daylight saving, so date math that adds
+      # 24h to a local midnight always passes there and breaks on the studio's
+      # clock-change days (My Week labelled two days 11/1). Run the suite again
+      # in the studio's own timezone.
+      - name: Run unit tests in the studio's timezone
+        run: pnpm exec vitest run
+        env:
+          TZ: America/New_York
+
       - name: Upload unit coverage
         uses: actions/upload-artifact@v4
         with:

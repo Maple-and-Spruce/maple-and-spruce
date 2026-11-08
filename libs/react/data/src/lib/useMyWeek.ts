@@ -6,13 +6,11 @@ import {
   getMapleFunctions,
   routerCallableUrl,
 } from '@maple/ts/firebase/firebase-config';
-import type { RequestState } from '@maple/ts/domain';
+import { addLocalDays, type RequestState } from '@maple/ts/domain';
 import type {
   GetMyWeekRequest,
   GetMyWeekResponse,
 } from '@maple/ts/firebase/api-types';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Hook for the teacher "My Week" tab (legacy #685): the signed-in teacher's
@@ -30,7 +28,7 @@ export function useMyWeek(weekStart: Date) {
     setWeekState({ status: 'loading' });
     try {
       const from = new Date(startMs).toISOString();
-      const to = new Date(startMs + 7 * DAY_MS).toISOString();
+      const to = addLocalDays(new Date(startMs), 7).toISOString();
       const fn = httpsCallableFromURL<GetMyWeekRequest, GetMyWeekResponse>(
         getMapleFunctions(),
         routerCallableUrl('lessons', 'getMyWeek'),

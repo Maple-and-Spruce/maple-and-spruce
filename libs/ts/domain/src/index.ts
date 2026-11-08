@@ -19,6 +19,7 @@ export * from './lib/etsy-import';
 export * from './lib/instructor';
 export * from './lib/class';
 export * from './lib/schedule-format';
+export * from './lib/local-days';
 export * from './lib/class-category';
 export * from './lib/registration';
 export * from './lib/pos-sale-request';
