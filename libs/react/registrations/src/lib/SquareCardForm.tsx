@@ -28,6 +28,8 @@ interface SquareVerifyBuyerResult {
 
 interface SquarePayments {
   card: () => Promise<SquareCard>;
+  /** Square's gift card number field (#301). Same attach/tokenize shape as a card. */
+  giftCard?: () => Promise<SquareCard>;
   paymentRequest: (options: {
     countryCode: string;
     currencyCode: string;
@@ -119,6 +121,20 @@ declare global {
     /** WebKit-only; its presence signals Safari/iOS — the ITP-affected browsers. */
     ApplePaySession?: unknown;
   }
+}
+
+/**
+ * The Square gift card field, created from the same Web Payments SDK
+ * `payments` object as the card field (#301). Handed to the parent through
+ * `onGiftCardRef` so it can attach the field only when the family asks for it.
+ */
+export interface GiftCardFieldApi {
+  /** Create the gift card field and draw it inside `el` (replacing any earlier one). */
+  attach: (el: HTMLElement) => Promise<void>;
+  /** A fresh single-use token for the gift card number typed in the field. */
+  tokenize: () => Promise<string>;
+  /** Remove the field. Safe to call when it was never attached. */
+  destroy: () => Promise<void>;
 }
 
 /**
@@ -245,6 +261,20 @@ interface SquareCardFormProps {
   verifyBuyerForStore?: boolean;
   /** Billing contact used for STORE-intent SCA verification (recommended). */
   billingContact?: SquareBillingContact;
+  /**
+   * Offer a gift card field (#301). When true, `onGiftCardRef` receives a
+   * handle once the SDK is up; nothing about the gift card is created until the
+   * parent calls `attach`. Read once, at initialization.
+   */
+  enableGiftCard?: boolean;
+  /** Receives the gift card field handle (only when `enableGiftCard`). */
+  onGiftCardRef?: (api: GiftCardFieldApi) => void;
+  /**
+   * Hide the card field and the Google Pay button, e.g. when a gift card
+   * covers the whole order and no card is needed. The SDK stays initialized,
+   * so un-hiding brings the same card field back.
+   */
+  cardHidden?: boolean;
   /** Called with the token once the buyer approves the Google Pay sheet */
   onDigitalWalletToken?: (token: string) => void;
   /**
@@ -348,6 +378,9 @@ export function SquareCardForm({
   beforeDigitalWallet,
   afterCardContent,
   maxWidth,
+  enableGiftCard = false,
+  onGiftCardRef,
+  cardHidden = false,
 }: SquareCardFormProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -367,6 +400,14 @@ export function SquareCardForm({
   beforeDigitalWalletRef.current = beforeDigitalWallet;
   const onInitErrorRef = useRef(onInitError);
   onInitErrorRef.current = onInitError;
+  // Read at init only, so turning them on later does not re-init the SDK.
+  const enableGiftCardRef = useRef(enableGiftCard);
+  enableGiftCardRef.current = enableGiftCard;
+  const onGiftCardRefRef = useRef(onGiftCardRef);
+  onGiftCardRefRef.current = onGiftCardRef;
+  const giftCardRef = useRef<SquareCard | null>(null);
+  // Whichever element holds the Google Pay button (React box or Shadow-DOM div).
+  const googlePayElRef = useRef<HTMLElement | null>(null);
   // Kept in refs so changing them doesn't re-init the SDK, and so the tokenize
   // closure always reads the latest values (billing contact fills in as the
   // family types).
@@ -404,6 +445,10 @@ export function SquareCardForm({
       }
       if (googlePayRef.current) {
         googlePayRef.current.destroy().catch(console.error);
+      }
+      if (giftCardRef.current) {
+        giftCardRef.current.destroy().catch(console.error);
+        giftCardRef.current = null;
       }
       if (wrapperRef.current) {
         wrapperRef.current.remove();
@@ -583,6 +628,7 @@ export function SquareCardForm({
         applicationId,
         locationId
       );
+      googlePayElRef.current = googlePayTarget;
 
       // Digital wallets — only initialize when enabled
       if (showDigitalWallets) {
@@ -669,6 +715,43 @@ export function SquareCardForm({
         return { nonce, verificationToken };
       });
 
+      // Gift card field (#301): hand the parent a handle; nothing is created
+      // until it asks, so a family who never opens it costs nothing.
+      if (enableGiftCardRef.current && payments.giftCard) {
+        const createGiftCard = payments.giftCard.bind(payments);
+        onGiftCardRefRef.current?.({
+          attach: async (el: HTMLElement) => {
+            if (giftCardRef.current) {
+              await giftCardRef.current.destroy().catch(console.error);
+              giftCardRef.current = null;
+            }
+            const giftCard = await createGiftCard();
+            await giftCard.attach(el);
+            giftCardRef.current = giftCard;
+          },
+          tokenize: async () => {
+            if (!giftCardRef.current) {
+              throw new Error('Please enter your gift card number.');
+            }
+            const result = await giftCardRef.current.tokenize();
+            if (result.status !== 'OK' || !result.token) {
+              throw new Error(
+                result.errors?.map((e) => e.message).join(', ') ||
+                  'Please check your gift card number and try again.'
+              );
+            }
+            return result.token;
+          },
+          destroy: async () => {
+            if (giftCardRef.current) {
+              const giftCard = giftCardRef.current;
+              giftCardRef.current = null;
+              await giftCard.destroy().catch(console.error);
+            }
+          },
+        });
+      }
+
       onReady?.();
     } catch (err) {
       const sqErr = err as SquarePaymentsError;
@@ -726,7 +809,22 @@ export function SquareCardForm({
   }, [sdkReady, totalCents, initializePayments]);
 
   const showDivider =
-    showDigitalWallets && (hasGooglePay || hasOtherWallet) && !isLoading;
+    showDigitalWallets &&
+    (hasGooglePay || hasOtherWallet) &&
+    !isLoading &&
+    !cardHidden;
+
+  // Hide or show the card field and Google Pay button (a gift card may cover
+  // the whole order). Inline styles, because in Shadow-DOM mode these
+  // elements live outside React.
+  useEffect(() => {
+    if (cardContainerRef.current && !initSuppressed) {
+      cardContainerRef.current.style.display = cardHidden ? 'none' : 'block';
+    }
+    if (googlePayElRef.current && hasGooglePay) {
+      googlePayElRef.current.style.display = cardHidden ? 'none' : 'block';
+    }
+  }, [cardHidden, hasGooglePay, initSuppressed]);
 
   // Shadow DOM mode renders the divider outside React; keep it in step.
   useEffect(() => {
@@ -795,7 +893,7 @@ export function SquareCardForm({
         ref={placeholderRef}
         id="square-card-container"
         sx={{
-          display: initSuppressed ? 'none' : 'block',
+          display: initSuppressed || cardHidden ? 'none' : 'block',
           // No border of our own: Square's card field draws its own box.
           minHeight: portalContainer ? 0 : 56,
         }}

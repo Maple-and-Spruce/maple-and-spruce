@@ -226,6 +226,50 @@ describe('RegistrationRepository', () => {
       expect(mockDocFn).toHaveBeenCalledWith('reg-1');
     });
 
+    it('reads back what a gift card paid (#301)', async () => {
+      const mockDoc = mockDocSnapshot(
+        'reg-1',
+        firestoreRegData({
+          squareGiftCardPaymentId: 'gc-pay',
+          giftCardId: 'gc-1',
+          giftCardLast4: '4821',
+          giftCardPaidCents: 2000,
+          cardPaidCents: 3300,
+          classCertificateCoverCents: 500,
+        })
+      );
+      const mockGet = vi.fn().mockResolvedValue(mockDoc);
+      vi.mocked(db.collection).mockImplementation(
+        vi.fn().mockReturnValue({ doc: vi.fn().mockReturnValue({ get: mockGet }) })
+      );
+
+      const result = await RegistrationRepository.findById('reg-1');
+
+      expect(result).toMatchObject({
+        squareGiftCardPaymentId: 'gc-pay',
+        giftCardId: 'gc-1',
+        giftCardLast4: '4821',
+        giftCardPaidCents: 2000,
+        cardPaidCents: 3300,
+        classCertificateCoverCents: 500,
+      });
+    });
+
+    it('reads a card-only registration with no gift card fields', async () => {
+      const mockGet = vi.fn().mockResolvedValue(
+        mockDocSnapshot('reg-1', firestoreRegData({ classCertificateCoverCents: null }))
+      );
+      vi.mocked(db.collection).mockImplementation(
+        vi.fn().mockReturnValue({ doc: vi.fn().mockReturnValue({ get: mockGet }) })
+      );
+
+      const result = await RegistrationRepository.findById('reg-1');
+
+      expect(result!.squareGiftCardPaymentId).toBeUndefined();
+      expect(result!.giftCardPaidCents).toBeUndefined();
+      expect(result!.classCertificateCoverCents).toBeUndefined();
+    });
+
     it('returns undefined when the document does not exist', async () => {
       const mockDoc = mockDocSnapshot('reg-missing', null);
       const mockGet = vi.fn().mockResolvedValue(mockDoc);

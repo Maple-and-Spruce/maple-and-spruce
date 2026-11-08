@@ -41,5 +41,11 @@ export default declareComponent(RegistrationWidget, {
       options: ['show', 'hide'],
       defaultValue: 'hide',
     }),
+    // #301: "Have a gift card?" at checkout. Off until turned on per page.
+    giftCardsEnabled: props.Variant({
+      name: 'Gift Cards',
+      options: ['show', 'hide'],
+      defaultValue: 'hide',
+    }),
   },
 });

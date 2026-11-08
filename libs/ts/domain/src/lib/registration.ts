@@ -86,6 +86,31 @@ export interface Registration {
   squareOrderId?: string;
   /** Square receipt URL (for customer payment receipt) */
   squareReceiptUrl?: string;
+  /**
+   * Gift card payments (#301). Set only when a gift card paid for some or all
+   * of the registration; a registration paid by card alone has none of these.
+   *
+   * `squarePaymentId` stays the payment to refund to the card (or, when the
+   * gift card paid everything, the gift card payment itself), and
+   * `squareGiftCardPaymentId` is the gift card's share.
+   */
+  squareGiftCardPaymentId?: string;
+  /** Square gift card id that paid. */
+  giftCardId?: string;
+  /** Last 4 digits of that gift card's number. Never the full number. */
+  giftCardLast4?: string;
+  /** What came off the gift card, in cents (tax included). */
+  giftCardPaidCents?: number;
+  /** What the card paid alongside the gift card, in cents (tax included). */
+  cardPaidCents?: number;
+  /**
+   * What the studio covered for a class certificate (pre-tax, in cents). It
+   * is a discount on the Square order named "Class certificate". Nobody paid
+   * it, so it is never refunded. `subtotalCents` is NOT reduced by it, so
+   * instructor payouts are worked out as if the family paid the full price
+   * (the studio absorbs it) until #296 decides otherwise.
+   */
+  classCertificateCoverCents?: number;
   /** Discount/coupon code applied */
   discountCode?: string;
   /** Discount amount in cents */

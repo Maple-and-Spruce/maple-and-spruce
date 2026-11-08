@@ -675,6 +675,11 @@ export type {
   RevealGiftCardCodeRequest,
   RevealGiftCardCodeResponse,
 } from './gift-card.types';
+// Paying for classes with a gift card (#301)
+export type {
+  PreviewGiftCardForClassRequest,
+  PreviewGiftCardForClassResponse,
+} from './gift-card-redemption.types';
 export type {
   PurchaseGiftCardRequest,
   PurchaseGiftCardResponse,

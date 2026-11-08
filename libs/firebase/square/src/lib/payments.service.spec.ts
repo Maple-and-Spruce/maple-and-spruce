@@ -110,6 +110,8 @@ function createMockClient() {
     payments: {
       create: vi.fn(),
       get: vi.fn(),
+      cancel: vi.fn(),
+      cancelByIdempotencyKey: vi.fn(),
     },
     refunds: {
       refundPayment: vi.fn(),
@@ -135,6 +137,84 @@ describe('PaymentsService', () => {
     service = new PaymentsService(mockClient as any);
   });
 
+  describe('createPayment for a gift card (#301)', () => {
+    it('authorizes only, accepts a partial amount and reports what was approved', async () => {
+      mockClient.payments.create.mockResolvedValue({
+        payment: {
+          id: 'gc-pay',
+          status: 'APPROVED',
+          amountMoney: { amount: BigInt(2000), currency: 'USD' },
+          totalMoney: { amount: BigInt(2000), currency: 'USD' },
+        },
+      });
+
+      const result = await service.createPayment({
+        ...basePaymentInput,
+        sourceId: 'gftok:token',
+        autocomplete: false,
+        acceptPartialAuthorization: true,
+        orderId: 'order-1',
+      });
+
+      expect(result.amountCents).toBe(2000);
+      expect(result.status).toBe('APPROVED');
+      expect(mockClient.payments.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceId: 'gftok:token',
+          autocomplete: false,
+          acceptPartialAuthorization: true,
+          orderId: 'order-1',
+        })
+      );
+    });
+
+    it('leaves partial authorization off the request unless asked', async () => {
+      mockClient.payments.create.mockResolvedValue({
+        payment: { id: 'p', status: 'APPROVED', totalMoney: { amount: BigInt(1) } },
+      });
+      await service.createPayment({ ...basePaymentInput, autocomplete: false });
+      const request = mockClient.payments.create.mock.calls[0][0];
+      expect(request.autocomplete).toBe(false);
+      expect('acceptPartialAuthorization' in request).toBe(false);
+    });
+  });
+
+  describe('cancelPayment', () => {
+    it('voids the payment', async () => {
+      mockClient.payments.cancel.mockResolvedValue({ payment: { id: 'p-1' } });
+      await service.cancelPayment('p-1');
+      expect(mockClient.payments.cancel).toHaveBeenCalledWith({ paymentId: 'p-1' });
+    });
+
+    it('throws when Square reports errors', async () => {
+      mockClient.payments.cancel.mockResolvedValue({
+        errors: [{ code: 'BAD_REQUEST', detail: 'already completed' }],
+      });
+      await expect(service.cancelPayment('p-1')).rejects.toThrow(
+        'already completed'
+      );
+    });
+  });
+
+  describe('cancelPaymentByIdempotencyKey', () => {
+    it('voids by the key that created the payment', async () => {
+      mockClient.payments.cancelByIdempotencyKey.mockResolvedValue({});
+      await service.cancelPaymentByIdempotencyKey('reg-gc-1');
+      expect(mockClient.payments.cancelByIdempotencyKey).toHaveBeenCalledWith({
+        idempotencyKey: 'reg-gc-1',
+      });
+    });
+
+    it('throws when Square reports errors', async () => {
+      mockClient.payments.cancelByIdempotencyKey.mockResolvedValue({
+        errors: [{ code: 'NOT_FOUND' }],
+      });
+      await expect(
+        service.cancelPaymentByIdempotencyKey('k')
+      ).rejects.toThrow('NOT_FOUND');
+    });
+  });
+
   describe('createPayment', () => {
     it('creates a payment and returns the result', async () => {
       mockClient.payments.create.mockResolvedValue({
@@ -153,6 +233,7 @@ describe('PaymentsService', () => {
         status: 'COMPLETED',
         receiptUrl: 'https://squareup.com/receipt/123',
         totalCents: 4500,
+        amountCents: 4500,
       });
 
       expect(mockClient.payments.create).toHaveBeenCalledWith({

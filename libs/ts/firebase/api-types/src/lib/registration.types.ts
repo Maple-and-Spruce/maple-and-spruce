@@ -143,8 +143,17 @@ export interface CreateRegistrationRequest {
   groupSize?: number;
   discountCode?: string;
   notes?: string;
-  /** Nonce from Square Web Payments SDK (card tokenization) */
+  /**
+   * Nonce from Square Web Payments SDK (card tokenization). Empty when a gift
+   * card (`giftCardNonce`) covers the whole order and no card is needed.
+   */
   paymentNonce: string;
+  /**
+   * Token from the Web Payments SDK gift card field (#301). When set, the
+   * gift card pays first and the card pays whatever is left. The server reads
+   * the card's balance from Square; no amount is taken from the browser.
+   */
+  giftCardNonce?: string;
   /** Signed agreement data for required-at-checkout agreements */
   agreements?: InlineAgreementSigningData[];
   /**
