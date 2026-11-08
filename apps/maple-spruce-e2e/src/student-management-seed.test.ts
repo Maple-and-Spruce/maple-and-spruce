@@ -83,16 +83,19 @@ describe('student management seed: the Hope student can always book four', () =>
     }
   );
 
-  // Every quarter hour of a week, across both clock changes.
+  // Every half hour of a week, across both clock changes. Half-hourly is
+  // enough: the old clash window was an hour wide. The timeout is headroom
+  // for CI's coverage run, where the 336 seeds take several seconds.
   it.each(['2026-10-28T00:00:00Z', '2027-03-10T00:00:00Z'])(
-    'every 15 minutes of the week from %s',
+    'every 30 minutes of the week from %s',
     async (iso) => {
       const start = new Date(iso).getTime();
-      for (let t = start; t < start + 7 * 24 * 60 * MINUTE; t += 15 * MINUTE) {
+      for (let t = start; t < start + 7 * 24 * 60 * MINUTE; t += 30 * MINUTE) {
         const found = await findClashes(new Date(t));
         expect(found, new Date(t).toISOString()).toEqual([]);
       }
-    }
+    },
+    30_000
   );
 });
 
