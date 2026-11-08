@@ -244,6 +244,20 @@ describe('buildRecentRegistrations', () => {
     expect(view.rows[3].when).toBe('Mon');
   });
 
+  it('marks rows with a customer note and links each to its roster', () => {
+    expect(view.rows.map((r) => r.hasNote)).toEqual([false, false, true, false, false]);
+    expect(view.rows[2].href).toBe('/classes/cls-wheel/roster?registration=reg-3');
+  });
+
+  it('does not mark a note that is only whitespace', () => {
+    const [blank] = buildRecentRegistrations(
+      [{ ...fixtureRegistrations[0], notes: '  ' }],
+      fixtureClasses,
+      NOW,
+    ).rows;
+    expect(blank.hasNote).toBe(false);
+  });
+
   it('copes with a registration for an unknown class', () => {
     const v = buildRecentRegistrations(fixtureRegistrations.slice(0, 1), [], NOW);
     expect(v.rows[0].detail).toBe('Unknown class');

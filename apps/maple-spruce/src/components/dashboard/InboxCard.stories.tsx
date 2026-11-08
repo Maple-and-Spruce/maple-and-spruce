@@ -282,3 +282,48 @@ export const ClassUnderMinimum: Story = {
     ).toHaveAttribute('href', '/classes/cls-print/roster');
   },
 };
+
+export const CustomerNote: Story = {
+  args: {
+    inboxState: {
+      status: 'success',
+      data: [
+        {
+          key: 'registration-note:reg-wren',
+          kind: 'registration-note',
+          title: 'Wheel Pottery',
+          detail: '“Left-handed, could I have a wheel on the end?” · Wren Abernathy',
+          href: '/classes/cls-pottery/roster?registration=reg-wren',
+          actionLabel: 'Read',
+          occurredAt: new Date(FIXTURE_NOW.getTime() - 3 * 3_600_000).toISOString(),
+          urgent: false,
+        },
+        {
+          key: 'registration-note:mt-mtr-fern',
+          kind: 'registration-note',
+          title: 'Music Together · Fall · Tuesdays 10am',
+          detail: '“Peanut allergy” · Fern Calder',
+          href: '/music-together',
+          actionLabel: 'Read',
+          occurredAt: new Date(FIXTURE_NOW.getTime() - 26 * 3_600_000).toISOString(),
+          urgent: false,
+        },
+      ],
+    },
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const [pottery, mt] = canvas.getAllByRole('listitem');
+    await expect(pottery).toHaveTextContent(/Note/);
+    await expect(pottery).toHaveTextContent('Left-handed, could I have a wheel on the end?');
+    await expect(within(pottery).getByRole('link', { name: /read/i })).toHaveAttribute(
+      'href',
+      '/classes/cls-pottery/roster?registration=reg-wren'
+    );
+    await expect(mt).toHaveTextContent('Peanut allergy');
+    // Mark done clears it for everyone.
+    await userEvent.click(within(pottery).getByRole('button', { name: /mark done/i }));
+    await expect(args.onDismiss).toHaveBeenCalledWith('registration-note:reg-wren');
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(1);
+  },
+};

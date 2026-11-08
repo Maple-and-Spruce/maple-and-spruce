@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   findInstructors: vi.fn(),
   findUpcomingClasses: vi.fn(),
   countSeats: vi.fn(),
+  findCreatedSince: vi.fn(),
+  findMtCreatedSince: vi.fn(),
+  findSection: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/database', () => ({
@@ -35,7 +38,10 @@ vi.mock('@maple/firebase/database', () => ({
     findWithRefundReviewSince: mocks.findWithRefundReviewSince,
     findWithCancellationRequestSince: mocks.findWithCancellationRequestSince,
     countByClassId: mocks.countSeats,
+    findCreatedSince: mocks.findCreatedSince,
   },
+  MusicTogetherRegistrationRepository: { findCreatedSince: mocks.findMtCreatedSince },
+  MusicTogetherSectionRepository: { findById: mocks.findSection },
 }));
 
 vi.mock('@maple/firebase/maple-functions/get-needs-attention', () => ({
@@ -133,6 +139,9 @@ beforeEach(() => {
   mocks.findWithCancellationRequestSince.mockResolvedValue([]);
   mocks.findInstructors.mockResolvedValue([]);
   mocks.findUpcomingClasses.mockResolvedValue([]);
+  mocks.findCreatedSince.mockResolvedValue([]);
+  mocks.findMtCreatedSince.mockResolvedValue([]);
+  mocks.findSection.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -354,6 +363,59 @@ describe('getInbox', () => {
       title: 'Wheel Pottery',
       href: '/classes/cls-pottery/roster',
     });
+  });
+
+  it('lists customer notes from the last 30 days of registrations', async () => {
+    mocks.findAgreements.mockResolvedValue([]);
+    mocks.findCreatedSince.mockResolvedValue([
+      {
+        id: 'reg-note',
+        classId: 'cls-pottery',
+        customerName: 'Test Student',
+        status: 'confirmed',
+        notes: 'Left-handed, please save a left-side wheel',
+        createdAt: new Date(NOW.getTime() - HOUR),
+      },
+      // No note: its class is not read.
+      {
+        id: 'reg-plain',
+        classId: 'cls-other',
+        customerName: 'Test Student',
+        status: 'confirmed',
+        createdAt: new Date(NOW.getTime() - HOUR),
+      },
+    ]);
+    mocks.findMtCreatedSince.mockResolvedValue([
+      {
+        id: 'mtr-1',
+        sectionId: 'sec-tue',
+        adultFirstName: 'Test',
+        adultLastName: 'Parent',
+        status: 'confirmed',
+        accommodations: 'Peanut allergy',
+        createdAt: new Date(NOW.getTime() - 2 * HOUR),
+      },
+      { id: 'mtr-2', sectionId: 'sec-wed', status: 'confirmed', createdAt: NOW },
+    ]);
+    mocks.findClass.mockImplementation(async (id: string) =>
+      id === 'cls-pottery' ? { id, name: 'Wheel Pottery', sessions: [] } : undefined
+    );
+    mocks.findSection.mockImplementation(async (id: string) =>
+      id === 'sec-tue' ? { id, name: 'Fall · Tuesdays 10am' } : undefined
+    );
+
+    const { items } = await getInbox();
+
+    const since = new Date(NOW.getTime() - 30 * 86_400_000);
+    expect(mocks.findCreatedSince).toHaveBeenCalledWith(since);
+    expect(mocks.findMtCreatedSince).toHaveBeenCalledWith(since);
+    expect(mocks.findClass.mock.calls.map(([id]) => id)).toEqual(['cls-pottery']);
+    expect(mocks.findSection.mock.calls.map(([id]) => id)).toEqual(['sec-tue']);
+    const notes = items.filter((i) => i.kind === 'registration-note');
+    expect(notes.map((i) => [i.key, i.title])).toEqual([
+      ['registration-note:mt-mtr-1', 'Music Together · Fall · Tuesdays 10am'],
+      ['registration-note:reg-note', 'Wheel Pottery'],
+    ]);
   });
 
   it('lists open cancellation requests with the deadline they asked under', async () => {

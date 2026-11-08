@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   Box,
   Typography,
@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
 import type {
   Registration,
   RegistrationStatus,
@@ -38,6 +39,7 @@ import {
   PrivateHourRoster,
   RegistrationList,
   RegistrationDetailDialog,
+  registrationNoteText,
 } from '@maple/react/registrations';
 import {
   useRegistrations,
@@ -45,6 +47,12 @@ import {
   useClassWaitlist,
 } from '../../../../../hooks';
 import type { UseRegistrationsFilters } from '@maple/react/data';
+
+/**
+ * `?registration=<id>` opens that registration, so an Inbox note row lands on
+ * the note it is about.
+ */
+const REGISTRATION_PARAM = 'registration';
 
 function formatDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
@@ -72,6 +80,9 @@ function formatPrice(cents: number): string {
 export default function ClassRosterPage() {
   const params = useParams();
   const classId = params.classId as string;
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const linkedRegistrationId = searchParams?.get(REGISTRATION_PARAM) ?? null;
 
   const [statusFilter, setStatusFilter] = useState<RegistrationStatus | ''>('');
   const [copySuccess, setCopySuccess] = useState(false);
@@ -109,6 +120,17 @@ export default function ClassRosterPage() {
     [registrationsState]
   );
 
+  // Notes on registrations still holding a seat: the ones to read before class.
+  const notedCount = useMemo(
+    () =>
+      registrations.filter(
+        (r) =>
+          (r.status === 'confirmed' || r.status === 'pending') &&
+          registrationNoteText(r.notes)
+      ).length,
+    [registrations]
+  );
+
   const confirmedRegistrations = useMemo(
     () => registrations.filter((r) => r.status === 'confirmed' || r.status === 'pending'),
     [registrations]
@@ -123,16 +145,27 @@ export default function ClassRosterPage() {
   const privateHours = !!currentClass && isPrivateHoursClass(currentClass);
 
   // Detail dialog
-  const [selectedRegistration, setSelectedRegistration] =
+  const [pickedRegistration, setPickedRegistration] =
     useState<Registration | null>(null);
+  const linkedRegistration = useMemo(
+    () =>
+      linkedRegistrationId
+        ? (registrations.find((r) => r.id === linkedRegistrationId) ?? null)
+        : null,
+    [registrations, linkedRegistrationId]
+  );
+  const selectedRegistration = pickedRegistration ?? linkedRegistration;
 
   const handleViewDetail = useCallback((registration: Registration) => {
-    setSelectedRegistration(registration);
+    setPickedRegistration(registration);
   }, []);
 
   const handleCloseDetail = useCallback(() => {
-    setSelectedRegistration(null);
-  }, []);
+    setPickedRegistration(null);
+    if (linkedRegistrationId) {
+      router.replace(`/classes/${classId}/roster`, { scroll: false });
+    }
+  }, [linkedRegistrationId, router, classId]);
 
   const handleCancel = useCallback(
     async (id: string, refund: boolean, refundedInSquare?: boolean) => {
@@ -328,6 +361,15 @@ export default function ClassRosterPage() {
             <Chip
               label={`${registrations.length} registration${registrations.length === 1 ? '' : 's'}`}
               size="small"
+            />
+          )}
+          {registrationsState.status === 'success' && notedCount > 0 && (
+            <Chip
+              icon={<StickyNote2OutlinedIcon />}
+              label={`${notedCount} with ${notedCount === 1 ? 'a note' : 'notes'}`}
+              size="small"
+              color="warning"
+              variant="outlined"
             />
           )}
         </Box>

@@ -25,6 +25,10 @@
  *  - a published class below its minimum enrollment, only while its first
  *    session is within `INBOX_UNDER_MINIMUM_WINDOW_DAYS`; it leaves once
  *    enough seats are confirmed or the class stops being published
+ *  - a note a customer left on a class registration, or accommodations a
+ *    family gave on a Music Together one, made within
+ *    `INBOX_NOTE_LOOKBACK_DAYS`; it leaves when someone marks it done or the
+ *    registration is cancelled
  *
  * "Mark done" hides an item for everyone. It is keyed on the item's `key`,
  * which starts with the kind and names the record **and** the state that made
@@ -39,6 +43,7 @@ import type { CraftClubMember } from './craft-club-member';
 import { isLessonInquiryStale } from './lesson-inquiry';
 import type { LessonInquiry } from './lesson-inquiry';
 import type { LessonScheduledCharge } from './lesson-scheduled-charge';
+import type { MusicTogetherRegistration } from './music-together-registration';
 import { DEFAULT_LESSON_TIME_ZONE } from './lesson-block';
 import type { NeedsAttentionGroup, NeedsAttentionKind } from './needs-attention';
 import { hasOpenPartialRefund, hasOpenRefundReview } from './registration';
@@ -67,6 +72,7 @@ export type InboxItemKind =
   | 'cancellation-request'
   | 'instructor-not-ready'
   | 'class-under-minimum'
+  | 'registration-note'
   | NeedsAttentionKind;
 
 /**
@@ -88,6 +94,7 @@ export const INBOX_KIND_LABELS: Record<InboxItemKind, string> = {
   'cancellation-request': 'Cancel request',
   'instructor-not-ready': 'Not cleared',
   'class-under-minimum': 'Under minimum',
+  'registration-note': 'Note',
   'lesson-unbilled': 'Not billed',
   'invoice-overdue': 'Overdue',
   'invoice-sync-failed': 'Not sent',
@@ -141,6 +148,14 @@ export const INBOX_UNDER_MINIMUM_URGENT_DAYS = 3;
 export const INBOX_LESSON_LOOKBACK_DAYS = 14;
 /** A partial refund older than this is not chased here. */
 export const INBOX_REFUND_LOOKBACK_DAYS = 90;
+/**
+ * A customer note on a registration made longer ago than this is not listed.
+ * Long enough to cover a week away from the portal; a class signed up for
+ * months out still has its note on the roster.
+ */
+export const INBOX_NOTE_LOOKBACK_DAYS = 30;
+/** Characters of a note shown on its row; the full text is on the roster. */
+export const INBOX_NOTE_EXCERPT_LENGTH = 90;
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -260,6 +275,36 @@ export interface InboxSources {
    */
   minimumClasses: ReadonlyArray<InboxMinimumClass>;
   confirmedSeats: ReadonlyMap<string, number>;
+  /**
+   * Class registrations made since `INBOX_NOTE_LOOKBACK_DAYS` ago; only
+   * those with a note and a seat still held are used. Their class names come
+   * from `classes`.
+   */
+  notedRegistrations: ReadonlyArray<
+    Pick<
+      Registration,
+      'id' | 'classId' | 'customerName' | 'status' | 'notes' | 'createdAt'
+    >
+  >;
+  /**
+   * Music Together registrations made since the same cutoff; only those with
+   * accommodations and not cancelled are used. (Their `notes` field is
+   * written by the system, not the family, so it is not listed.)
+   */
+  notedMusicTogetherRegistrations: ReadonlyArray<
+    Pick<
+      MusicTogetherRegistration,
+      | 'id'
+      | 'sectionId'
+      | 'adultFirstName'
+      | 'adultLastName'
+      | 'status'
+      | 'accommodations'
+      | 'createdAt'
+    >
+  >;
+  /** Music Together section names, by id. */
+  sectionNames: ReadonlyMap<string, string>;
   /** Shop timezone for day words and clock times. */
   timeZone?: string;
 }
@@ -683,6 +728,89 @@ function refundReviewItems(sources: InboxSources): InboxItem[] {
   return items;
 }
 
+/** A note on one line, clipped: the full text is on the roster. */
+export function noteExcerpt(note: string): string {
+  const line = note.replace(/\s+/g, ' ').trim();
+  if (line.length <= INBOX_NOTE_EXCERPT_LENGTH) return line;
+  return `${line.slice(0, INBOX_NOTE_EXCERPT_LENGTH - 1).trimEnd()}…`;
+}
+
+/** Statuses whose registration no longer needs anyone to read its note. */
+const NOTE_CLOSED_STATUSES: ReadonlySet<string> = new Set(['cancelled', 'refunded']);
+
+/**
+ * The note worth listing, if any: not blank, on a registration that is paid
+ * for (`pending` is still checking out) and not cancelled, and recent.
+ */
+function listableNote(
+  note: string | undefined | null,
+  status: string,
+  createdAt: Date,
+  now: Date
+): string | undefined {
+  const text = note?.trim();
+  if (!text || status === 'pending' || NOTE_CLOSED_STATUSES.has(status)) {
+    return undefined;
+  }
+  if (ms(createdAt) < ms(now) - INBOX_NOTE_LOOKBACK_DAYS * DAY_MS) return undefined;
+  return text;
+}
+
+function registrationNoteItems(sources: InboxSources): InboxItem[] {
+  const classNames = new Map(sources.classes.map((c) => [c.id, c.name]));
+  const items: InboxItem[] = [];
+
+  for (const registration of sources.notedRegistrations) {
+    const note = listableNote(
+      registration.notes,
+      registration.status,
+      registration.createdAt,
+      sources.now
+    );
+    if (!note) continue;
+    const who = registration.customerName?.trim();
+    items.push({
+      // Per registration, not per wording: a staff edit to the note does not
+      // bring it back once it has been read.
+      key: `registration-note:${registration.id}`,
+      kind: 'registration-note',
+      title: classNames.get(registration.classId) ?? 'Class registration',
+      // The note first: on a narrow card the end of the line is clipped.
+      detail: [`“${noteExcerpt(note)}”`, who].filter(Boolean).join(' · '),
+      href: `/classes/${registration.classId}/roster?registration=${registration.id}`,
+      actionLabel: 'Read',
+      occurredAt: registration.createdAt.toISOString(),
+      urgent: false,
+    });
+  }
+
+  for (const registration of sources.notedMusicTogetherRegistrations) {
+    const note = listableNote(
+      registration.accommodations,
+      registration.status,
+      registration.createdAt,
+      sources.now
+    );
+    if (!note) continue;
+    const who = [registration.adultFirstName, registration.adultLastName]
+      .map((part) => part?.trim())
+      .filter(Boolean)
+      .join(' ');
+    const section = sources.sectionNames.get(registration.sectionId);
+    items.push({
+      key: `registration-note:mt-${registration.id}`,
+      kind: 'registration-note',
+      title: section ? `Music Together · ${section}` : 'Music Together registration',
+      detail: [`“${noteExcerpt(note)}”`, who || undefined].filter(Boolean).join(' · '),
+      href: '/music-together',
+      actionLabel: 'Read',
+      occurredAt: registration.createdAt.toISOString(),
+      urgent: false,
+    });
+  }
+  return items;
+}
+
 function cancellationRequestItems(
   sources: InboxSources,
   tz: string
@@ -759,6 +887,7 @@ export function buildInboxItems(sources: InboxSources): InboxItem[] {
     ...syncConflictItems(sources),
     ...partialRefundItems(sources),
     ...refundReviewItems(sources),
+    ...registrationNoteItems(sources),
     ...cancellationRequestItems(sources, tz),
   ]);
 }
