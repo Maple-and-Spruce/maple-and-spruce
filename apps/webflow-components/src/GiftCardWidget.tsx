@@ -2,9 +2,13 @@
  * Gift Card Widget: buy a Maple & Spruce gift card on the website (#300).
  *
  * Designed for embedding in Webflow via Code Components (see
- * `gift-card.webflow.tsx`). The buyer picks a dollar amount, or one class
- * when the page names one (the `classId` prop, or `?giftClass=<classId>` in
- * the URL), fills in who it is for and who it is from, and pays by card.
+ * `gift-card.webflow.tsx`). On mount it loads what Katie sells
+ * (`publicSite/getGiftCardOptions`, #309): the one-tap amounts, the lowest and
+ * highest "Other amount", and the class types switched on as gift
+ * certificates. The buyer picks an amount or a class type, fills in who it is
+ * for and who it is from, and pays by card. A class link
+ * (`?giftClass=<classId>`, or the `classId` prop) preselects that class's
+ * type when the type is on.
  * `giftCards/purchaseGiftCard` charges the card, makes the Square gift card
  * and emails the code; this widget only ever sees the last 4 digits.
  *
@@ -16,6 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Box,
+  Button,
   FormControl,
   FormControlLabel,
   FormLabel,
@@ -34,15 +39,13 @@ import { theme, fonts } from '@maple/react/theme';
 import { SquareCardForm } from '@maple/react/registrations';
 import type { CardTokenizeResult } from '@maple/react/registrations';
 import {
-  GIFT_CARD_MAX_CENTS,
   GIFT_CARD_MESSAGE_MAX_LENGTH,
-  GIFT_CARD_MIN_CENTS,
-  GIFT_CARD_PRESET_CENTS,
   formatGiftCardDollars,
-  isPrivateHoursClass,
 } from '@maple/ts/domain';
-import type { PublicClass } from '@maple/ts/domain';
+import type { GiftCertificateClassType, RequestState } from '@maple/ts/domain';
 import type {
+  GetGiftCardOptionsRequest,
+  GetGiftCardOptionsResponse,
   GetPublicClassRequest,
   GetPublicClassResponse,
   PurchaseGiftCardRequest,
@@ -60,23 +63,37 @@ export interface GiftCardWidgetProps {
   /** 'dev' | 'prod' | 'emulator': selects the Firebase project + Square SDK. */
   env: string;
   /**
-   * Optional class to offer as a gift ("A class"). `?giftClass=<classId>` in
-   * the page URL does the same and wins over this prop.
+   * Optional class whose type to preselect under "A class".
+   * `?giftClass=<classId>` in the page URL does the same and wins over this
+   * prop.
    */
   classId?: string;
+  /** The page heading (h1). Server-rendered by Webflow. */
+  heading?: string;
+  /** The line under the heading. */
+  intro?: string;
+  /** Small print under the form. */
+  finePrint?: string;
 }
+
+export const GIFT_CARD_DEFAULT_HEADING = 'Give the gift of making';
+export const GIFT_CARD_DEFAULT_INTRO =
+  'A Maple & Spruce gift card is good for handmade goods from local artists and for craft classes. Send it by email, or send it to yourself to print.';
+export const GIFT_CARD_DEFAULT_FINE_PRINT =
+  "Gift cards never expire and can't be exchanged for cash. They are good at Maple & Spruce, but not for Music Together, which is a separate business.";
 
 /** The amount choices: a preset in cents, or the buyer's own. */
 type AmountChoice = number | 'custom';
 
-/** The class offered as a gift, as it loads. */
+/**
+ * The class a link names, resolved to its type. `failed` covers a class that
+ * could not be read; the buyer then just picks a type.
+ */
 type GiftClassState =
   | { status: 'none' }
   | { status: 'loading' }
-  | { status: 'error' }
-  /** Loaded, but it cannot be sold as a gift (private hours, no type, free). */
-  | { status: 'unavailable' }
-  | { status: 'success'; giftClass: PublicClass };
+  | { status: 'failed' }
+  | { status: 'resolved'; classCategoryId: string | undefined };
 
 type Step =
   | { status: 'form' }
@@ -99,11 +116,6 @@ function giftClassFromUrl(): string | undefined {
   return new URLSearchParams(window.location.search).get('giftClass') ?? undefined;
 }
 
-/** Whether a class can be bought as a certificate (mirrors the server). */
-function isGiftableClass(pc: PublicClass): boolean {
-  return Boolean(pc.categoryId) && pc.priceCents > 0 && !isPrivateHoursClass(pc);
-}
-
 /** Dollars typed by the buyer to cents, or NaN when it is not a number. */
 function dollarsToCents(text: string): number {
   const trimmed = text.trim().replace(/^\$/, '');
@@ -116,15 +128,25 @@ export function GiftCardWidget({
   squareLocationId,
   env,
   classId,
+  heading = GIFT_CARD_DEFAULT_HEADING,
+  intro = GIFT_CARD_DEFAULT_INTRO,
+  finePrint = GIFT_CARD_DEFAULT_FINE_PRINT,
 }: GiftCardWidgetProps) {
   const functions = useMemo(() => getWidgetFunctions(env), [env]);
   const giftClassId = useMemo(() => giftClassFromUrl() ?? (classId || undefined), [classId]);
 
+  const [optionsState, setOptionsState] = useState<RequestState<GetGiftCardOptionsResponse>>({
+    status: 'loading',
+  });
+  const [optionsAttempt, setOptionsAttempt] = useState(0);
   const [giftClassState, setGiftClassState] = useState<GiftClassState>(
     giftClassId ? { status: 'loading' } : { status: 'none' }
   );
   const [kind, setKind] = useState<'amount' | 'class'>('amount');
-  const [amountChoice, setAmountChoice] = useState<AmountChoice>(5000);
+  /** `null` until the buyer picks: the middle preset is the default. */
+  const [amountChoice, setAmountChoice] = useState<AmountChoice | null>(null);
+  const [classTypeId, setClassTypeId] = useState<string | undefined>(undefined);
+  const preselected = useRef(false);
   const [customDollars, setCustomDollars] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
@@ -151,42 +173,88 @@ export function GiftCardWidget({
     })();
   }, [functions]);
 
-  // Load the class offered as a gift, if the page names one.
+  // What Katie sells: the amounts and the class types that are switched on.
+  useEffect(() => {
+    let cancelled = false;
+    setOptionsState({ status: 'loading' });
+    routeCallable<GetGiftCardOptionsRequest, GetGiftCardOptionsResponse>(
+      functions,
+      'publicSite',
+      'getGiftCardOptions'
+    )({})
+      .then((res) => {
+        if (!cancelled) setOptionsState({ status: 'success', data: res.data });
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setOptionsState({
+            status: 'error',
+            error: err instanceof Error ? err.message : 'Could not load gift card options',
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [functions, optionsAttempt]);
+
+  // A class link: find the class's type, to preselect it.
   useEffect(() => {
     if (!giftClassId) return;
     let cancelled = false;
     setGiftClassState({ status: 'loading' });
-    const getPublicClass = routeCallable<GetPublicClassRequest, GetPublicClassResponse>(
+    routeCallable<GetPublicClassRequest, GetPublicClassResponse>(
       functions,
       'publicSite',
       'getPublicClass'
-    );
-    getPublicClass({ id: giftClassId })
+    )({ id: giftClassId })
       .then((res) => {
-        if (cancelled) return;
-        const pc = res.data.class;
-        if (isGiftableClass(pc)) {
-          setGiftClassState({ status: 'success', giftClass: pc });
-          setKind('class');
-        } else {
-          setGiftClassState({ status: 'unavailable' });
+        if (!cancelled) {
+          setGiftClassState({ status: 'resolved', classCategoryId: res.data.class.categoryId });
         }
       })
       .catch(() => {
-        if (!cancelled) setGiftClassState({ status: 'error' });
+        if (!cancelled) setGiftClassState({ status: 'failed' });
       });
     return () => {
       cancelled = true;
     };
   }, [functions, giftClassId]);
 
-  const giftClass = giftClassState.status === 'success' ? giftClassState.giftClass : undefined;
+  const options = optionsState.status === 'success' ? optionsState.data : undefined;
+  const amounts = options?.amounts;
+  const classTypes: GiftCertificateClassType[] = useMemo(
+    () => options?.classTypes ?? [],
+    [options]
+  );
+  const linkedCategoryId =
+    giftClassState.status === 'resolved' ? giftClassState.classCategoryId : undefined;
+  const linkedTypeIsOn = classTypes.some((t) => t.id === linkedCategoryId);
+
+  // Once both reads are in, a class link opens on "A class": its own type
+  // when that is switched on, otherwise the picker.
+  useEffect(() => {
+    if (preselected.current || !giftClassId || !options) return;
+    if (giftClassState.status === 'loading') return;
+    preselected.current = true;
+    if (classTypes.length === 0) return;
+    setKind('class');
+    if (linkedTypeIsOn) setClassTypeId(linkedCategoryId);
+    else if (classTypes.length === 1) setClassTypeId(classTypes[0].id);
+  }, [giftClassId, options, giftClassState.status, classTypes, linkedTypeIsOn, linkedCategoryId]);
+
+  const presets = amounts?.presetCents ?? [];
+  const defaultPreset = presets[Math.min(1, presets.length - 1)];
+  const effectiveChoice: AmountChoice | undefined = amountChoice ?? defaultPreset;
+  const classType = classTypes.find((t) => t.id === classTypeId);
   const amountCents =
-    amountChoice === 'custom' ? dollarsToCents(customDollars) : amountChoice;
-  const valueCents = kind === 'class' && giftClass ? giftClass.priceCents : amountCents;
+    effectiveChoice === 'custom'
+      ? dollarsToCents(customDollars)
+      : (effectiveChoice ?? Number.NaN);
+  const valueCents = kind === 'class' ? (classType?.priceCents ?? Number.NaN) : amountCents;
   const description =
-    kind === 'class' && giftClass
-      ? `One ${giftClass.categoryName ? `${giftClass.categoryName} ` : ''}class (${giftClass.name})`
+    kind === 'class' && classType
+      ? `One ${classType.name} class`
       : Number.isFinite(amountCents)
         ? formatGiftCardDollars(amountCents)
         : 'Gift card';
@@ -210,23 +278,51 @@ export function GiftCardWidget({
         sourceId,
         idempotencyKey,
       };
-      return kind === 'class' && giftClass
-        ? { ...base, kind: 'class', classId: giftClass.id }
-        : { ...base, kind: 'amount', amountCents };
+      if (kind === 'class') {
+        // The old class link rides along for the record when it is the
+        // type being bought.
+        const viaLink =
+          classTypeId && giftClassId && classTypeId === linkedCategoryId
+            ? { classId: giftClassId }
+            : {};
+        return {
+          ...base,
+          kind: 'class',
+          ...(classTypeId ? { classCategoryId: classTypeId } : {}),
+          ...viaLink,
+        };
+      }
+      return { ...base, kind: 'amount', amountCents };
     },
-    [buyerName, buyerEmail, recipientName, recipientEmail, message, deliverTo, kind, giftClass, amountCents]
+    [
+      buyerName,
+      buyerEmail,
+      recipientName,
+      recipientEmail,
+      message,
+      deliverTo,
+      kind,
+      classTypeId,
+      giftClassId,
+      linkedCategoryId,
+      amountCents,
+    ]
   );
 
   /** Check the form with the server's own suite; true when it is good to pay. */
   const validate = useCallback((): boolean => {
     // Placeholders for what only exists at pay time.
-    const result = giftCardPurchaseValidation(buildRequest('pending-card', 'pending-key'));
+    const result = giftCardPurchaseValidation(
+      buildRequest('pending-card', 'pending-key'),
+      undefined,
+      amounts
+    );
     const errors = result.getErrors();
     const next: FieldErrors = {};
     for (const [field, messages] of Object.entries(errors)) next[field] = messages[0];
     setFieldErrors(next);
     return !result.hasErrors();
-  }, [buildRequest]);
+  }, [buildRequest, amounts]);
 
   const handlePay = useCallback(async () => {
     setSubmitError(null);
@@ -268,6 +364,9 @@ export function GiftCardWidget({
     return (
       <ThemeProvider theme={theme}>
         <Stack spacing={1.5} sx={{ alignItems: 'center', textAlign: 'center', py: 3, maxWidth: 520, mx: 'auto' }}>
+          <Typography variant="h4" component="h1">
+            {heading}
+          </Typography>
           <CheckCircleOutlineIcon color="success" sx={{ fontSize: 48 }} />
           <Typography variant="h5" component="h2">
             {toThem ? 'Your gift card is on its way' : 'Your gift card is ready'}
@@ -295,64 +394,113 @@ export function GiftCardWidget({
   const paying = step.status === 'paying';
   const payDisabled = paying || !cardReady || !Number.isFinite(valueCents);
   const messageLeft = GIFT_CARD_MESSAGE_MAX_LENGTH - message.length;
+  const optionsLoading =
+    optionsState.status === 'idle' ||
+    optionsState.status === 'loading' ||
+    (Boolean(giftClassId) && giftClassState.status === 'loading');
+  const linkedTypeOff =
+    Boolean(giftClassId) && !optionsLoading && !linkedTypeIsOn && giftClassState.status !== 'none';
+
+  const header = (
+    <Stack spacing={1} sx={{ mb: 3 }}>
+      <Typography variant="h4" component="h1">
+        {heading}
+      </Typography>
+      {intro && (
+        <Typography variant="body1" color="textSecondary">
+          {intro}
+        </Typography>
+      )}
+    </Stack>
+  );
+  const footer = finePrint ? (
+    <Typography variant="caption" color="textSecondary" component="p" sx={{ mt: 3 }}>
+      {finePrint}
+    </Typography>
+  ) : null;
+
+  if (optionsState.status === 'error') {
+    return (
+      <ThemeProvider theme={theme}>
+        <Box sx={{ maxWidth: 520, mx: 'auto' }}>
+          {header}
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" size="small" onClick={() => setOptionsAttempt((n) => n + 1)}>
+                Try again
+              </Button>
+            }
+          >
+            We could not load the gift card options. Please try again, or call us at
+            304-314-4506.
+          </Alert>
+          {footer}
+        </Box>
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ maxWidth: 520, mx: 'auto' }}>
+        {header}
         <Stack spacing={3}>
           {/* What to give */}
           <FormControl component="fieldset">
             <FormLabel component="legend" sx={{ mb: 1 }}>
               What would you like to give?
             </FormLabel>
-            <ToggleButtonGroup
-              exclusive
-              value={kind === 'class' ? 'class' : amountChoice}
-              onChange={(_e, value: AmountChoice | 'class' | null) => {
-                if (value === null) return;
-                if (value === 'class') {
-                  setKind('class');
-                } else {
-                  setKind('amount');
-                  setAmountChoice(value);
-                }
-              }}
-              aria-label="Gift card amount"
-              sx={{ flexWrap: 'wrap', gap: 1, '& .MuiToggleButton-root': { borderRadius: 1, border: 1, borderColor: 'divider' } }}
-            >
-              {GIFT_CARD_PRESET_CENTS.map((cents) => (
-                <ToggleButton key={cents} value={cents} disabled={paying}>
-                  {formatGiftCardDollars(cents)}
-                </ToggleButton>
-              ))}
-              <ToggleButton value="custom" disabled={paying}>
-                Other amount
-              </ToggleButton>
-              {giftClass && (
-                <ToggleButton value="class" disabled={paying}>
-                  A class
-                </ToggleButton>
-              )}
-            </ToggleButtonGroup>
 
-            {giftClassState.status === 'loading' && (
-              <Box aria-busy="true" aria-label="Loading the class" sx={{ mt: 1.5 }}>
-                <Skeleton variant="rounded" height={56} />
+            {optionsLoading ? (
+              <Box aria-busy="true" aria-label="Loading gift card options">
+                <Stack direction="row" spacing={1}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <Skeleton key={i} variant="rounded" width={88} height={40} />
+                  ))}
+                </Stack>
               </Box>
+            ) : (
+              <ToggleButtonGroup
+                exclusive
+                value={kind === 'class' ? 'class' : effectiveChoice}
+                onChange={(_e, value: AmountChoice | 'class' | null) => {
+                  if (value === null) return;
+                  if (value === 'class') {
+                    setKind('class');
+                    if (!classTypeId && classTypes.length === 1) setClassTypeId(classTypes[0].id);
+                  } else {
+                    setKind('amount');
+                    setAmountChoice(value);
+                  }
+                }}
+                aria-label="Gift card amount"
+                sx={{ flexWrap: 'wrap', gap: 1, '& .MuiToggleButton-root': { borderRadius: 1, border: 1, borderColor: 'divider' } }}
+              >
+                {presets.map((cents) => (
+                  <ToggleButton key={cents} value={cents} disabled={paying}>
+                    {formatGiftCardDollars(cents)}
+                  </ToggleButton>
+                ))}
+                <ToggleButton value="custom" disabled={paying}>
+                  Other amount
+                </ToggleButton>
+                {classTypes.length > 0 && (
+                  <ToggleButton value="class" disabled={paying}>
+                    A class
+                  </ToggleButton>
+                )}
+              </ToggleButtonGroup>
             )}
-            {giftClassState.status === 'error' && (
-              <Alert severity="info" sx={{ mt: 1.5 }}>
-                We could not load that class right now. You can still give a dollar amount.
-              </Alert>
-            )}
-            {giftClassState.status === 'unavailable' && (
+
+            {!optionsLoading && linkedTypeOff && classTypes.length === 0 && (
               <Alert severity="info" sx={{ mt: 1.5 }}>
                 That class cannot be given as a gift certificate. You can give a dollar amount
                 instead.
               </Alert>
             )}
 
-            {kind === 'amount' && amountChoice === 'custom' && (
+            {kind === 'amount' && effectiveChoice === 'custom' && amounts && (
               <TextField
                 label="Amount in dollars"
                 value={customDollars}
@@ -362,22 +510,73 @@ export function GiftCardWidget({
                 error={Boolean(fieldErrors['amountCents'])}
                 helperText={
                   fieldErrors['amountCents'] ??
-                  `Whole dollars, $${GIFT_CARD_MIN_CENTS / 100} to $${GIFT_CARD_MAX_CENTS / 100}`
+                  `Whole dollars, ${formatGiftCardDollars(amounts.minCents)} to ${formatGiftCardDollars(amounts.maxCents)}`
                 }
                 sx={{ mt: 2, maxWidth: 240 }}
               />
             )}
 
-            {kind === 'class' && giftClass && (
-              <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  {giftClass.name}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  {formatGiftCardDollars(giftClass.priceCents)}. Good for this class or any{' '}
-                  {giftClass.categoryName ? `${giftClass.categoryName} ` : ''}class. Any money
-                  left over spends like a regular gift card.
-                </Typography>
+            {kind === 'class' && classTypes.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                {linkedTypeOff && (
+                  <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                    That class is not sold as a gift certificate, but these are.
+                  </Typography>
+                )}
+                <RadioGroup
+                  aria-label="Class type"
+                  value={classTypeId ?? ''}
+                  onChange={(e) => setClassTypeId(e.target.value)}
+                >
+                  <Stack spacing={1}>
+                    {classTypes.map((type) => (
+                      <FormControlLabel
+                        key={type.id}
+                        value={type.id}
+                        disabled={paying}
+                        control={<Radio />}
+                        sx={{
+                          m: 0,
+                          p: 1,
+                          border: 1,
+                          borderColor: classTypeId === type.id ? 'primary.main' : 'divider',
+                          borderRadius: 1,
+                        }}
+                        label={
+                          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                            {type.imageUrl && (
+                              <Box
+                                component="img"
+                                src={type.imageUrl}
+                                alt={type.imageAlt ?? ''}
+                                sx={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 1 }}
+                              />
+                            )}
+                            <Box>
+                              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                                {type.name}
+                              </Typography>
+                              <Typography variant="body2" color="textSecondary">
+                                {formatGiftCardDollars(type.priceCents)}
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        }
+                      />
+                    ))}
+                  </Stack>
+                </RadioGroup>
+                {fieldErrors['classCategoryId'] && (
+                  <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                    {fieldErrors['classCategoryId']}
+                  </Typography>
+                )}
+                {classType && (
+                  <Typography variant="body2" color="textSecondary" sx={{ mt: 1.5 }}>
+                    Good for one {classType.name} class. Any money left over spends like a
+                    regular gift card.
+                  </Typography>
+                )}
               </Box>
             )}
           </FormControl>
@@ -524,6 +723,7 @@ export function GiftCardWidget({
             />
           )}
         </Stack>
+        {footer}
       </Box>
     </ThemeProvider>
   );

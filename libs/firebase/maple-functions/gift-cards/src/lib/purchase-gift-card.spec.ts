@@ -27,6 +27,7 @@ vi.mock('@maple/firebase/square', () => {
 const repos = vi.hoisted(() => ({
   ClassRepository: { findById: vi.fn() },
   ClassCategoryRepository: { findById: vi.fn() },
+  GiftCardSettingsRepository: { get: vi.fn() },
   GiftCardPurchaseRepository: { create: vi.fn(), findByGiftCardId: vi.fn() },
 }));
 vi.mock('@maple/firebase/database', () => repos);
@@ -82,6 +83,14 @@ const potteryClass = {
   capacity: 8,
 };
 
+const potteryType = {
+  id: 'cat-pottery',
+  name: 'Pottery',
+  order: 0,
+  giftCertificateEnabled: true,
+  giftCertificatePriceCents: 7000,
+};
+
 function happySquare(totalCents = 5000): void {
   square.ordersService.createOrder.mockResolvedValue({
     orderId: 'order-1',
@@ -111,6 +120,11 @@ beforeEach(() => {
   };
   vi.spyOn(console, 'log').mockImplementation(capture);
   vi.spyOn(console, 'error').mockImplementation(capture);
+  repos.GiftCardSettingsRepository.get.mockResolvedValue({
+    presetCents: [2500, 5000, 10000],
+    minCents: 1000,
+    maxCents: 50000,
+  });
   repos.GiftCardPurchaseRepository.findByGiftCardId.mockResolvedValue(undefined);
   repos.GiftCardPurchaseRepository.create.mockImplementation(async (p) => p);
   queueMail.mockResolvedValue(true);
@@ -248,63 +262,100 @@ describe('purchaseGiftCard', () => {
     expect(logs.join('\n')).not.toContain(CODE);
   });
 
-  it('prices a class certificate from the class and records its type', async () => {
-    happySquare(6500);
-    repos.ClassRepository.findById.mockResolvedValue(potteryClass);
-    repos.ClassCategoryRepository.findById.mockResolvedValue({ id: 'cat-pottery', name: 'Pottery' });
+  it('prices a class certificate from its type and records the type (#309)', async () => {
+    happySquare(7000);
+    repos.ClassCategoryRepository.findById.mockResolvedValue(potteryType);
 
     const result = await purchaseGiftCard(
-      {
-        ...amountRequest,
-        kind: 'class',
-        classId: 'class-1',
-      } as PurchaseGiftCardRequest,
+      { ...amountRequest, kind: 'class', classCategoryId: 'cat-pottery' } as PurchaseGiftCardRequest,
       {},
       secrets,
       strings
     );
 
-    expect(result).toMatchObject({ kind: 'class', valueCents: 6500, className: 'Beginner Wheel' });
+    expect(repos.ClassRepository.findById).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ kind: 'class', valueCents: 7000, className: 'Pottery' });
     expect(square.ordersService.createOrder.mock.calls[0][0].lineItems[0]).toEqual({
-      name: 'Gift card: Beginner Wheel',
+      name: 'Gift certificate: Pottery class',
       quantity: '1',
-      basePriceCents: 6500,
+      basePriceCents: 7000,
       itemType: 'GIFT_CARD',
     });
-    expect(repos.GiftCardPurchaseRepository.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: 'class',
-        valueCents: 6500,
-        classId: 'class-1',
-        classCategoryId: 'cat-pottery',
-        className: 'Beginner Wheel',
-      })
-    );
-    expect(queueMail.mock.calls[0][0].data.description).toBe(
-      'One Pottery class at Maple & Spruce (Beginner Wheel or any class of that type)'
-    );
+    const record = repos.GiftCardPurchaseRepository.create.mock.calls[0][0];
+    expect(record).toMatchObject({
+      kind: 'class',
+      valueCents: 7000,
+      classCategoryId: 'cat-pottery',
+      className: 'Pottery',
+    });
+    expect(record.classId).toBeUndefined();
+    expect(queueMail.mock.calls[0][0].data.description).toBe('One Pottery class at Maple & Spruce');
   });
 
-  it('still sells a class certificate when the class type cannot be read', async () => {
-    happySquare(6500);
+  it("prices an old class link at its type's certificate price, not the class price", async () => {
+    happySquare(7000);
     repos.ClassRepository.findById.mockResolvedValue(potteryClass);
-    repos.ClassCategoryRepository.findById.mockRejectedValue(new Error('down'));
+    repos.ClassCategoryRepository.findById.mockResolvedValue(potteryType);
+
     const result = await purchaseGiftCard(
       { ...amountRequest, kind: 'class', classId: 'class-1' } as PurchaseGiftCardRequest,
       {},
       secrets,
       strings
     );
-    expect(result.valueCents).toBe(6500);
+
+    expect(repos.ClassCategoryRepository.findById).toHaveBeenCalledWith('cat-pottery');
+    expect(result.valueCents).toBe(7000);
+    expect(repos.GiftCardPurchaseRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        classId: 'class-1',
+        classCategoryId: 'cat-pottery',
+        className: 'Pottery',
+      })
+    );
+  });
+
+  it('lets the type decide when both a type and a class are sent', async () => {
+    happySquare(7000);
+    repos.ClassCategoryRepository.findById.mockResolvedValue(potteryType);
+    await purchaseGiftCard(
+      {
+        ...amountRequest,
+        kind: 'class',
+        classCategoryId: 'cat-pottery',
+        classId: 'class-1',
+      } as PurchaseGiftCardRequest,
+      {},
+      secrets,
+      strings
+    );
+    expect(repos.ClassRepository.findById).not.toHaveBeenCalled();
+    expect(repos.GiftCardPurchaseRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ classId: 'class-1', classCategoryId: 'cat-pottery' })
+    );
   });
 
   it.each([
     ['missing', undefined],
-    ['a draft', { ...potteryClass, status: 'draft' }],
-    ['private hours', { ...potteryClass, format: 'privateHours' }],
+    ['switched off', { ...potteryType, giftCertificateEnabled: false }],
+    ['switched on without a price', { ...potteryType, giftCertificatePriceCents: undefined }],
+  ])('refuses a class type that is %s, before Square', async (_label, type) => {
+    repos.ClassCategoryRepository.findById.mockResolvedValue(type);
+    await expect(
+      purchaseGiftCard(
+        { ...amountRequest, kind: 'class', classCategoryId: 'cat-pottery' } as PurchaseGiftCardRequest,
+        {},
+        secrets,
+        strings
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+    expect(square.ordersService.createOrder).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['missing', undefined],
     ['without a type', { ...potteryClass, categoryId: undefined }],
-    ['free', { ...potteryClass, priceCents: 0 }],
-  ])('refuses a class certificate for a class that is %s, before Square', async (_label, cls) => {
+  ])('refuses an old class link to a class that is %s, before Square', async (_label, cls) => {
     repos.ClassRepository.findById.mockResolvedValue(cls);
     await expect(
       purchaseGiftCard(
@@ -313,6 +364,46 @@ describe('purchaseGiftCard', () => {
         secrets,
         strings
       )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+    expect(square.ordersService.createOrder).not.toHaveBeenCalled();
+  });
+
+  it('refuses an old class link when its type is switched off', async () => {
+    repos.ClassRepository.findById.mockResolvedValue(potteryClass);
+    repos.ClassCategoryRepository.findById.mockResolvedValue({
+      ...potteryType,
+      giftCertificateEnabled: false,
+    });
+    await expect(
+      purchaseGiftCard(
+        { ...amountRequest, kind: 'class', classId: 'class-1' } as PurchaseGiftCardRequest,
+        {},
+        secrets,
+        strings
+      )
+    ).rejects.toThrow('not available as a gift certificate');
+    expect(square.ordersService.createOrder).not.toHaveBeenCalled();
+  });
+
+  it('enforces the amounts from Settings, not the shipped limits (#309)', async () => {
+    repos.GiftCardSettingsRepository.get.mockResolvedValue({
+      presetCents: [2000],
+      minCents: 500,
+      maxCents: 100000,
+    });
+    happySquare(75000);
+    await expect(
+      purchaseGiftCard({ ...amountRequest, amountCents: 75000 }, {}, secrets, strings)
+    ).resolves.toMatchObject({ valueCents: 75000 });
+
+    vi.clearAllMocks();
+    repos.GiftCardSettingsRepository.get.mockResolvedValue({
+      presetCents: [2000],
+      minCents: 2000,
+      maxCents: 20000,
+    });
+    await expect(
+      purchaseGiftCard({ ...amountRequest, amountCents: 1000 }, {}, secrets, strings)
     ).rejects.toMatchObject({ code: 'invalid-argument' });
     expect(square.ordersService.createOrder).not.toHaveBeenCalled();
   });

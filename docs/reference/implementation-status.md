@@ -213,12 +213,13 @@ with the code from the admin.
 | Piece | Status | Issue |
 |---|---|---|
 | Square setup, terms, certificate template | Katie | #296 |
-| Admin Gift Cards page (totals, cards, history, copy code, how it works) | PR open | #297 |
-| Register gift card sales skipped by POS capture | PR open | #298 |
-| Webflow `/gift-cards` page | Not started (Webflow) | #299 |
-| Own buy page with class certificates (`giftCards/purchaseGiftCard`, Webflow Gift Card component, admin "Bought online") | PR open | #300 |
-| Pay for classes with a gift card, 10% class-certificate cushion | Not started | #301 |
-| Admin: give a free card (`giftCards/issueGiftCard`), make a register card a class certificate (`giftCards/markClassCertificate`) | PR open | #310 |
+| Admin Gift Cards page (totals, cards, history, copy code, how it works) | Done | #297 |
+| Register gift card sales skipped by POS capture | Done | #298 |
+| Webflow `/gift-cards` page | Draft page made; widget drop + publish in the Designer | #299 |
+| Pay for classes with a gift card, 10% class-certificate cushion | Done (dark launch: off until `giftCardsEnabled` is turned on in Webflow) | #301 |
+| Own buy page with class certificates (`giftCards/purchaseGiftCard`, Webflow Gift Card component, admin "Bought online") | Done | #300 |
+| Admin: give a free card (`giftCards/issueGiftCard`), make a register card a class certificate (`giftCards/markClassCertificate`) | Done | #310 |
+| Amounts in Admin > Settings, gift certificates per class type, class-type picker on the buy page | Done | #309 |
 
 ## Phase 4: Music Lessons - legacy Epic #10
 

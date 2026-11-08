@@ -39,6 +39,7 @@ import TodayIcon from '@mui/icons-material/Today';
 import type { CalendarEventType, RequestState } from '@maple/ts/domain';
 import {
   DEFAULT_LESSON_TIME_ZONE,
+  addLocalDays,
   WEEKDAY_SHORT,
   getCalendarEventTypeLabel,
   minutesOfDayInZone,
@@ -68,7 +69,6 @@ export interface MyWeekProps {
   studentHref?: (studentId: string) => string;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const TZ = DEFAULT_LESSON_TIME_ZONE;
 const PX_PER_MIN = 1; // 60px per hour
 const MIN_ITEM_MIN = 24; // minimum rendered height so short items stay readable
@@ -171,7 +171,7 @@ function standingToItem(s: MyWeekStandingSlot): WeekItem {
 }
 
 function formatWeekRange(weekStart: Date): string {
-  const end = new Date(weekStart.getTime() + 6 * DAY_MS);
+  const end = addLocalDays(weekStart, 6);
   const fmt = (d: Date) =>
     d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   return `${fmt(weekStart)} – ${fmt(end)}`;
@@ -475,7 +475,7 @@ export function MyWeek({
         >
           <Box />
           {WEEKDAY_SHORT.map((short, dayIndex) => {
-            const date = new Date(weekStart.getTime() + dayIndex * DAY_MS);
+            const date = addLocalDays(weekStart, dayIndex);
             return (
               <Box
                 key={short}

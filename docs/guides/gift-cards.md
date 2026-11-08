@@ -5,10 +5,24 @@ Square still owns every card: its balance, its code and its history. The admin G
 page reads them back, and a card bought online shows a "Bought online" box there with the
 buyer, who it was for and the message.
 
+## What Katie controls (#309)
+
+- **Amounts: Admin > Settings > Gift cards.** The one-tap amounts (1 to 4 of them, today
+  $25, $50, $100) and the lowest and highest "Other amount" (today $10 and $500). Whole
+  dollars only; the lowest can be no less than $5 and the highest no more than $1,000, and
+  every one-tap amount must sit between them. Nothing stored means the amounts above. The
+  page shows them, and `giftCards/purchaseGiftCard` refuses anything outside them, so a
+  change takes effect on the next purchase without touching Webflow.
+- **Class gift certificates: Admin > Class Categories.** Edit a class type, switch on
+  **Sell as a gift certificate** and set the **Certificate price**. Only switched-on types
+  are offered, at that price. Switching one off keeps its price for next time. The type's
+  first pool image is shown next to it on the page, if it has one.
+
 ## What a buyer sees
 
-1. Picks **$25, $50, $100, Other amount** (whole dollars, $10 to $500), or **A class** when
-   the page names one (see below).
+1. Picks one of the amounts from Settings or **Other amount**, or **A class**, which lists
+   every class type that is switched on with its certificate price. "A class" is hidden
+   when no type is on.
 2. Enters who it is for (name, email), who it is from (name, email) and an optional message
    (up to 300 characters).
 3. Chooses **Send it to: Them, by email** or **Me, so I can print it**.
@@ -36,14 +50,26 @@ card page. Props:
 | Square App ID | the Maple & Spruce production app id (same as the Class Registration component) |
 | Square Location ID | the Maple & Spruce location id (same as Class Registration) |
 | Environment | `prod` (or `dev` on staging) |
-| Class ID (optional) | a class to offer as "A class"; usually left empty |
+| Class ID (optional) | a class whose type to preselect under "A class"; usually left empty |
+| Heading | the page's h1; default "Give the gift of making" |
+| Intro | the line under the heading |
+| Fine print | small text under the form (never expires, not for Music Together) |
 
-To sell a class as a gift, link from the class page to the gift card page with
-`?giftClass=<classId>` (for example a "Give this class as a gift" button). The URL wins over
-the prop. A class can be a gift certificate when it is published and open for registration,
-has a class type (category) and a price, and is not a private-hours class. Its value is the
-class's price at the moment of purchase, and the card remembers the class type so class
-checkout (#301) can cover up to 10% extra when it pays for a class of that type.
+Heading, intro and fine print are props so they are in the server-rendered page HTML; the
+page itself only needs nav, this component and the footer. After a purchase only the
+heading stays.
+
+A certificate is for a **class type**, not a single class. To sell one from a class page,
+link to the gift card page with `?giftClass=<classId>` (for example a "Give this class as a
+gift" button). The URL wins over the prop. The page opens on "A class" with that class's
+type picked when the type is switched on, or on the picker when it is not. If no type is on
+at all, it says so and offers dollar amounts. Old links keep working the same way.
+
+The certificate's value is the type's certificate price at the moment of purchase. The card
+records the class type (`classCategoryId`, with the type's name as `className`, plus the
+`classId` when it came from a class link), so class checkout (#301) can cover up to 10% extra
+when it pays for a class of that type. Emails describe it as "One Pottery class at Maple &
+Spruce".
 
 After changing the component code, the library has to be re-shared to Webflow and the site
 published, or the old widget keeps running.
@@ -59,7 +85,8 @@ published, or the old widget keeps running.
 
 ## How money moves
 
-One Square order per purchase, with a single `GIFT_CARD` line and **no tax** (gift cards are
+One Square order per purchase, with a single `GIFT_CARD` line ("Gift card", or "Gift
+certificate: Pottery class") and **no tax** (gift cards are
 taxed when spent, not when sold). The buyer's card pays that order; then the card is created
 and activated against the order line, so Square records the sale as a gift card sale and the
 balance appears on the card. The order's `referenceId` starts with `giftcard-`. The POS

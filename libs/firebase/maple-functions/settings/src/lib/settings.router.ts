@@ -14,18 +14,23 @@ import {
   Functions,
   Role,
   throwInvalidArgument,
+  throwValidationError,
 } from '@maple/firebase/functions';
 import {
   BusinessPaymentConfigRepository,
+  GiftCardSettingsRepository,
   InstrumentsConfigRepository,
   LessonRatesConfigRepository,
   PosLessonConfigRepository,
 } from '@maple/firebase/database';
+import { giftCardSettingsValidation } from '@maple/ts/validation';
 import { instrumentListProblem, LESSON_LENGTHS } from '@maple/ts/domain';
 import type { LessonRateByLength } from '@maple/ts/domain';
 import type {
   GetBusinessPaymentConfigRequest,
   GetBusinessPaymentConfigResponse,
+  GetGiftCardSettingsRequest,
+  GetGiftCardSettingsResponse,
   GetInstrumentsRequest,
   GetInstrumentsResponse,
   GetLessonRatesConfigRequest,
@@ -36,6 +41,8 @@ import type {
   SaveInstrumentsResponse,
   UpdateBusinessPaymentConfigRequest,
   UpdateBusinessPaymentConfigResponse,
+  UpdateGiftCardSettingsRequest,
+  UpdateGiftCardSettingsResponse,
   UpdateLessonRatesConfigRequest,
   UpdateLessonRatesConfigResponse,
   UpdatePosLessonConfigRequest,
@@ -181,6 +188,46 @@ export const settings = Functions.router('settings', {
             context.uid
           );
         return { config };
+      }
+    ),
+
+  /**
+   * The dollar gift card amounts the website sells (#309). The buy page reads
+   * them through `publicSite/getGiftCardOptions`.
+   */
+  getGiftCardSettings: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<GetGiftCardSettingsRequest, GetGiftCardSettingsResponse>(
+      async () => {
+        const settings = await GiftCardSettingsRepository.get();
+        return { settings };
+      }
+    ),
+
+  /**
+   * Replaces the amounts. `giftCards/purchaseGiftCard` enforces them from
+   * the next purchase on.
+   */
+  updateGiftCardSettings: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<UpdateGiftCardSettingsRequest, UpdateGiftCardSettingsResponse>(
+      async (data, context) => {
+        const input = {
+          presetCents: data?.presetCents,
+          minCents: data?.minCents,
+          maxCents: data?.maxCents,
+        };
+        const result = giftCardSettingsValidation(input);
+        if (result.hasErrors()) throwValidationError(result.getErrors());
+        const settings = await GiftCardSettingsRepository.set(
+          {
+            presetCents: input.presetCents as number[],
+            minCents: input.minCents as number,
+            maxCents: input.maxCents as number,
+          },
+          context?.uid
+        );
+        return { settings };
       }
     ),
 });

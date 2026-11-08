@@ -85,7 +85,13 @@ export default defineConfig({
     browser: {
       enabled: true,
       headless: true,
-      provider: playwright({}),
+      // Render every story in the studio's timezone, as Katie and the teachers
+      // see it. The CI runner is UTC, which has no daylight saving, so a story
+      // set in a clock-change week could never fail there (My Week's day
+      // labels slipped a day in the Nov 1 2026 fall-back week).
+      provider: playwright({
+        contextOptions: { timezoneId: 'America/New_York' },
+      }),
       instances: [{ browser: 'chromium' }],
     },
     coverage: {

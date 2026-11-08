@@ -46,6 +46,14 @@ async function squareRequests(): Promise<Recorded[]> {
   return body.requests;
 }
 
+/**
+ * A Square call this route makes. The class written in `beforeEach` also wakes
+ * the class-to-Square catalog sync, whose calls land at their own pace.
+ */
+function isPurchaseCall(r: Recorded): boolean {
+  return /^\/v2\/(orders|payments|refunds|gift-cards)/.test(r.path);
+}
+
 async function mockGiftCards(): Promise<Array<Record<string, unknown>>> {
   const body = (await (await fetch(`${SQUARE_MOCK}/_mock/gift-cards`)).json()) as {
     giftCards: Array<Record<string, unknown>>;
@@ -98,6 +106,9 @@ describe('giftCards/purchaseGiftCard', () => {
     await clearFirestoreEmulator();
     await setFirestoreDoc('classCategories', CATEGORY_ID, {
       name: 'Pottery',
+      order: 0,
+      giftCertificateEnabled: true,
+      giftCertificatePriceCents: 7000,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -213,32 +224,45 @@ describe('giftCards/purchaseGiftCard', () => {
     expect(JSON.stringify(confirmation)).not.toContain(gan);
   });
 
-  it('sells a class certificate at the class price and records the class type', async () => {
+  it("sells a class certificate for a class type at the type's certificate price (#309)", async () => {
     const result = await callFunction<PurchaseGiftCardRequest, PurchaseGiftCardResponse>({
       functionName: ROUTE,
       data: {
         ...amountRequest({ deliverTo: 'buyer', buyerEmail: 'robin.class@example.com' }),
         kind: 'class',
-        classId: CLASS_ID,
+        classCategoryId: CATEGORY_ID,
       } as PurchaseGiftCardRequest,
     });
 
     expect(result.status).toBe(200);
     expect(result.data).toMatchObject({
       kind: 'class',
-      valueCents: 6500,
-      className: 'Beginner Wheel',
+      valueCents: 7000,
+      className: 'Pottery',
       sentTo: 'robin.class@example.com',
     });
+
+    const order = (await squareRequests()).find((r) => r.method === 'POST' && r.path === '/v2/orders');
+    expect((order?.body['order'] as Record<string, unknown>)['line_items']).toEqual([
+      expect.objectContaining({
+        name: 'Gift certificate: Pottery class',
+        item_type: 'GIFT_CARD',
+        base_price_money: { amount: 7000, currency: 'USD' },
+      }),
+    ]);
+    const [card] = await mockGiftCards();
+    expect(card['balance_money']).toEqual({ amount: 7000, currency: 'USD' });
+
+    // The type is what class checkout (#301) keys its cushion on.
     const record = await getFirestoreDoc('giftCardPurchases', result.data!.giftCardId);
     expect(record).toMatchObject({
       kind: 'class',
-      valueCents: 6500,
-      classId: CLASS_ID,
+      valueCents: 7000,
       classCategoryId: CATEGORY_ID,
-      className: 'Beginner Wheel',
+      className: 'Pottery',
       deliverTo: 'buyer',
     });
+    expect(record?.['classId']).toBeUndefined();
     const mail = await mailTo('robin.class@example.com');
     expect(mail).toHaveLength(1);
     expect(mail[0]['template']).toMatchObject({
@@ -246,10 +270,82 @@ describe('giftCards/purchaseGiftCard', () => {
       data: {
         forBuyer: true,
         isClass: true,
-        description:
-          'One Pottery class at Maple & Spruce (Beginner Wheel or any class of that type)',
+        description: 'One Pottery class at Maple & Spruce',
       },
     });
+  });
+
+  it("still sells an old ?giftClass= link, at the class type's price", async () => {
+    const result = await callFunction<PurchaseGiftCardRequest, PurchaseGiftCardResponse>({
+      functionName: ROUTE,
+      data: {
+        ...amountRequest({ deliverTo: 'buyer', buyerEmail: 'robin.link@example.com' }),
+        kind: 'class',
+        classId: CLASS_ID,
+      } as PurchaseGiftCardRequest,
+    });
+
+    expect(result.status).toBe(200);
+    // The type's certificate price, not the class's $65.
+    expect(result.data).toMatchObject({ kind: 'class', valueCents: 7000, className: 'Pottery' });
+    const record = await getFirestoreDoc('giftCardPurchases', result.data!.giftCardId);
+    expect(record).toMatchObject({
+      classId: CLASS_ID,
+      classCategoryId: CATEGORY_ID,
+      className: 'Pottery',
+    });
+  });
+
+  it('refuses a class type that is switched off before touching Square', async () => {
+    await setFirestoreDoc('classCategories', CATEGORY_ID, {
+      name: 'Pottery',
+      order: 0,
+      giftCertificateEnabled: false,
+      giftCertificatePriceCents: 7000,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const result = await callFunction<PurchaseGiftCardRequest, PurchaseGiftCardResponse>({
+      functionName: ROUTE,
+      data: {
+        ...amountRequest(),
+        kind: 'class',
+        classCategoryId: CATEGORY_ID,
+      } as PurchaseGiftCardRequest,
+    });
+
+    expect(result.status).toBe(400);
+    expect(JSON.stringify(result.raw)).toContain('not available as a gift certificate');
+    const requests = await squareRequests();
+    expect(requests.filter((r) => isPurchaseCall(r))).toHaveLength(0);
+  });
+
+  it('enforces the amounts stored in Settings (#309)', async () => {
+    await setFirestoreDoc('appConfig', 'giftCards', {
+      presetCents: [5000, 75000],
+      minCents: 2000,
+      maxCents: 100000,
+    });
+
+    const tooSmall = await callFunction<PurchaseGiftCardRequest, PurchaseGiftCardResponse>({
+      functionName: ROUTE,
+      data: amountRequest({ amountCents: 1500 } as Partial<PurchaseGiftCardRequest>),
+    });
+    expect(tooSmall.status).toBe(400);
+    expect(JSON.stringify(tooSmall.raw)).toContain('$20 to $1000');
+    expect((await squareRequests()).filter((r) => isPurchaseCall(r))).toHaveLength(0);
+
+    const big = await callFunction<PurchaseGiftCardRequest, PurchaseGiftCardResponse>({
+      functionName: ROUTE,
+      data: amountRequest({
+        amountCents: 75000,
+        buyerEmail: 'big.buyer@example.com',
+        recipientEmail: 'big.friend@example.com',
+      } as Partial<PurchaseGiftCardRequest>),
+    });
+    expect(big.status).toBe(200);
+    expect(big.data?.valueCents).toBe(75000);
   });
 
   it('refunds the payment when Square cannot activate the card, and records nothing', async () => {

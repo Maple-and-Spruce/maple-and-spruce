@@ -666,6 +666,12 @@ export type {
   GetInstrumentsResponse,
   SaveInstrumentsRequest,
   SaveInstrumentsResponse,
+  GetGiftCardSettingsRequest,
+  GetGiftCardSettingsResponse,
+  UpdateGiftCardSettingsRequest,
+  UpdateGiftCardSettingsResponse,
+  GetGiftCardOptionsRequest,
+  GetGiftCardOptionsResponse,
 } from './settings.types';
 export type {
   GetGiftCardsRequest,
@@ -679,6 +685,11 @@ export type {
   IssueGiftCardRequest,
   IssueGiftCardResponse,
 } from './gift-card.types';
+// Paying for classes with a gift card (#301)
+export type {
+  PreviewGiftCardForClassRequest,
+  PreviewGiftCardForClassResponse,
+} from './gift-card-redemption.types';
 export type {
   PurchaseGiftCardRequest,
   PurchaseGiftCardResponse,

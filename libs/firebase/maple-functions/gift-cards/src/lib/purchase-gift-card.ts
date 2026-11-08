@@ -5,8 +5,9 @@
  * Square owns the card. The flow follows Square's "sell a gift card through
  * the Orders API" recipe:
  *
- *   1. validate the request (before any Square call)
- *   2. price it: a dollar amount, or a class's current price
+ *   1. validate the request against the amounts in Settings (before any
+ *      Square call)
+ *   2. price it: a dollar amount, or the class type's certificate price
  *   3. create an order with one untaxed `GIFT_CARD` line
  *   4. pay the order with the buyer's card
  *   5. create a digital gift card and activate it against that order line
@@ -32,6 +33,7 @@ import {
   ClassCategoryRepository,
   ClassRepository,
   GiftCardPurchaseRepository,
+  GiftCardSettingsRepository,
 } from '@maple/firebase/database';
 import {
   PaymentError,
@@ -44,8 +46,7 @@ import {
   formatGiftCardCode,
   formatGiftCardDollars,
   type OnlineGiftCardPurchase,
-  isClassRegistrationOpen,
-  isPrivateHoursClass,
+  isGiftCertificateCategory,
 } from '@maple/ts/domain';
 import type {
   PurchaseGiftCardRequest,
@@ -93,41 +94,47 @@ interface Priced {
   className?: string;
 }
 
-/** What the card is worth and what it is called on the Square order. */
+const CLASS_TYPE_UNAVAILABLE =
+  'That class type is not available as a gift certificate. Choose a dollar amount instead.';
+
+/**
+ * What the card is worth and what it is called on the Square order.
+ *
+ * A class certificate is for a class type (#309), at the price Katie set on
+ * that type, and only while the type is switched on. An old `?giftClass=`
+ * link names a class instead; its type is looked up and the same rules apply.
+ */
 async function priceRequest(data: PurchaseGiftCardRequest): Promise<Priced> {
   if (data.kind === 'amount') {
     return { valueCents: data.amountCents, lineItemName: 'Gift card' };
   }
 
-  const classEntity = await ClassRepository.findById(data.classId);
-  if (!classEntity || !isClassRegistrationOpen(classEntity)) {
-    throwInvalidArgument('That class is not available for a gift certificate.');
+  let classCategoryId = data.classCategoryId?.trim() || undefined;
+  let classId: string | undefined;
+  if (!classCategoryId && data.classId) {
+    const classEntity = await ClassRepository.findById(data.classId);
+    if (!classEntity?.categoryId) throwInvalidArgument(CLASS_TYPE_UNAVAILABLE);
+    classId = classEntity.id;
+    classCategoryId = classEntity.categoryId;
+  } else if (data.classId) {
+    // Both given: the type decides; the class is kept for the record.
+    classId = data.classId;
   }
-  if (isPrivateHoursClass(classEntity)) {
-    throwInvalidArgument(
-      'A private-hours class cannot be bought as a gift certificate. Choose a dollar amount instead.'
-    );
-  }
-  if (!classEntity.categoryId || classEntity.priceCents <= 0) {
-    throwInvalidArgument('That class is not available for a gift certificate.');
-  }
+  if (!classCategoryId) throwInvalidArgument(CLASS_TYPE_UNAVAILABLE);
 
-  let classCategoryName: string | undefined;
-  try {
-    classCategoryName = (await ClassCategoryRepository.findById(classEntity.categoryId))
-      ?.name;
-  } catch (error) {
-    // The type's name only decorates the email; never fail a sale over it.
-    console.error('[purchaseGiftCard] could not read class category', error);
+  const category = await ClassCategoryRepository.findById(classCategoryId);
+  if (!category || !isGiftCertificateCategory(category)) {
+    throwInvalidArgument(CLASS_TYPE_UNAVAILABLE);
   }
+  const valueCents = category.giftCertificatePriceCents as number;
 
   return {
-    valueCents: classEntity.priceCents,
-    lineItemName: `Gift card: ${classEntity.name}`,
-    classId: classEntity.id,
-    classCategoryId: classEntity.categoryId,
-    classCategoryName,
-    className: classEntity.name,
+    valueCents,
+    lineItemName: `Gift certificate: ${category.name} class`,
+    classId,
+    classCategoryId: category.id,
+    classCategoryName: category.name,
+    className: category.name,
   };
 }
 
@@ -142,8 +149,10 @@ export async function purchaseGiftCard(
   secrets: SquareSecrets,
   strings: PurchaseGiftCardStrings
 ): Promise<PurchaseGiftCardResponse> {
-  // 1. Validate before anything touches Square.
-  const validation = giftCardPurchaseValidation(data ?? {});
+  // 1. Validate before anything touches Square, against the amounts Katie
+  // set in Settings (#309).
+  const limits = await GiftCardSettingsRepository.get();
+  const validation = giftCardPurchaseValidation(data ?? {}, undefined, limits);
   if (validation.hasErrors()) throwValidationError(validation.getErrors());
 
   const buyerName = data.buyerName.trim();

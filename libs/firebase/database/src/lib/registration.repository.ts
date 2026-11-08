@@ -53,6 +53,18 @@ function docToRegistration(
     squarePaymentId: data.squarePaymentId,
     squareOrderId: data.squareOrderId,
     squareReceiptUrl: data.squareReceiptUrl,
+    // Gift card checkout (#301); absent on registrations paid by card alone.
+    squareGiftCardPaymentId: data.squareGiftCardPaymentId ?? undefined,
+    giftCardId: data.giftCardId ?? undefined,
+    giftCardLast4: data.giftCardLast4 ?? undefined,
+    giftCardPaidCents:
+      typeof data.giftCardPaidCents === 'number' ? data.giftCardPaidCents : undefined,
+    cardPaidCents:
+      typeof data.cardPaidCents === 'number' ? data.cardPaidCents : undefined,
+    classCertificateCoverCents:
+      typeof data.classCertificateCoverCents === 'number'
+        ? data.classCertificateCoverCents
+        : undefined,
     discountCode: data.discountCode,
     discountAmountCents: data.discountAmountCents,
     status: data.status as RegistrationStatus,

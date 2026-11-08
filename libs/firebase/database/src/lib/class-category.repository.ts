@@ -32,6 +32,8 @@ function docToClassCategory(
     icon: data.icon,
     galleryImages: data.galleryImages,
     webflowItemId: data.webflowItemId,
+    giftCertificateEnabled: data.giftCertificateEnabled,
+    giftCertificatePriceCents: data.giftCertificatePriceCents,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };

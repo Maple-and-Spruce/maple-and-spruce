@@ -277,3 +277,76 @@ describe('reserveClassRegistration: seats', () => {
     expect(payload).toMatchObject({ slotStart: null, groupSize: null, quantity: 2 });
   });
 });
+
+describe('priceClassOrder (#301)', () => {
+  const percentOff = {
+    id: 'disc-1',
+    code: 'SPRING',
+    description: '',
+    type: 'percent' as const,
+    percent: 20,
+    status: 'active' as const,
+    program: 'classes' as const,
+    appliesTo: 'order' as const,
+    usageCount: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  beforeEach(() => mocks.findDiscount.mockReset());
+
+  it('prices seats with tax and no code', async () => {
+    const { priceClassOrder } = await import('./registration-reservation.utility');
+    expect(
+      await priceClassOrder({ priceCents: 5000 }, { quantity: 2 }, 6, {
+        onInvalidDiscount: 'throw',
+      })
+    ).toEqual({
+      originalCostCents: 10000,
+      discountAmountCents: 0,
+      discountCode: undefined,
+      discountIdToRedeem: undefined,
+      subtotalCents: 10000,
+      taxAmountCents: 600,
+      pricePaidCents: 10600,
+    });
+  });
+
+  it('applies a valid code', async () => {
+    const { priceClassOrder } = await import('./registration-reservation.utility');
+    mocks.findDiscount.mockResolvedValue(percentOff);
+    const price = await priceClassOrder(
+      { priceCents: 5000 },
+      { quantity: 1, discountCode: 'spring' },
+      6,
+      { onInvalidDiscount: 'throw' }
+    );
+    expect(price.discountAmountCents).toBe(1000);
+    expect(price.discountCode).toBe('SPRING');
+    expect(price.discountIdToRedeem).toBe('disc-1');
+    expect(price.subtotalCents).toBe(4000);
+  });
+
+  it('refuses an unknown code at checkout', async () => {
+    const { priceClassOrder } = await import('./registration-reservation.utility');
+    mocks.findDiscount.mockResolvedValue(undefined);
+    await expect(
+      priceClassOrder({ priceCents: 5000 }, { quantity: 1, discountCode: 'NOPE' }, 6, {
+        onInvalidDiscount: 'throw',
+      })
+    ).rejects.toThrow('no longer valid');
+  });
+
+  it('prices without an unknown code in a preview', async () => {
+    const { priceClassOrder } = await import('./registration-reservation.utility');
+    mocks.findDiscount.mockResolvedValue({ ...percentOff, program: 'music-together' });
+    const price = await priceClassOrder(
+      { priceCents: 5000 },
+      { quantity: 1, discountCode: 'SPRING' },
+      6,
+      { onInvalidDiscount: 'ignore' }
+    );
+    expect(price.discountAmountCents).toBe(0);
+    expect(price.subtotalCents).toBe(5000);
+  });
+});

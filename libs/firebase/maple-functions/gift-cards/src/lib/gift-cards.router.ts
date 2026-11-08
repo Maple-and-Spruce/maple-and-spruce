@@ -18,7 +18,12 @@
  * `tools/check-callable-roles.ts` reads `requiringRole` off the AST and cannot
  * see through a helper.
  */
-import { Functions, Role, paymentThrottles } from '@maple/firebase/functions';
+import {
+  Functions,
+  Role,
+  codeLookupThrottles,
+  paymentThrottles,
+} from '@maple/firebase/functions';
 import {
   SQUARE_SECRET_NAMES,
   SQUARE_STRING_NAMES,
@@ -32,6 +37,8 @@ import type {
   IssueGiftCardResponse,
   MarkClassCertificateRequest,
   MarkClassCertificateResponse,
+  PreviewGiftCardForClassRequest,
+  PreviewGiftCardForClassResponse,
   PurchaseGiftCardRequest,
   PurchaseGiftCardResponse,
   RevealGiftCardCodeRequest,
@@ -42,6 +49,7 @@ import {
   getGiftCards,
   revealGiftCardCode,
 } from './gift-cards.handlers';
+import { previewGiftCardForClass } from './preview-gift-card-for-class';
 import { purchaseGiftCard } from './purchase-gift-card';
 import {
   issueGiftCard,
@@ -95,6 +103,19 @@ export const giftCards = Functions.router('giftCards', {
     .usingSecrets(...SQUARE_SECRET_NAMES)
     .usingStrings(...SQUARE_STRING_NAMES)
     .asRoute<IssueGiftCardRequest, IssueGiftCardResponse>(issueGiftCard),
+
+  /**
+   * Public (#301): what a gift card would pay toward a class at checkout.
+   * Reads the card from Square and prices the order; charges nothing.
+   */
+  previewGiftCardForClass: Functions.endpoint
+    .withAppCheck('enforce')
+    .throttling('previewGiftCardForClass', codeLookupThrottles())
+    .usingSecrets(...SQUARE_SECRET_NAMES)
+    .usingStrings(...SQUARE_STRING_NAMES)
+    .asRoute<PreviewGiftCardForClassRequest, PreviewGiftCardForClassResponse>(
+      previewGiftCardForClass
+    ),
 
   /**
    * Public: a customer buys a gift card on the Webflow buy page. Charges the

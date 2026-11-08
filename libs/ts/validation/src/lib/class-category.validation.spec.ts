@@ -3,6 +3,43 @@ import { classCategoryValidation } from './class-category.validation';
 import type { CreateClassCategoryInput } from '@maple/ts/domain';
 
 describe('classCategoryValidation', () => {
+  describe('gift certificates (#309)', () => {
+    const base = { name: 'Pottery', order: 0 };
+
+    it('needs a price while switched on', () => {
+      const result = classCategoryValidation({ ...base, giftCertificateEnabled: true });
+      expect(result.getErrors('giftCertificatePriceCents')).toEqual([
+        'Enter a certificate price to sell this type as a gift certificate',
+      ]);
+    });
+
+    it('passes switched on with a price', () => {
+      const result = classCategoryValidation({
+        ...base,
+        giftCertificateEnabled: true,
+        giftCertificatePriceCents: 6500,
+      });
+      expect(result.hasErrors()).toBe(false);
+    });
+
+    it('does not need a price while switched off', () => {
+      expect(
+        classCategoryValidation({ ...base, giftCertificateEnabled: false }).hasErrors()
+      ).toBe(false);
+    });
+
+    it.each([0, -100, 12.5])('refuses a price of %s', (giftCertificatePriceCents) => {
+      const result = classCategoryValidation({
+        ...base,
+        giftCertificateEnabled: true,
+        giftCertificatePriceCents,
+      });
+      expect(result.getErrors('giftCertificatePriceCents')).toEqual([
+        'The certificate price must be more than $0',
+      ]);
+    });
+  });
+
   const validCategory: CreateClassCategoryInput = {
     name: 'Fiber Arts',
     description: 'Weaving, knitting, and textile arts',

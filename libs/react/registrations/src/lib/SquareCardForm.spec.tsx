@@ -5,6 +5,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import {
   SquareCardForm,
   type CardTokenizeResult,
+  type GiftCardFieldApi,
   type SquareInitErrorInfo,
 } from './SquareCardForm';
 
@@ -526,5 +527,94 @@ describe('SquareCardForm wallet layout', () => {
 
     await new Promise((r) => setTimeout(r, 0));
     expect(screen.queryByText('Or pay with card')).not.toBeInTheDocument();
+  });
+});
+
+describe('SquareCardForm gift card field (#301)', () => {
+  function installFakeSquareWithGiftCard(
+    tokenResult: { status: string; token?: string; errors?: { message: string }[] } = {
+      status: 'OK',
+      token: 'gftok:one',
+    }
+  ) {
+    const giftCard = {
+      attach: vi.fn().mockResolvedValue(undefined),
+      tokenize: vi.fn().mockResolvedValue(tokenResult),
+      destroy: vi.fn().mockResolvedValue(undefined),
+    };
+    const payments = {
+      card: vi.fn().mockResolvedValue({
+        attach: vi.fn().mockResolvedValue(undefined),
+        tokenize: vi.fn(),
+        destroy: vi.fn().mockResolvedValue(undefined),
+      }),
+      giftCard: vi.fn().mockResolvedValue(giftCard),
+    };
+    (window as unknown as { Square: unknown }).Square = {
+      payments: vi.fn().mockResolvedValue(payments),
+    };
+    return { giftCard, payments };
+  }
+
+  async function renderForGiftCard(
+    props: Partial<Parameters<typeof SquareCardForm>[0]> = {}
+  ) {
+    let api: GiftCardFieldApi | undefined;
+    let ready = false;
+    const view = render(
+      <SquareCardForm
+        applicationId="sandbox-sq0idb-abc123"
+        locationId="LOC1"
+        totalCents={4500}
+        onTokenizeRef={() => (ready = true)}
+        onGiftCardRef={(a) => (api = a)}
+        {...props}
+      />
+    );
+    await waitFor(() => expect(ready).toBe(true));
+    return { api: () => api, view };
+  }
+
+  it('creates no gift card handle unless asked', async () => {
+    const { payments } = installFakeSquareWithGiftCard();
+    const { api } = await renderForGiftCard();
+    expect(api()).toBeUndefined();
+    expect(payments.giftCard).not.toHaveBeenCalled();
+  });
+
+  it('creates the field only when attached, and tokenizes it', async () => {
+    const { payments, giftCard } = installFakeSquareWithGiftCard();
+    const { api } = await renderForGiftCard({ enableGiftCard: true });
+    expect(api()).toBeDefined();
+    expect(payments.giftCard).not.toHaveBeenCalled();
+
+    const el = document.createElement('div');
+    await api()!.attach(el);
+    expect(giftCard.attach).toHaveBeenCalledWith(el);
+    await expect(api()!.tokenize()).resolves.toBe('gftok:one');
+
+    await api()!.destroy();
+    expect(giftCard.destroy).toHaveBeenCalled();
+    await expect(api()!.tokenize()).rejects.toThrow(
+      'Please enter your gift card number.'
+    );
+  });
+
+  it('passes on what Square says about a bad number', async () => {
+    installFakeSquareWithGiftCard({
+      status: 'Invalid',
+      errors: [{ message: 'Gift card number is not valid' }],
+    });
+    const { api } = await renderForGiftCard({ enableGiftCard: true });
+    await api()!.attach(document.createElement('div'));
+    await expect(api()!.tokenize()).rejects.toThrow(
+      'Gift card number is not valid'
+    );
+  });
+
+  it('hides the card field when cardHidden is set', async () => {
+    installFakeSquareWithGiftCard();
+    const { view } = await renderForGiftCard({ cardHidden: true });
+    expect(view.container.querySelector('#square-card-container')).not.toBeVisible();
   });
 });

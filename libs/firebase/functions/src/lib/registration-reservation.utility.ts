@@ -55,7 +55,7 @@ import { randomBytes } from 'crypto';
  */
 export type RegistrationReservationInput = Omit<
   CreateRegistrationRequest,
-  'paymentNonce'
+  'paymentNonce' | 'giftCardNonce'
 >;
 
 /**
@@ -132,6 +132,94 @@ export function validateRequiredAgreements(
       }
     }
   }
+}
+
+/** What a class order costs, before any gift card. */
+export interface ClassOrderPrice {
+  /** Price per seat times seats. */
+  originalCostCents: number;
+  /** Discount amount applied in cents (0 if none). */
+  discountAmountCents: number;
+  /** Normalized (uppercased) discount code actually applied, if any. */
+  discountCode?: string;
+  /** Discount document to consume a usage of, if a code applied. */
+  discountIdToRedeem?: string;
+  /** Pre-tax, post-discount subtotal in cents. */
+  subtotalCents: number;
+  /** Tax in cents. */
+  taxAmountCents: number;
+  /** Subtotal plus tax in cents. */
+  pricePaidCents: number;
+}
+
+/**
+ * Price a class order: the class price times seats, less any discount code,
+ * plus tax. The single source of the registration price, shared by the
+ * reservation (both payment paths) and the gift card preview (#301), so the
+ * family is shown the amount they will be charged.
+ *
+ * `onInvalidDiscount: 'throw'` refuses an unknown, expired or other-program
+ * code (checkout: the family was shown a price that depended on it).
+ * `'ignore'` prices without it (a preview, as `calculateRegistrationCost`
+ * does).
+ */
+export async function priceClassOrder(
+  classEntity: Pick<Class, 'priceCents'>,
+  data: { quantity: number; discountCode?: string },
+  taxRatePercent: number,
+  options: { onInvalidDiscount: 'throw' | 'ignore' }
+): Promise<ClassOrderPrice> {
+  const originalCostCents = classEntity.priceCents * data.quantity;
+  let discountAmountCents = 0;
+  let discountCode: string | undefined;
+  let discountIdToRedeem: string | undefined;
+
+  if (data.discountCode) {
+    const discount = await DiscountRepository.findByCode(data.discountCode);
+    // The customer was shown a price that depends on this code; if it's no
+    // longer valid at submit time we must NOT silently charge full price.
+    //
+    // A code scoped to another program is rejected on the SAME branch, with
+    // the same wording, as an unknown code (legacy #791). Music Together settles to a
+    // separate business's Square account, so honoring an MT code here would
+    // discount a Maple & Spruce class against Stephanie's promotion — and a
+    // distinct message would leak which codes exist over there.
+    const usable =
+      !!discount &&
+      isDiscountValid(discount) &&
+      isDiscountForProgram(discount, 'classes');
+    if (!usable && options.onInvalidDiscount === 'throw') {
+      throw new Error(
+        `Discount code "${data.discountCode}" is no longer valid. Please refresh and try again.`
+      );
+    }
+    if (usable && discount) {
+      const result = applyDiscount(discount, {
+        unitPriceCents: classEntity.priceCents,
+        quantity: data.quantity,
+      });
+      if (result.discountAmountCents > 0) {
+        discountAmountCents = result.discountAmountCents;
+        discountCode = data.discountCode.toUpperCase();
+        discountIdToRedeem = discount.id;
+      }
+    }
+  }
+
+  const subtotalCents = Math.max(0, originalCostCents - discountAmountCents);
+  const { taxAmountCents, totalCents: pricePaidCents } = calculateTax(
+    subtotalCents,
+    taxRatePercent
+  );
+  return {
+    originalCostCents,
+    discountAmountCents,
+    discountCode,
+    discountIdToRedeem,
+    subtotalCents,
+    taxAmountCents,
+    pricePaidCents,
+  };
 }
 
 /** Priced, reserved registration — everything both payment paths need next. */
@@ -243,46 +331,16 @@ export async function reserveClassRegistration(
   }
 
   // 4. Price the order (optional discount, then tax)
-  const originalCostCents = classEntity.priceCents * data.quantity;
-  let discountAmountCents = 0;
-  let discountCode: string | undefined;
-  let discountIdToRedeem: string | undefined;
-
-  if (data.discountCode) {
-    const discount = await DiscountRepository.findByCode(data.discountCode);
-    // The customer was shown a price that depends on this code; if it's no
-    // longer valid at submit time we must NOT silently charge full price.
-    //
-    // A code scoped to another program is rejected on the SAME branch, with
-    // the same wording, as an unknown code (legacy #791). Music Together settles to a
-    // separate business's Square account, so honoring an MT code here would
-    // discount a Maple & Spruce class against Stephanie's promotion — and a
-    // distinct message would leak which codes exist over there.
-    if (
-      !discount ||
-      !isDiscountValid(discount) ||
-      !isDiscountForProgram(discount, 'classes')
-    ) {
-      throw new Error(
-        `Discount code "${data.discountCode}" is no longer valid. Please refresh and try again.`
-      );
-    }
-    const result = applyDiscount(discount, {
-      unitPriceCents: classEntity.priceCents,
-      quantity: data.quantity,
-    });
-    if (result.discountAmountCents > 0) {
-      discountAmountCents = result.discountAmountCents;
-      discountCode = data.discountCode.toUpperCase();
-      discountIdToRedeem = discount.id;
-    }
-  }
-
-  const subtotalCents = Math.max(0, originalCostCents - discountAmountCents);
-  const { taxAmountCents, totalCents: pricePaidCents } = calculateTax(
+  const {
+    discountAmountCents,
+    discountCode,
+    discountIdToRedeem,
     subtotalCents,
-    taxRatePercent
-  );
+    taxAmountCents,
+    pricePaidCents,
+  } = await priceClassOrder(classEntity, data, taxRatePercent, {
+    onInvalidDiscount: 'throw',
+  });
 
   // 5. Reserve the spot atomically (capacity check + write share one txn)
   const db = getDb();

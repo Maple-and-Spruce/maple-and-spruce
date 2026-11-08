@@ -158,6 +158,11 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   `settings/updateBusinessPaymentConfig` _(the studio Venmo handle, stored without its @)_ and
   `settings/getPosLessonConfig` / `settings/updatePosLessonConfig` _(the Square catalog ids
   that count as lessons at the POS; trimmed and de-duped)_.
+- `settings/getGiftCardSettings` / `settings/updateGiftCardSettings` (#309) _(Admin — the
+  dollar gift card amounts the website sells, at `appConfig/giftCards`: 1 to 4 one-tap
+  amounts and the lowest and highest "Other amount". Reads as $25/$50/$100 and $10 to $500
+  until edited. Saving runs `giftCardSettingsValidation`: whole dollars, lowest at least $5,
+  highest at most $1,000, lowest below highest, each amount within them, no repeats)_.
 - The six per-endpoint originals (`getLessonRatesConfig`, `updateLessonRatesConfig`,
   `getBusinessPaymentConfig`, `updateBusinessPaymentConfig`, `getPosLessonConfig`,
   `updatePosLessonConfig`) were deleted by hand once the routes were live, then dropped from
@@ -212,6 +217,9 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   - Both checkouts: `publicSite/lookupDiscount`
   - Music Together widgets: `publicSite/getPublicMusicTogetherSection`,
     `publicSite/getPublicMusicTogetherSections`, `publicSite/getPublicMusicTogetherDemos`
+  - Gift card widget (#309): `publicSite/getGiftCardOptions` _(the amounts from Settings and
+    the class types switched on as gift certificates: id, name, certificate price, first pool
+    image)_
 - The widget calls these with `routeCallable` from `apps/webflow-components/src/firebase-init.ts`,
   so moving them needed a Webflow publish. The eight per-endpoint originals keep serving the
   old widget bundle until that publish, then are deleted by hand.
@@ -416,9 +424,18 @@ Square SDK integration for payments, catalog management, and sync conflict resol
   month's totals, month boundary in Eastern time), `giftCards/getGiftCard` (one card and its
   full history), `giftCards/revealGiftCardCode` (the full code for a printed certificate;
   each call logs `{"event":"gift_card_code_revealed"}` with the caller's uid, never the code).
+- `giftCards/previewGiftCardForClass` (#301) — a **public** route (allowlisted
+  in `tools/check-callable-roles.ts`), App Check `enforce`, throttled per IP with
+  `codeLookupThrottles`. Reads the card behind a Web Payments SDK gift card token from Square
+  and prices the class with `priceClassOrder` (the reservation's own pricing), returning the
+  last 4, balance, class-certificate cover and what is left to pay. Charges nothing. Called by
+  the registration widget only when its `giftCardsEnabled` Webflow prop is `show`.
+- `createRegistration` takes an optional `giftCardNonce` (#301): gift card payment authorized
+  first, a card payment for the rest, both completed with `orders.pay`; any failure cancels
+  what was authorized. `cancelRegistration` refunds each share to where it came from.
   `getGiftCard` also returns `purchase` (the `giftCardPurchases` record) for a card bought
   online.
-- `giftCards/purchaseGiftCard` (#300) — the one **public** route on the router, for the
+- `giftCards/purchaseGiftCard` (#300) — a **public** route on the router, for the
   Webflow Gift Card component. App Check `enforce`, `paymentThrottles('buyerEmail')`, Square
   secrets + strings + `ADMIN_ALERT_EMAIL`. Validates (`giftCardPurchaseValidation`), creates
   an order with one untaxed `GIFT_CARD` line (`referenceId: giftcard-…`), pays it with the
@@ -446,6 +463,10 @@ Square SDK integration for payments, catalog management, and sync conflict resol
   code); failures log `gift_card_issue_failed` (`step: create | activate`) or
   `gift_card_issue_record_failed`. Returns the id and last 4; the code comes from
   `revealGiftCardCode`.
+  Since #309 the amount limits are the ones stored in Settings, and a class certificate names
+  a class type (`{ kind: 'class', classCategoryId }`): the type must be switched on, and the
+  value is its certificate price. An old `{ kind: 'class', classId }` request still works and
+  resolves the class's type; the same rules apply.
 
 ### Square webhook
 - `squareWebhook` — HTTP endpoint _(memory: 512MiB, concurrency: 10)_. For `catalog.version.updated` events, the handler just bumps the singleton `catalogSyncRequests/pending` doc and acks 200 within Square's 10-second delivery timeout; the actual catalog re-sync runs in `processCatalogSyncRequest`. For `payment.created` / `payment.updated` events with a `COMPLETED` payment, it enqueues a `posSaleRequests/{paymentId}` doc (stays lean — no Square SDK) and returns; `processPosSale` does the work. Inventory and invoice events run inline (fast).
