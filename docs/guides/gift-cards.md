@@ -173,7 +173,7 @@ batch to print it again"); each opening reads the codes from Square and is logge
 
 **Theft caveat:** because the cards are loaded before they are sold, a certificate taken
 from the stack can be spent without anyone paying for it. If one goes missing, find it on
-the Gift Cards page by its last 4 digits and turn it off (block it) in the Square Dashboard.
+the Gift Cards page by its last 4 digits, then deactivate it or clear its balance in the Square Dashboard (Gift Cards, search the last 4).
 
 ### Selling one at the register
 
