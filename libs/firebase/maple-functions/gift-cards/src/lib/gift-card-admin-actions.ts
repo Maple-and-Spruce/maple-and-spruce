@@ -221,7 +221,9 @@ export async function issueGiftCard(
         error: error instanceof Error ? error.message : String(error),
       })
     );
-    throw new Error('Square could not make the gift card. Nothing was given; try again.');
+    throw new Error('Square could not make the gift card. Nothing was given; try again.', {
+      cause: error,
+    });
   }
 
   const response: IssueGiftCardResponse = {
@@ -264,7 +266,8 @@ export async function issueGiftCard(
       })
     );
     throw new Error(
-      'Square made the card but could not put the money on it, so nothing was given. Try again.'
+      'Square made the card but could not put the money on it, so nothing was given. Try again.',
+      { cause: error }
     );
   }
 

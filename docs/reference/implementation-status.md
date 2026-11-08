@@ -218,6 +218,7 @@ with the code from the admin.
 | Webflow `/gift-cards` page | Not started (Webflow) | #299 |
 | Own buy page with class certificates (`giftCards/purchaseGiftCard`, Webflow Gift Card component, admin "Bought online") | PR open | #300 |
 | Pay for classes with a gift card, 10% class-certificate cushion | Not started | #301 |
+| Admin: give a free card (`giftCards/issueGiftCard`), make a register card a class certificate (`giftCards/markClassCertificate`) | PR open | #310 |
 
 ## Phase 4: Music Lessons - legacy Epic #10
 

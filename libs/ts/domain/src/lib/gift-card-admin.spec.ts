@@ -5,11 +5,12 @@ import {
 } from './gift-card-admin';
 import { giftCardPurchaseSource, type GiftCardActivityEntry } from './gift-card';
 
+let activityCounter = 0;
 function activity(
   over: Partial<GiftCardActivityEntry> & Pick<GiftCardActivityEntry, 'type'>
 ): GiftCardActivityEntry {
   return {
-    id: `a-${Math.random()}`,
+    id: `a-${++activityCounter}`,
     giftCardId: 'gc-1',
     amountCents: null,
     balanceAfterCents: null,

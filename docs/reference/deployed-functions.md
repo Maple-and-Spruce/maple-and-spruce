@@ -411,8 +411,8 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 
 ### Gift cards (#297)
 - `giftCards` — **domain router** in `maple-square` (ADR-029), every route gated `Admin`
-  with the Square access token and strings. Read-only: Square owns every card, and nothing
-  about a card is stored in Firestore. `giftCards/getGiftCards` (every card plus this
+  with the Square access token and strings (except the public `purchaseGiftCard`). Square
+  owns every card; Firestore keeps only `giftCardPurchases` records, never a balance or code. `giftCards/getGiftCards` (every card plus this
   month's totals, month boundary in Eastern time), `giftCards/getGiftCard` (one card and its
   full history), `giftCards/revealGiftCardCode` (the full code for a printed certificate;
   each call logs `{"event":"gift_card_code_revealed"}` with the caller's uid, never the code).
@@ -429,6 +429,23 @@ Square SDK integration for payments, catalog management, and sync conflict resol
   `gift_card_refund_failed` is logged and `gift-card-refund-needed` goes to
   `ADMIN_ALERT_EMAIL`. Every Square idempotency key is derived from the browser's key. The
   full code is only ever in the gift email. See `docs/guides/gift-cards.md`.
+- `giftCards/markClassCertificate` (#310) — admin only. Makes an **active** card that has no
+  `giftCardPurchases` record (in practice, one sold at the register) a class certificate:
+  writes `giftCardPurchases/{giftCardId}` with `kind: 'class'`, `source: 'register'`, the
+  class type (`classCategoryId`, `className` = category name), optional To/From/note, and
+  `valueCents` = the card's ACTIVATE amount (or first LOAD) from its Square history, not the
+  balance. **No Square write.** Refuses a card that already has a record, saying what it is.
+  Logs `gift_card_marked_class_certificate`.
+- `giftCards/issueGiftCard` (#310) — admin only. Gives a **free** card: validates
+  (`issueGiftCardValidation`: $5–$500 whole dollars, a reason of 3–200 characters), creates
+  a digital card, then `ACTIVATE`s it **without an order** (`amountMoney`, `referenceId`
+  `comp-<12 hex>`, `buyerPaymentInstrumentIds: [referenceId]`;
+  `GiftCardsService.activateGiftCardWithoutOrder`). Records `source: 'issued'` with the
+  reason and the admin's uid. Square keys come from the dialog's key, so a retry returns the
+  same card. Logs `gift_card_issued` (`giftCardId`, `valueCents`, `uid`, `reason`, never the
+  code); failures log `gift_card_issue_failed` (`step: create | activate`) or
+  `gift_card_issue_record_failed`. Returns the id and last 4; the code comes from
+  `revealGiftCardCode`.
 
 ### Square webhook
 - `squareWebhook` — HTTP endpoint _(memory: 512MiB, concurrency: 10)_. For `catalog.version.updated` events, the handler just bumps the singleton `catalogSyncRequests/pending` doc and acks 200 within Square's 10-second delivery timeout; the actual catalog re-sync runs in `processCatalogSyncRequest`. For `payment.created` / `payment.updated` events with a `COMPLETED` payment, it enqueues a `posSaleRequests/{paymentId}` doc (stays lean — no Square SDK) and returns; `processPosSale` does the work. Inventory and invoice events run inline (fast).

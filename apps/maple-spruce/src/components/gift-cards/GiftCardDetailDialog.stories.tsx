@@ -199,3 +199,141 @@ export const NotBoughtOnline: Story = {
     await expect(canvas.queryByRole('region', { name: 'Bought online' })).toBeNull();
   },
 };
+
+/** An active register card with no record offers "Make it a class certificate". */
+export const OffersClassCertificate: Story = {
+  args: { onMakeClassCertificate: fn() },
+  play: async ({ args }) => {
+    const canvas = await openDialog();
+    const button = await canvas.findByRole('button', { name: 'Make it a class certificate' });
+    await expect(canvas.getByText(/Nothing changes in Square/)).toBeVisible();
+    await userEvent.click(button);
+    await expect(args.onMakeClassCertificate).toHaveBeenCalledWith(card);
+  },
+};
+
+/** Not offered while the card's record is still loading: it may already have one. */
+export const NoCertificateButtonWhileLoading: Story = {
+  args: { onMakeClassCertificate: fn(), detailState: { status: 'loading' } },
+  play: async () => {
+    const canvas = await openDialog();
+    await expect(await canvas.findByLabelText('Loading history')).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Make it a class certificate' })).toBeNull();
+  },
+};
+
+/** Not offered for a card that already has a record. */
+export const NoCertificateButtonWhenRecorded: Story = {
+  args: {
+    onMakeClassCertificate: fn(),
+    detailState: {
+      status: 'success',
+      data: {
+        card,
+        activities: mockGiftCardActivities,
+        purchase: {
+          giftCardId: card.id,
+          last4: card.last4,
+          kind: 'amount',
+          valueCents: 5000,
+          buyerName: 'Robin Ashfield',
+          buyerEmail: 'robin@example.com',
+          deliverTo: 'buyer',
+          squareOrderId: 'order-1',
+          squarePaymentId: 'pay-1',
+          createdAt: '2026-11-02T15:00:00.000Z',
+        },
+      },
+    },
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    await expect(canvas.getByRole('region', { name: 'Bought online' })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Make it a class certificate' })).toBeNull();
+  },
+};
+
+/** Not offered for a blocked or empty-and-pending card. */
+export const NoCertificateButtonWhenNotActive: Story = {
+  args: {
+    onMakeClassCertificate: fn(),
+    detailState: {
+      status: 'success',
+      data: { card: { ...card, state: 'blocked' }, activities: mockGiftCardActivities },
+    },
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    await waitFor(() => expect(canvas.getByText('Gift card ending 0937')).toBeVisible());
+    await expect(canvas.queryByRole('button', { name: 'Make it a class certificate' })).toBeNull();
+  },
+};
+
+/** A register card Katie made a class certificate. */
+export const RegisterClassCertificate: Story = {
+  args: {
+    onMakeClassCertificate: fn(),
+    detailState: {
+      status: 'success',
+      data: {
+        card,
+        activities: mockGiftCardActivities,
+        purchase: {
+          giftCardId: card.id,
+          last4: card.last4,
+          kind: 'class',
+          valueCents: 6500,
+          source: 'register',
+          classCategoryId: 'cat-pottery',
+          className: 'Pottery & Ceramics',
+          classCategoryName: 'Pottery & Ceramics',
+          recipientName: 'Olive Thompson',
+          fromName: 'Robin Ashfield',
+          createdAt: '2026-11-08T12:00:00.000Z',
+        },
+      },
+    },
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    const section = within(canvas.getByRole('region', { name: 'Class certificate' }));
+    await expect(
+      section.getByText(
+        'Class certificate for one Pottery & Ceramics class, worth $65.00 (sold at the register)'
+      )
+    ).toBeVisible();
+    await expect(section.getByText('For Olive Thompson')).toBeVisible();
+    await expect(section.getByText('From Robin Ashfield')).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Make it a class certificate' })).toBeNull();
+  },
+};
+
+/** A card the studio gave for free, with why. */
+export const GivenFree: Story = {
+  args: {
+    detailState: {
+      status: 'success',
+      data: {
+        card,
+        activities: mockGiftCardActivities,
+        purchase: {
+          giftCardId: card.id,
+          last4: card.last4,
+          kind: 'amount',
+          valueCents: 2500,
+          source: 'issued',
+          reason: 'Raffle prize at the fall fair',
+          recipientName: 'Olive Thompson',
+          createdAt: '2026-11-08T12:00:00.000Z',
+        },
+      },
+    },
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    const section = within(canvas.getByRole('region', { name: 'Given free by the studio' }));
+    await expect(section.getByText(/Free \$25\.00 card\. Nobody paid for it/)).toBeVisible();
+    await expect(section.getByText('Why: Raffle prize at the fall fair')).toBeVisible();
+    await expect(section.queryByText(/Bought by/)).toBeNull();
+  },
+};

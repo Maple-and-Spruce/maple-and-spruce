@@ -34,7 +34,7 @@ export function formatGiftCardCode(code: string): string {
  * else (blank, cents, letters) is NaN, so validation says "whole dollars".
  */
 export function parseWholeDollars(text: string): number {
-  const match = /^\s*\$?\s*(\d{1,6})(?:\.0{1,2})?\s*$/.exec(text);
+  const match = /^\$?(\d{1,6})(?:\.00?)?$/.exec(text.replace(/\s/g, ''));
   return match ? Number(match[1]) * 100 : Number.NaN;
 }
 
@@ -44,9 +44,5 @@ export function parseWholeDollars(text: string): number {
  * makes one card, not two.
  */
 export function newGiftCardRequestKey(): string {
-  const random =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`;
-  return `issue-${random}`;
+  return `issue-${crypto.randomUUID()}`;
 }

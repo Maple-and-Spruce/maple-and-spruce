@@ -213,9 +213,15 @@ function History({ detailState }: { detailState: RequestState<GiftCardDetail> })
   );
 }
 
-const RECORD_HEADINGS = {
+const RECORD_LABELS = {
   online: 'Bought online',
   register: 'Class certificate',
+  issued: 'Given free by the studio',
+} as const;
+
+const RECORD_HEADINGS = {
+  online: 'Bought online',
+  register: 'Made a class certificate',
   issued: 'Given free by the studio',
 } as const;
 
@@ -226,6 +232,7 @@ const RECORD_HEADINGS = {
 function CardRecord({ purchase }: { purchase: GiftCardPurchaseDetails }) {
   const source = giftCardPurchaseSource(purchase);
   const heading = RECORD_HEADINGS[source];
+  const label = RECORD_LABELS[source];
   const forWhom = purchase.recipientName
     ? purchase.recipientEmail
       ? `${purchase.recipientName} (${purchase.recipientEmail})`
@@ -235,7 +242,7 @@ function CardRecord({ purchase }: { purchase: GiftCardPurchaseDetails }) {
   return (
     <Box
       component="section"
-      aria-label={heading}
+      aria-label={label}
       sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
     >
       <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>
