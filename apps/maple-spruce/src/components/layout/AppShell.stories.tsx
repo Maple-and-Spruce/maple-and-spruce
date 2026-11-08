@@ -190,7 +190,7 @@ export const AdminInMoney: Story = {
     );
     await expect(
       money.getAllByRole('link').map((a) => a.textContent),
-    ).toEqual(['Hope Billing', 'POS Lessons', 'Teacher Payouts', 'Artist Payouts']);
+    ).toEqual(['Hope Billing', 'POS Lessons', 'Teacher Payouts', 'Artist Payouts', 'Gift Cards']);
     await expect(
       money.getByRole('link', { name: 'POS Lessons' }),
     ).toHaveAttribute('aria-current', 'page');

@@ -667,3 +667,11 @@ export type {
   SaveInstrumentsRequest,
   SaveInstrumentsResponse,
 } from './settings.types';
+export type {
+  GetGiftCardsRequest,
+  GetGiftCardsResponse,
+  GetGiftCardRequest,
+  GetGiftCardResponse,
+  RevealGiftCardCodeRequest,
+  RevealGiftCardCodeResponse,
+} from './gift-card.types';

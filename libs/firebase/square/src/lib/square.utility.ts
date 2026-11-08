@@ -24,6 +24,7 @@ import { CheckoutService } from './checkout.service';
 import { CardsService } from './cards.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { CustomersService } from './customers.service';
+import { GiftCardsService } from './gift-cards.service';
 
 // Re-export the credential symbols so existing importers of './square.utility'
 // (and the lib barrel) keep working. The definitions live in the barrel-free
@@ -79,6 +80,7 @@ export class Square {
   private readonly _cardsService: CardsService;
   private readonly _subscriptionsService: SubscriptionsService;
   private readonly _customersService: CustomersService;
+  private readonly _giftCardsService: GiftCardsService;
   public readonly locationId: string;
   public readonly taxRatePercent: number;
 
@@ -122,6 +124,7 @@ export class Square {
     this._cardsService = new CardsService(this.client);
     this._subscriptionsService = new SubscriptionsService(this.client);
     this._customersService = new CustomersService(this.client);
+    this._giftCardsService = new GiftCardsService(this.client);
   }
 
   /**
@@ -199,6 +202,13 @@ export class Square {
    */
   get customersService(): CustomersService {
     return this._customersService;
+  }
+
+  /**
+   * Gift cards: balances, history and codes, read from Square (#295).
+   */
+  get giftCardsService(): GiftCardsService {
+    return this._giftCardsService;
   }
 
   /**

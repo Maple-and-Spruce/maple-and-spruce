@@ -8,6 +8,7 @@
   "include": [
     "src/**/*.ts",
     "../../libs/firebase/maple-functions/product-catalog/**/*.ts",
+    "../../libs/firebase/maple-functions/gift-cards/**/*.ts",
     "../../libs/firebase/maple-functions/process-catalog-sync-request/**/*.ts",
     "../../libs/firebase/maple-functions/process-pos-sale/**/*.ts",
     "../../libs/firebase/maple-functions/create-registration/**/*.ts",

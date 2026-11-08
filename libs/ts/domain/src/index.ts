@@ -87,6 +87,9 @@ export * from './lib/music-together-demo-rsvp';
 export * from './lib/music-together-interest';
 export * from './lib/music-together-licensee';
 
+// Gift cards (Square-owned balances)
+export * from './lib/gift-card';
+
 // User & role administration
 export * from './lib/app-user';
 

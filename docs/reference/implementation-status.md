@@ -205,6 +205,20 @@ like the finished part of a half-done feature, rather than the thing to check.
 So a customer cannot look up or cancel their own registration, and the confirmation number
 they are given has nothing to look it up with. #130 decides whether to finish or drop it.
 
+## Gift cards for the holidays — Epic #295 (In Progress)
+
+Square owns every card; the admin reads it back live. Printed certificates are made in Canva
+with the code from the admin.
+
+| Piece | Status | Issue |
+|---|---|---|
+| Square setup, terms, certificate template | Katie | #296 |
+| Admin Gift Cards page (totals, cards, history, copy code, how it works) | PR open | #297 |
+| Register gift card sales skipped by POS capture | PR open | #298 |
+| Webflow `/gift-cards` page | Not started (Webflow) | #299 |
+| Own buy page with class certificates | Not started | #300 |
+| Pay for classes with a gift card, 10% class-certificate cushion | Not started | #301 |
+
 ## Phase 4: Music Lessons - legacy Epic #10
 
 ### Teacher Payout Tracking (legacy #283, Complete)

@@ -18,6 +18,7 @@ if (getApps().length === 0) {
 // Product catalog domain router: the product writes that go through Square
 // (ADR-029, #68). Reads, deletes and categories are on `products` in maple-core.
 export { productCatalog } from '@maple/firebase/maple-functions/product-catalog';
+export { giftCards } from '@maple/firebase/maple-functions/gift-cards';
 
 // Square webhook: moved to the maple-square-webhook codebase
 // (apps/functions-square-webhook). Square's delivery deadline is 10s and this

@@ -171,6 +171,18 @@
 - [ ] Payout reports (what sold, commission, amount owed)
 - [ ] Mark payouts as completed
 
+**5e. Gift cards for the holidays** - Epic #295
+
+Square holds every card (balances, codes, history). Physical gifts are printed
+certificates Katie designs in Canva, using the code from the admin. M&S only: Music
+Together is a separate Square account.
+- [ ] Square setup, terms, Canva certificate template (#296, Katie)
+- [ ] Admin Gift Cards page: totals, every card, history, copy code, how it works (#297)
+- [ ] Keep register gift card sales out of class/lesson capture (#298)
+- [ ] Webflow `/gift-cards` page and links (#299)
+- [ ] Our own buy page, with class certificates (#300)
+- [ ] Pay for classes online with a gift card; class certificates cover up to 10% over their value (#301)
+
 ---
 
 ## Inventory System Architecture

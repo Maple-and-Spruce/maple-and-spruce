@@ -6,6 +6,22 @@
 
 ## Current Status
 
+### Gift cards for the holidays (2026-11-07, epic #295)
+
+- Plan agreed with David: Square holds every card; physical gifts are printed certificates Katie
+  makes in Canva with the code from the admin; Square's own eGift page sells them online for the
+  holidays; class certificates get a 10% cushion at class checkout. M&S only (MT is a separate
+  Square account).
+- **#297 (this PR):** admin **Money → Gift Cards**: totals (owed to customers, sold and spent this
+  month in Eastern time), every card searchable by last 4, history, **Show and copy code** (each
+  reveal logged, code never stored), and a "How gift cards work" panel. `giftCards` router in
+  `maple-square`, admin only, read-only. Also the shared groundwork for #300/#301:
+  `GiftCardPurchaseRepository` (`giftCardPurchases/{giftCardId}`), create/activate/from-nonce on
+  `GiftCardsService`, and `classCertificateCushionCents`.
+- **#298 (PR #303):** register sales of a gift card are skipped by POS class/lesson capture.
+- **Before selling (Katie, #296):** turn on gift cards + "Sell eGift Cards in Store" in Square,
+  terms, Canva template, decide who pays the class-certificate cushion.
+
 ### Contractor agreement: real checkboxes, per-instructor pay, audit trail (2026-11-07)
 
 - The live "Class Instructor Agreement (1099)" said "by checking the box below" but the signing

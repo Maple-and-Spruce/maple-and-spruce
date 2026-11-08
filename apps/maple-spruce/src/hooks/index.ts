@@ -28,6 +28,7 @@ export {
   useAgreementTemplates,
   useAgreementRequests,
   useSignedAgreement,
+  useGiftCards,
   useUsers,
   useSales,
   useEtsyPush,
