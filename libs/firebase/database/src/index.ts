@@ -176,3 +176,4 @@ export {
   EtsyImportRepository,
   type CreateEtsyImportInput,
 } from './lib/etsy-import.repository';
+export { isAlreadyExists } from './lib/utilities/already-exists';

@@ -29,6 +29,11 @@ Music Together has its own policy ($25 fee) and does not use any of this.
 A booking made inside the two weeks never shows the line at all. A sent email cannot hide
 itself later, but it names the date, so it promises nothing after it.
 
+The email line comes from the shared confirmation mail
+(`registration-confirmation.utility.ts`, option `offerFreeCancellation`). The in-page checkout
+and the Square-hosted checkout turn it on. A sale rung up at the register does not: the cancel
+page finds web registrations only, so register customers ask Katie as before.
+
 ## The cancel page
 
 `https://mapleandsprucefolkarts.com/cancel`, holding the **Cancel Registration** code component

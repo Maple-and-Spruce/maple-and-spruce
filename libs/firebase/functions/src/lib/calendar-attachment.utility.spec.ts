@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { confirmationCalendarAttachments } from './calendar-attachment';
+import { confirmationCalendarAttachments } from './calendar-attachment.utility';
 
 const CLASS = {
   name: 'Wheel Throwing',

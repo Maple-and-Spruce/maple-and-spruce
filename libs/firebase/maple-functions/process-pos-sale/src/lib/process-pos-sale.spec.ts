@@ -45,6 +45,13 @@ const mocks = vi.hoisted(() => ({
   getCustomer: vi.fn(),
   // mail collection
   mailAdd: vi.fn(),
+  // The buyer's confirmation email (shared helper)
+  queueRegistrationConfirmation: vi.fn(),
+}));
+
+vi.mock('@maple/firebase/functions', () => ({
+  queueRegistrationConfirmation: mocks.queueRegistrationConfirmation,
+  generateConfirmationNumber: () => 'MS-POS001',
 }));
 
 vi.mock('firebase-functions/v2/firestore', () => ({
@@ -198,6 +205,7 @@ beforeEach(() => {
   mocks.classFindById.mockResolvedValue({ id: 'class-1', capacity: 10 });
   mocks.freshReg = undefined;
   mocks.countDocs = [];
+  mocks.queueRegistrationConfirmation.mockResolvedValue({ queued: 1 });
 });
 
 describe('processPosSale — early exits', () => {
@@ -292,9 +300,104 @@ describe('processPosSale — dedup', () => {
       })
     );
     // No capacity re-check / overbook alert for a pending hold.
-    expect(mocks.classFindById).not.toHaveBeenCalled();
     expect(mocks.mailAdd).not.toHaveBeenCalled();
     expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('emails the buyer the same confirmation the card checkout sends', async () => {
+    const slotStart = new Date('2030-06-15T14:00:00.000Z');
+    const attendees = [{ name: 'Friend One', email: 'friend@example.com' }];
+    mocks.getPayment.mockResolvedValue({
+      status: 'COMPLETED',
+      orderId: 'ORDER-1',
+      receiptUrl: 'https://squareup.com/receipt/xyz',
+    });
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      referenceId: 'reg-hosted-1',
+      lineItems: [{ catalogObjectId: 'VAR_A', quantity: 2 }],
+    });
+    mocks.findById.mockResolvedValue({
+      id: 'reg-hosted-1',
+      source: 'web',
+      status: 'pending',
+      classId: 'class-1',
+      customerName: 'Robin Ashfield',
+      customerEmail: 'robin@example.com',
+      quantity: 2,
+      additionalAttendees: attendees,
+      slotStart,
+      confirmationNumber: 'MS-HOST01',
+      subtotalCents: 9000,
+      taxRatePercent: 6,
+      taxAmountCents: 540,
+      pricePaidCents: 9540,
+    });
+    mocks.freshReg = { status: 'pending' };
+    const classEntity = { id: 'class-1', name: 'Pottery 101', capacity: 10 };
+    mocks.classFindById.mockResolvedValue(classEntity);
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.queueRegistrationConfirmation).toHaveBeenCalledTimes(1);
+    expect(mocks.queueRegistrationConfirmation).toHaveBeenCalledWith({
+      idempotencyKey: 'reg-hosted-1',
+      classEntity,
+      customerName: 'Robin Ashfield',
+      customerEmail: 'robin@example.com',
+      quantity: 2,
+      confirmationNumber: 'MS-HOST01',
+      slotStart,
+      // A web checkout, so the email names the free cancellation date.
+      offerFreeCancellation: true,
+      additionalAttendees: attendees,
+      subtotalCents: 9000,
+      taxRatePercent: 6,
+      taxAmountCents: 540,
+      amountPaidCents: 9540,
+      receiptUrl: 'https://squareup.com/receipt/xyz',
+    });
+  });
+
+  it('sends no second confirmation when a retry finds it already confirmed', async () => {
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      referenceId: 'reg-hosted-2',
+      lineItems: [{ catalogObjectId: 'VAR_A', quantity: 1 }],
+    });
+    mocks.findById.mockResolvedValue({
+      id: 'reg-hosted-2',
+      source: 'web',
+      status: 'pending',
+      classId: 'class-1',
+      customerEmail: 'robin@example.com',
+      quantity: 1,
+    });
+    mocks.freshReg = { status: 'confirmed', squarePaymentId: 'PAY-1' };
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.queueRegistrationConfirmation).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('sends no confirmation for an already-confirmed card checkout', async () => {
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      referenceId: 'reg-web-1',
+      lineItems: [{ catalogObjectId: 'VAR_A', quantity: 1 }],
+    });
+    mocks.findById.mockResolvedValue({
+      id: 'reg-web-1',
+      source: 'web',
+      status: 'confirmed',
+      classId: 'class-1',
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    // createRegistration already emailed this buyer.
+    expect(mocks.queueRegistrationConfirmation).not.toHaveBeenCalled();
   });
 
   it('is idempotent: does not re-confirm when the transactional re-read is already confirmed', async () => {
@@ -532,6 +635,55 @@ describe('processPosSale — registration creation', () => {
     expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
   });
 
+  it('emails the buyer a confirmation, keyed so a re-run cannot send twice', async () => {
+    mocks.getPayment.mockResolvedValue({
+      paymentId: 'PAY-1',
+      status: 'COMPLETED',
+      orderId: 'ORDER-1',
+      customerId: 'cust-1',
+      receiptUrl: 'https://squareup.com/receipt/pos',
+    });
+    mocks.getCustomer.mockResolvedValue({
+      emailAddress: 'buyer@example.com',
+      givenName: 'Grace',
+      familyName: 'Hopper',
+    });
+    const classEntity = { id: 'class-1', name: 'Pottery 101', priceCents: 4500 };
+    mocks.findBySquareVariationId.mockResolvedValue(classEntity);
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [
+        { catalogObjectId: 'RETAIL', name: 'Mug', quantity: 1 },
+        { catalogObjectId: 'VAR_A', name: 'Pottery 101', quantity: 2 },
+      ],
+    });
+    mocks.findBySquareVariationId.mockImplementation(async (id: string) =>
+      id === 'VAR_A' ? classEntity : undefined
+    );
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    // The registration carries the number the email quotes.
+    expect(mocks.createRegistration).toHaveBeenCalledWith(
+      expect.objectContaining({ confirmationNumber: 'MS-POS001' })
+    );
+    expect(mocks.queueRegistrationConfirmation).toHaveBeenCalledTimes(1);
+    expect(mocks.queueRegistrationConfirmation).toHaveBeenCalledWith({
+      // Payment + line index: the class is the second line.
+      idempotencyKey: 'pos-PAY-1-1',
+      classEntity,
+      customerName: 'Grace Hopper',
+      customerEmail: 'buyer@example.com',
+      quantity: 2,
+      confirmationNumber: 'MS-POS001',
+      subtotalCents: 9000,
+      taxRatePercent: 6,
+      taxAmountCents: 540,
+      amountPaidCents: 9540,
+      receiptUrl: 'https://squareup.com/receipt/pos',
+    });
+  });
+
   it('prefers the actual Square line-item money (grossSales/tax/total) over reconstruction', async () => {
     // Simulate a POS discount / price override: the class list price is 4500
     // but Square actually charged a discounted 3500 subtotal, 210 tax, 3710
@@ -613,6 +765,8 @@ describe('processPosSale — registration creation', () => {
     expect(mailDoc.to).toBe('mock-ADMIN_ALERT_EMAIL');
     expect(mailDoc.message.subject).toMatch(/needs an attendee email/i);
     expect(mailDoc.message.text).toContain('ORDER-1');
+    // Nobody to confirm to.
+    expect(mocks.queueRegistrationConfirmation).not.toHaveBeenCalled();
     expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
   });
 
