@@ -19,11 +19,18 @@ interface RouteHandler {
   method: string;
   /** Path pattern — supports :param placeholders */
   pattern: string;
+  /**
+   * Returning `undefined` passes the request on to the next matching route.
+   * That lets a feature's routes file (e.g. `routes/gift-cards.ts`) answer the
+   * requests that are its own on a shared path such as `POST /v2/orders`, and
+   * leave every other request to `routes/square.ts`.
+   */
   handler: (
     req: ParsedRequest
   ) =>
     | { status: number; body: unknown }
-    | Promise<{ status: number; body: unknown }>;
+    | undefined
+    | Promise<{ status: number; body: unknown } | undefined>;
 }
 
 interface ParsedRequest {
@@ -120,6 +127,7 @@ export class SquareMockServer {
                 body,
                 headers: req.headers,
               });
+              if (result === undefined) continue;
               res.writeHead(result.status, {
                 'Content-Type': 'application/json',
               });
