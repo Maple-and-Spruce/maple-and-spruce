@@ -28,7 +28,8 @@ import {
   WALLET_BUTTON_HEIGHT,
   WALLET_BUTTON_RADIUS,
 } from './SquareCardForm';
-import type { CardTokenizeResult } from './SquareCardForm';
+import type { CardTokenizeResult, GiftCardFieldApi } from './SquareCardForm';
+import { GiftCardSection, type GiftCardStatus } from './GiftCardSection';
 import { CostSummary } from './CostSummary';
 import { SigningForm } from '@maple/react/agreements';
 import type {
@@ -40,6 +41,8 @@ import type {
   CalculateRegistrationCostResponse,
   CreateRegistrationResponse,
   InlineAgreementSigningData,
+  PreviewGiftCardForClassRequest,
+  PreviewGiftCardForClassResponse,
 } from '@maple/ts/firebase/api-types';
 import { registrationValidation } from '@maple/ts/validation';
 import { groupPrivateHoursByDay } from '@maple/ts/domain';
@@ -108,6 +111,19 @@ function extractErrorMessage(error: unknown): string {
   return fallback;
 }
 
+/**
+ * A gift card problem in plain words. The server's message is already
+ * written for families (unknown card, no balance, not active); anything
+ * generic gets a gentle fallback.
+ */
+function extractGiftCardErrorMessage(error: unknown): string {
+  const message =
+    (error as FirebaseError | undefined)?.message ??
+    (error instanceof Error ? error.message : undefined);
+  if (message && !GENERIC_ERROR_CODES.has(message)) return message;
+  return "We couldn't check that gift card. Please try again.";
+}
+
 interface RegistrationCheckoutFormProps {
   publicClass: PublicClass;
   squareApplicationId: string;
@@ -140,9 +156,20 @@ interface RegistrationCheckoutFormProps {
     groupSize?: number;
     discountCode?: string;
     notes?: string;
+    /** Empty when a gift card covers the whole order. */
     paymentNonce: string;
+    /** Fresh gift card token, only when a gift card is applied (#301). */
+    giftCardNonce?: string;
     agreements?: InlineAgreementSigningData[];
   }) => Promise<CreateRegistrationResponse>;
+  /**
+   * Offer "Have a gift card?" (#301). When omitted, no gift card field is
+   * created and the form is exactly as it was. Reads the card on the server
+   * and returns what it would pay.
+   */
+  onPreviewGiftCard?: (
+    request: PreviewGiftCardForClassRequest
+  ) => Promise<PreviewGiftCardForClassResponse>;
   /**
    * Fallback when the embedded Square card form can't initialize (e.g. Safari
    * ITP). Given the same registration data minus the card nonce, it reserves a
@@ -171,6 +198,11 @@ interface RegistrationCheckoutFormProps {
     agreementsSigned?: boolean;
     /** Private hours: ISO start of the hour booked. */
     slotStart?: string;
+    /** Gift card payments (#301), only when a gift card paid. Last 4 only. */
+    giftCardLast4?: string;
+    giftCardPaidCents?: number;
+    cardPaidCents?: number;
+    classCertificateCoverCents?: number;
   }) => void;
   /**
    * Private hours: join the waitlist for a booked hour. When given, booked
@@ -194,6 +226,7 @@ export function RegistrationCheckoutForm({
   onHostedCheckout,
   onSuccess,
   onJoinHourWaitlist,
+  onPreviewGiftCard,
 }: RegistrationCheckoutFormProps) {
   useSignals();
 
@@ -359,6 +392,99 @@ export function RegistrationCheckoutForm({
   // Tokenize ref from SquareCardForm — a function handle, not state.
   const tokenizeRef = useRef<(() => Promise<CardTokenizeResult>) | null>(null);
 
+  // ============================================================
+  // GIFT CARD (#301) — only when `onPreviewGiftCard` is given.
+  // ============================================================
+  const giftCardsOffered = !!onPreviewGiftCard;
+  const giftCardApiRef = useRef<GiftCardFieldApi | null>(null);
+  // The SDK hands over the gift card handle once it is up; until then (and
+  // when the card form fails, e.g. the hosted-checkout fallback) none is shown.
+  const giftCardAvailable = useSignal(false);
+  const giftCardStatus = useSignal<GiftCardStatus>({ kind: 'closed' });
+  const giftCardFieldEl = useSignal<HTMLDivElement | null>(null);
+  const appliedGiftCard = useComputed(() =>
+    giftCardStatus.value.kind === 'applied' ? giftCardStatus.value.preview : null
+  );
+  const nothingLeftToPay = useComputed(
+    () => appliedGiftCard.value !== null && appliedGiftCard.value.leftToPayCents === 0
+  );
+  // What the card (or wallet) is asked for: the remainder after a gift card,
+  // otherwise the full total exactly as before.
+  const amountDueCents = useComputed(() =>
+    appliedGiftCard.value
+      ? appliedGiftCard.value.leftToPayCents
+      : costBreakdown.value?.totalCents
+  );
+
+  const handleGiftCardRef = useCallback(
+    (api: GiftCardFieldApi) => {
+      giftCardApiRef.current = api;
+      giftCardAvailable.value = true;
+    },
+    [giftCardAvailable]
+  );
+
+  const giftCardFieldRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      giftCardFieldEl.value = el;
+    },
+    [giftCardFieldEl]
+  );
+
+  // Draw Square's gift card field once its box is on the page. Opening the
+  // section mounts the box; removing the gift card unmounts it.
+  const giftCardOpen = giftCardStatus.value.kind !== 'closed';
+  useEffect(() => {
+    const el = giftCardFieldEl.value;
+    const api = giftCardApiRef.current;
+    if (!giftCardOpen || !el || !api) return;
+    api.attach(el).catch((error: unknown) => {
+      console.error('[RegistrationCheckoutForm] gift card field failed', error);
+      giftCardStatus.value = {
+        kind: 'error',
+        message:
+          "We couldn't load the gift card field. Please refresh the page and try again.",
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [giftCardOpen, giftCardFieldEl.value]);
+
+  /**
+   * Read the card (a fresh token each time) and ask the server what it pays
+   * for this order. `quiet` re-checks after the order changed: on failure the
+   * gift card is dropped rather than left showing a stale amount.
+   */
+  const applyGiftCard = useCallback(
+    async (qty: number, code: string) => {
+      const api = giftCardApiRef.current;
+      if (!onPreviewGiftCard || !api) return;
+      giftCardStatus.value = { kind: 'applying' };
+      try {
+        const giftCardNonce = await api.tokenize();
+        const preview = await onPreviewGiftCard({
+          giftCardNonce,
+          classId: publicClass.id,
+          quantity: qty,
+          discountCode: code.trim() || undefined,
+        });
+        giftCardStatus.value = { kind: 'applied', preview };
+      } catch (error) {
+        giftCardStatus.value = {
+          kind: 'error',
+          message: extractGiftCardErrorMessage(error),
+        };
+      }
+    },
+    [onPreviewGiftCard, publicClass.id, giftCardStatus]
+  );
+  const applyGiftCardRef = useRef(applyGiftCard);
+  applyGiftCardRef.current = applyGiftCard;
+
+  const handleRemoveGiftCard = useCallback(() => {
+    giftCardStatus.value = { kind: 'closed' };
+    giftCardApiRef.current?.destroy().catch(console.error);
+  }, [giftCardStatus]);
+
   const calculateCost = useCallback(
     async (qty: number, code: string) => {
       isCalculating.value = true;
@@ -369,13 +495,17 @@ export function RegistrationCheckoutForm({
           code || undefined
         );
         costBreakdown.value = result;
+        // The order changed under an applied gift card: work it out again.
+        if (giftCardStatus.peek().kind === 'applied') {
+          void applyGiftCardRef.current(qty, code);
+        }
       } catch (error) {
         console.error('Failed to calculate cost:', error);
       } finally {
         isCalculating.value = false;
       }
     },
-    [publicClass.id, onCalculateCost, isCalculating, costBreakdown]
+    [publicClass.id, onCalculateCost, isCalculating, costBreakdown, giftCardStatus]
   );
 
   // Calculate initial cost on mount
@@ -449,6 +579,16 @@ export function RegistrationCheckoutForm({
         ? Array.from(signedAgreements.value.values())
         : undefined;
 
+      // A fresh gift card token for the charge itself (the one used for the
+      // preview may already be spent).
+      let giftCardNonce: string | undefined;
+      if (appliedGiftCard.value) {
+        if (!giftCardApiRef.current) {
+          throw new Error('Gift card field not ready. Please try again.');
+        }
+        giftCardNonce = await giftCardApiRef.current.tokenize();
+      }
+
       const result = await onSubmit({
         classId: publicClass.id,
         customerEmail: customerEmail.value.trim(),
@@ -468,9 +608,11 @@ export function RegistrationCheckoutForm({
         discountCode: discountCode.value.trim() || undefined,
         notes: notes.value.trim() || undefined,
         paymentNonce: nonce,
+        ...(giftCardNonce ? { giftCardNonce } : {}),
         agreements: agreementsData,
       });
 
+      const paid = result.registration;
       onSuccess({
         confirmationNumber: result.confirmationNumber,
         customerName: customerName.value.trim(),
@@ -479,9 +621,16 @@ export function RegistrationCheckoutForm({
         quantity: quantity.value,
         agreementsSigned: result.agreementsSigned,
         slotStart: isPrivateHours ? selectedSlot.value ?? undefined : undefined,
+        ...(paid.giftCardLast4 ? { giftCardLast4: paid.giftCardLast4 } : {}),
+        ...(paid.giftCardPaidCents ? { giftCardPaidCents: paid.giftCardPaidCents } : {}),
+        ...(paid.cardPaidCents ? { cardPaidCents: paid.cardPaidCents } : {}),
+        ...(paid.classCertificateCoverCents
+          ? { classCertificateCoverCents: paid.classCertificateCoverCents }
+          : {}),
       });
     },
     [
+      appliedGiftCard,
       customerName,
       customerEmail,
       customerPhone,
@@ -556,6 +705,7 @@ export function RegistrationCheckoutForm({
 
   const handleSubmit = useCallback(async () => {
     if (isSubmitting.value) return;
+    if (giftCardStatus.value.kind === 'applying') return;
 
     showValidationErrors.value = true;
     if (!isValid.value) return;
@@ -569,6 +719,12 @@ export function RegistrationCheckoutForm({
     submitError.value = null;
 
     try {
+      // A gift card covers it all: no card to read.
+      if (nothingLeftToPay.value) {
+        await performSubmit('');
+        return;
+      }
+
       if (!tokenizeRef.current) {
         submitError.value =
           'Payment form not ready. Please wait and try again.';
@@ -589,6 +745,8 @@ export function RegistrationCheckoutForm({
     isValid,
     allAgreementsSigned,
     performSubmit,
+    nothingLeftToPay,
+    giftCardStatus,
   ]);
 
   /**
@@ -666,7 +824,10 @@ export function RegistrationCheckoutForm({
   // the button is not offered anywhere else (the popup would just say so).
   const canUseApplePay = useMemo((): boolean => canMakeApplePayments(), []);
   const showApplePay =
-    !!applePayCheckoutUrl && showDigitalWallets && canUseApplePay;
+    !!applePayCheckoutUrl &&
+    showDigitalWallets &&
+    canUseApplePay &&
+    !nothingLeftToPay.value;
 
   const applePayOrigin = useMemo(() => {
     if (!applePayCheckoutUrl) return null;
@@ -685,7 +846,7 @@ export function RegistrationCheckoutForm({
     if (!isValid.value) return;
     if (!allAgreementsSigned.value) return;
 
-    const totalCents = costBreakdown.value.totalCents;
+    const totalCents = amountDueCents.value ?? costBreakdown.value.totalCents;
     const params = new URLSearchParams({
       amount: String(totalCents),
       applicationId: squareApplicationId,
@@ -714,6 +875,7 @@ export function RegistrationCheckoutForm({
     showValidationErrors,
     isValid,
     allAgreementsSigned,
+    amountDueCents,
   ]);
 
   // Listen for Apple Pay token messages from the popup window
@@ -731,6 +893,10 @@ export function RegistrationCheckoutForm({
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }, [applePayOrigin, submitWithNonce]);
+
+  // Paying waits while a gift card is being checked.
+  const payDisabled =
+    isButtonDisabled.value || giftCardStatus.value.kind === 'applying';
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -1139,7 +1305,7 @@ export function RegistrationCheckoutForm({
           <button
             type="button"
             onClick={handleApplePayClick}
-            disabled={isButtonDisabled.value}
+            disabled={payDisabled}
             style={{
               backgroundColor: '#000',
               color: '#fff',
@@ -1153,8 +1319,8 @@ export function RegistrationCheckoutForm({
               fontSize: 16,
               fontWeight: 600,
               border: 'none',
-              cursor: isButtonDisabled.value ? 'not-allowed' : 'pointer',
-              opacity: isButtonDisabled.value ? 0.7 : 1,
+              cursor: payDisabled ? 'not-allowed' : 'pointer',
+              opacity: payDisabled ? 0.7 : 1,
               // Apple Pay HIG: button text uses the system font, not brand fonts.
               fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
               letterSpacing: '0.02em',
@@ -1170,8 +1336,19 @@ export function RegistrationCheckoutForm({
           locationId={squareLocationId}
           // No `env` — Square SDK environment follows the App ID prefix,
           // decoupled from the data backend.
-          totalCents={costBreakdown.value?.totalCents}
+          totalCents={
+            appliedGiftCard.value && amountDueCents.value
+              ? amountDueCents.value
+              : costBreakdown.value?.totalCents
+          }
           showDigitalWallets={showDigitalWallets}
+          {...(giftCardsOffered
+            ? {
+                enableGiftCard: true,
+                onGiftCardRef: handleGiftCardRef,
+                cardHidden: nothingLeftToPay.value,
+              }
+            : {})}
           hasOtherWallet={showApplePay}
           onReady={() => (isCardReady.value = true)}
           onInitError={() => (cardInitFailed.value = true)}
@@ -1221,10 +1398,23 @@ export function RegistrationCheckoutForm({
                 </button>
               </Box>)
             ) : (
+              <>
+              {giftCardsOffered && giftCardAvailable.value && (
+                <GiftCardSection
+                  status={giftCardStatus.value}
+                  onOpen={() => (giftCardStatus.value = { kind: 'open' })}
+                  onApply={() =>
+                    applyGiftCard(quantity.value, discountCode.value)
+                  }
+                  onRemove={handleRemoveGiftCard}
+                  fieldRef={giftCardFieldRef}
+                  disabled={isSubmitting.value}
+                />
+              )}
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isButtonDisabled.value}
+                disabled={payDisabled}
                 style={{
                   width: '100%',
                   padding: '14px 24px',
@@ -1232,19 +1422,24 @@ export function RegistrationCheckoutForm({
                   fontWeight: 600,
                   fontFamily: fonts.button,
                   color: '#D5D6C8',
-                  backgroundColor: isButtonDisabled.value ? '#8a7b6e' : '#4A3728',
+                  backgroundColor: payDisabled ? '#8a7b6e' : '#4A3728',
                   border: 'none',
                   borderRadius: '8px',
-                  cursor: isButtonDisabled.value ? 'not-allowed' : 'pointer',
-                  opacity: isButtonDisabled.value ? 0.7 : 1,
+                  cursor: payDisabled ? 'not-allowed' : 'pointer',
+                  opacity: payDisabled ? 0.7 : 1,
                   transition: 'background-color 0.2s, opacity 0.2s',
                   letterSpacing: '0.02em',
                 }}
               >
                 {isSubmitting.value
                   ? 'Processing...'
-                  : `Register & Pay ${costBreakdown.value ? `$${(costBreakdown.value.totalCents / 100).toFixed(2)}` : ''}`}
+                  : nothingLeftToPay.value
+                    ? 'Register — paid by gift card'
+                    : appliedGiftCard.value
+                      ? `Register & Pay $${(appliedGiftCard.value.leftToPayCents / 100).toFixed(2)}`
+                      : `Register & Pay ${costBreakdown.value ? `$${(costBreakdown.value.totalCents / 100).toFixed(2)}` : ''}`}
               </button>
+              </>
             )
           }
         />

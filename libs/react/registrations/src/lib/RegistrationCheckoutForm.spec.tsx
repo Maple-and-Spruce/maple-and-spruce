@@ -15,6 +15,8 @@ import type { PublicClass } from '@maple/ts/domain';
 import type {
   CalculateRegistrationCostResponse,
   CreateRegistrationResponse,
+  PreviewGiftCardForClassRequest,
+  PreviewGiftCardForClassResponse,
 } from '@maple/ts/firebase/api-types';
 
 // Mock @maple/react/agreements — SigningForm depends on signature_pad
@@ -52,6 +54,17 @@ let capturedDigitalWalletTokenCallback: ((token: string) => void) | undefined;
 let capturedInitErrorCallback: (() => void) | undefined;
 let capturedBeforeDigitalWallet: (() => boolean) | undefined;
 let capturedHasOtherWallet: boolean | undefined;
+let capturedCardHidden: boolean | undefined;
+let capturedTotalCents: number | undefined;
+let capturedEnableGiftCard: boolean | undefined;
+
+// Gift card field handle the mock hands the form (#301). Tests swap the
+// tokenize result to simulate typing different cards.
+const giftCardApi = {
+  attach: vi.fn(async (_el: HTMLElement) => undefined),
+  tokenize: vi.fn(async () => 'gift-nonce'),
+  destroy: vi.fn(async () => undefined),
+};
 
 // Allow individual tests to override how the mocked tokenize function
 // behaves (e.g. to keep the promise pending and simulate Square's SDK
@@ -76,6 +89,10 @@ vi.mock('./SquareCardForm', () => ({
     beforeDigitalWallet,
     hasOtherWallet,
     afterCardContent,
+    enableGiftCard,
+    onGiftCardRef,
+    cardHidden,
+    totalCents,
   }: {
     onReady?: () => void;
     onInitError?: () => void;
@@ -86,12 +103,21 @@ vi.mock('./SquareCardForm', () => ({
     beforeDigitalWallet?: () => boolean;
     hasOtherWallet?: boolean;
     afterCardContent?: React.ReactNode;
+    enableGiftCard?: boolean;
+    onGiftCardRef?: (api: typeof giftCardApi) => void;
+    cardHidden?: boolean;
+    totalCents?: number;
   }) => {
     capturedBeforeDigitalWallet = beforeDigitalWallet;
     capturedHasOtherWallet = hasOtherWallet;
+    capturedCardHidden = cardHidden;
+    capturedTotalCents = totalCents;
+    capturedEnableGiftCard = enableGiftCard;
     useEffect(() => {
       onTokenizeRef(() => mockTokenizeImpl());
+      if (enableGiftCard) onGiftCardRef?.(giftCardApi);
       onReady?.();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [onReady, onTokenizeRef]);
     useEffect(() => {
       capturedDigitalWalletTokenCallback = onDigitalWalletToken;
@@ -1056,3 +1082,221 @@ describe('RegistrationCheckoutForm — waitlist for a booked hour', () => {
   });
 });
 
+
+describe('RegistrationCheckoutForm — gift cards (#301)', () => {
+  const preview = (over: Partial<PreviewGiftCardForClassResponse> = {}) => ({
+    last4: '4821',
+    balanceCents: 2000,
+    classCertificateCoverCents: 0,
+    subtotalCents: 5000,
+    taxAmountCents: 0,
+    totalCents: 5000,
+    giftCardAmountCents: 2000,
+    leftToPayCents: 3000,
+    ...over,
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockTokenizeImpl = () => Promise.resolve({ nonce: 'test-nonce' });
+    giftCardApi.tokenize.mockImplementation(async () => 'gift-nonce');
+  });
+  afterEach(() => cleanup());
+
+  function renderForm(
+    onPreviewGiftCard?: (
+      req: PreviewGiftCardForClassRequest
+    ) => Promise<PreviewGiftCardForClassResponse>
+  ) {
+    const onSubmit = vi.fn().mockResolvedValue({
+      registration: {
+        pricePaidCents: 5000,
+        giftCardLast4: '4821',
+        giftCardPaidCents: 2000,
+        cardPaidCents: 3000,
+      },
+      confirmationNumber: 'MS-ABC123',
+    } as unknown as CreateRegistrationResponse);
+    const onSuccess = vi.fn();
+    const onCalculateCost = vi.fn(async (_c: string, q: number) =>
+      makeCostResponse(q)
+    );
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={onCalculateCost}
+        onSubmit={onSubmit}
+        onSuccess={onSuccess}
+        onPreviewGiftCard={onPreviewGiftCard}
+      />
+    );
+    return { onSubmit, onSuccess, onCalculateCost };
+  }
+
+  function fillCustomer() {
+    fireEvent.change(screen.getByLabelText(/Full Name/), {
+      target: { value: 'Robin Ashfield' },
+    });
+    fireEvent.change(screen.getByLabelText(/Email Address/), {
+      target: { value: 'robin@example.com' },
+    });
+  }
+
+  async function applyCard(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole('button', { name: 'Have a gift card?' }));
+    await waitFor(() => expect(giftCardApi.attach).toHaveBeenCalled());
+    await user.click(screen.getByRole('button', { name: 'Apply gift card' }));
+  }
+
+  it('offers no gift card and asks the SDK for none without onPreviewGiftCard', async () => {
+    renderForm();
+    await screen.findByRole('button', { name: /Register & Pay \$50\.00/ });
+    expect(screen.queryByText('Have a gift card?')).not.toBeInTheDocument();
+    expect(capturedEnableGiftCard).toBeUndefined();
+    expect(capturedCardHidden).toBeUndefined();
+  });
+
+  it('applies a card that partly covers and charges the rest to the card', async () => {
+    const user = userEvent.setup();
+    const onPreview = vi.fn(async () => preview());
+    const { onSubmit, onSuccess } = renderForm(onPreview);
+    await applyCard(user);
+
+    expect(await screen.findByText('Gift card ending 4821:')).toBeInTheDocument();
+    expect(screen.getByText('−$20.00')).toBeInTheDocument();
+    expect(screen.getByText('$30.00')).toBeInTheDocument();
+    expect(onPreview).toHaveBeenCalledWith({
+      giftCardNonce: 'gift-nonce',
+      classId: 'class-1',
+      quantity: 1,
+      discountCode: undefined,
+    });
+    expect(capturedTotalCents).toBe(3000);
+    expect(capturedCardHidden).toBe(false);
+
+    fillCustomer();
+    giftCardApi.tokenize.mockImplementation(async () => 'gift-nonce-2');
+    await user.click(screen.getByRole('button', { name: 'Register & Pay $30.00' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({
+      paymentNonce: 'test-nonce',
+      giftCardNonce: 'gift-nonce-2',
+    });
+    await waitFor(() =>
+      expect(onSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({
+          giftCardLast4: '4821',
+          giftCardPaidCents: 2000,
+          cardPaidCents: 3000,
+        })
+      )
+    );
+  });
+
+  it('needs no card when the gift card covers it all', async () => {
+    const user = userEvent.setup();
+    const onTokenize = vi.fn(() => Promise.resolve({ nonce: 'should-not-be-used' }));
+    mockTokenizeImpl = onTokenize;
+    const { onSubmit } = renderForm(async () =>
+      preview({ balanceCents: 9000, giftCardAmountCents: 5000, leftToPayCents: 0 })
+    );
+    await applyCard(user);
+
+    expect(await screen.findByText('Nothing left to pay')).toBeInTheDocument();
+    expect(screen.getByText('$40.00 stays on your card for next time.')).toBeInTheDocument();
+    expect(capturedCardHidden).toBe(true);
+
+    fillCustomer();
+    await user.click(
+      screen.getByRole('button', { name: 'Register — paid by gift card' })
+    );
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({
+      paymentNonce: '',
+      giftCardNonce: 'gift-nonce',
+    });
+    expect(onTokenize).not.toHaveBeenCalled();
+  });
+
+  it('shows the class certificate cover', async () => {
+    const user = userEvent.setup();
+    renderForm(async () =>
+      preview({
+        classCertificateCoverCents: 600,
+        giftCardAmountCents: 4400,
+        balanceCents: 4400,
+        leftToPayCents: 0,
+      })
+    );
+    await applyCard(user);
+    expect(await screen.findByText('Class certificate covers:')).toBeInTheDocument();
+    expect(screen.getByText('−$6.00')).toBeInTheDocument();
+  });
+
+  it('says what is wrong with a card in plain words', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderForm(async () => {
+      throw Object.assign(new Error('This gift card has no money left on it.'), {
+        code: 'functions/failed-precondition',
+      });
+    });
+    await applyCard(user);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This gift card has no money left on it.'
+    );
+    // Not applied, so paying asks for the full amount by card.
+    expect(screen.getByRole('button', { name: 'Register & Pay $50.00' })).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('falls back to a gentle message for a generic failure', async () => {
+    const user = userEvent.setup();
+    renderForm(async () => {
+      throw new Error('internal');
+    });
+    await applyCard(user);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "We couldn't check that gift card. Please try again."
+    );
+  });
+
+  it('removes the gift card and goes back to paying in full', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderForm(async () => preview());
+    await applyCard(user);
+    await user.click(await screen.findByRole('button', { name: 'Remove gift card' }));
+
+    expect(giftCardApi.destroy).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Have a gift card?' })).toBeInTheDocument();
+    fillCustomer();
+    await user.click(screen.getByRole('button', { name: 'Register & Pay $50.00' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('giftCardNonce');
+  });
+
+  it('works the card out again when another person is added', async () => {
+    const user = userEvent.setup();
+    const onPreview = vi.fn(async (req: PreviewGiftCardForClassRequest) =>
+      preview({
+        totalCents: 5000 * req.quantity,
+        leftToPayCents: 5000 * req.quantity - 2000,
+      })
+    );
+    renderForm(onPreview);
+    await applyCard(user);
+    await screen.findByText('Gift card ending 4821:');
+
+    await user.click(screen.getByRole('button', { name: 'Add another person' }));
+    await waitFor(() =>
+      expect(onPreview).toHaveBeenLastCalledWith(
+        expect.objectContaining({ quantity: 2 })
+      )
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Register & Pay $80.00' })
+    ).toBeInTheDocument();
+  });
+});
