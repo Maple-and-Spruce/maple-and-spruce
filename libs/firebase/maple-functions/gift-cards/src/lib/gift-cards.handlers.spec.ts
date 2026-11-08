@@ -15,7 +15,7 @@ vi.mock('@maple/firebase/square', () => ({
 }));
 
 const repos = vi.hoisted(() => ({
-  GiftCardPurchaseRepository: { findByGiftCardId: vi.fn() },
+  GiftCardPurchaseRepository: { findByGiftCardId: vi.fn(), findBySources: vi.fn() },
   ClassCategoryRepository: { findById: vi.fn() },
 }));
 vi.mock('@maple/firebase/database', () => repos);
@@ -42,7 +42,10 @@ const card = {
   createdAt: '2026-11-02T15:00:00Z',
 };
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  repos.GiftCardPurchaseRepository.findBySources.mockResolvedValue([]);
+});
 
 describe('getGiftCards', () => {
   it('returns every card with totals from this month in Eastern time', async () => {
@@ -73,8 +76,55 @@ describe('getGiftCards', () => {
         cardsWithBalance: 1,
         loadedThisMonthCents: 5000,
         spentThisMonthCents: 0,
+        givenFreeThisMonthCents: 0,
+        printedUnusedCents: 0,
+        printedUnusedCount: 0,
       },
     });
+  });
+
+  it('labels free and printed cards and splits the totals with one record query (#314)', async () => {
+    const stock = { ...card, id: 'gc-stock', balanceCents: 2500 };
+    const free = { ...card, id: 'gc-free', balanceCents: 2500 };
+    giftCardsService.listGiftCards.mockResolvedValue([card, stock, free]);
+    giftCardsService.listActivities.mockResolvedValue([
+      { id: 'a1', giftCardId: 'gc-stock', type: 'activate', amountCents: 2500, balanceAfterCents: 2500, createdAt: '2026-11-03T15:00:00Z' },
+      { id: 'a2', giftCardId: 'gc-free', type: 'activate', amountCents: 2500, balanceAfterCents: 2500, createdAt: '2026-11-03T15:00:00Z' },
+    ]);
+    repos.GiftCardPurchaseRepository.findBySources.mockResolvedValue([
+      { giftCardId: 'gc-stock', last4: '1111', kind: 'amount', valueCents: 2500, source: 'stock', batchId: 'cert-1', createdAt: new Date() },
+      { giftCardId: 'gc-free', last4: '1111', kind: 'amount', valueCents: 2500, source: 'issued', createdAt: new Date() },
+    ]);
+
+    const result = await getGiftCards({}, {}, secrets, strings, new Date('2026-11-20T12:00:00Z'));
+
+    expect(repos.GiftCardPurchaseRepository.findBySources).toHaveBeenCalledTimes(1);
+    expect(repos.GiftCardPurchaseRepository.findBySources).toHaveBeenCalledWith(['issued', 'stock']);
+    expect(repos.GiftCardPurchaseRepository.findByGiftCardId).not.toHaveBeenCalled();
+    expect(result.cards).toEqual([
+      card,
+      { ...stock, source: 'stock', batchId: 'cert-1' },
+      { ...free, source: 'issued' },
+    ]);
+    expect(result.totals).toMatchObject({
+      outstandingCents: 5000 + 2500,
+      printedUnusedCents: 2500,
+      printedUnusedCount: 1,
+      givenFreeThisMonthCents: 2500,
+      loadedThisMonthCents: 0,
+    });
+  });
+
+  it('still answers when the records cannot be read', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    giftCardsService.listGiftCards.mockResolvedValue([card]);
+    giftCardsService.listActivities.mockResolvedValue([]);
+    repos.GiftCardPurchaseRepository.findBySources.mockRejectedValue(new Error('down'));
+
+    const result = await getGiftCards({}, {}, secrets, strings, new Date('2026-11-20T12:00:00Z'));
+
+    expect(result.cards).toEqual([card]);
+    expect(result.totals.outstandingCents).toBe(5000);
   });
 });
 
