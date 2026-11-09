@@ -15,6 +15,7 @@ import {
   FormControlLabel,
   Radio,
   RadioGroup,
+  TextField,
 } from '@mui/material';
 import {
   formatPrivateHourStart,
@@ -37,8 +38,15 @@ interface RegistrationDetailDialogProps {
     refund: boolean,
     refundedInSquare?: boolean
   ) => Promise<{ registration: Registration; refundId?: string }>;
-  onUpdateNotes: (id: string, notes: string) => Promise<void>;
+  /**
+   * Save staff's own note. The customer's note is read-only: it stays as
+   * they wrote it (#326).
+   */
+  onUpdateStaffNotes: (id: string, staffNotes: string) => Promise<void>;
 }
+
+/** Longest staff note; matches the server's validation. */
+const STAFF_NOTES_MAX_LENGTH = 2000;
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -89,7 +97,7 @@ export function RegistrationDetailDialog({
   registration,
   className,
   onCancel,
-  onUpdateNotes,
+  onUpdateStaffNotes,
 }: RegistrationDetailDialogProps) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [refundChoice, setRefundChoice] = useState<RefundChoice>(
@@ -98,11 +106,22 @@ export function RegistrationDetailDialog({
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [cancelSuccess, setCancelSuccess] = useState<string | null>(null);
+  const [staffNotesDraft, setStaffNotesDraft] = useState(
+    registration?.staffNotes ?? ''
+  );
+  const [staffNotesSave, setStaffNotesSave] = useState<
+    | { status: 'idle' }
+    | { status: 'saving' }
+    | { status: 'saved' }
+    | { status: 'error'; error: string }
+  >({ status: 'idle' });
 
   // A different registration opened in the same dialog starts from its own
   // default, not the last one's choice.
   useEffect(() => {
     setRefundChoice(defaultRefundChoice(registration));
+    setStaffNotesDraft(registration?.staffNotes ?? '');
+    setStaffNotesSave({ status: 'idle' });
   }, [registration?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!registration) return null;
@@ -111,6 +130,23 @@ export function RegistrationDetailDialog({
     registration.status === 'confirmed' || registration.status === 'pending';
   const hasPayment = !!registration.squarePaymentId;
   const reviewPending = hasOpenRefundReview(registration);
+
+  const savedStaffNotes = registration.staffNotes ?? '';
+  const staffNotesChanged = staffNotesDraft.trim() !== savedStaffNotes.trim();
+  const staffNotesTooLong = staffNotesDraft.length > STAFF_NOTES_MAX_LENGTH;
+
+  const handleSaveStaffNotes = async () => {
+    setStaffNotesSave({ status: 'saving' });
+    try {
+      await onUpdateStaffNotes(registration.id, staffNotesDraft.trim());
+      setStaffNotesSave({ status: 'saved' });
+    } catch (error) {
+      setStaffNotesSave({
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Failed to save',
+      });
+    }
+  };
 
   const handleCancel = async () => {
     setIsCancelling(true);
@@ -286,15 +322,64 @@ export function RegistrationDetailDialog({
             )}
           </Box>
 
-          {/* Notes */}
-          {registration.notes && (
+          {/* The customer's note, as they wrote it */}
+          {registration.notes?.trim() && (
             <>
               <Divider />
               <Typography variant="subtitle2" color="textSecondary">
-                Notes
+                Customer note
               </Typography>
-              <Typography variant="body2">{registration.notes}</Typography>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                {registration.notes}
+              </Typography>
             </>
+          )}
+
+          {/* Staff's own notes */}
+          <Divider />
+          <TextField
+            label="Staff notes"
+            placeholder="Only staff see this"
+            multiline
+            minRows={2}
+            size="small"
+            fullWidth
+            // Always above the box: it has a placeholder, and a multiline
+            // field's label otherwise sat on top of typed text.
+            slotProps={{ inputLabel: { shrink: true } }}
+            value={staffNotesDraft}
+            onChange={(e) => {
+              setStaffNotesDraft(e.target.value);
+              setStaffNotesSave({ status: 'idle' });
+            }}
+            error={staffNotesTooLong}
+            helperText={
+              staffNotesTooLong
+                ? `Keep it to ${STAFF_NOTES_MAX_LENGTH} characters`
+                : undefined
+            }
+          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={handleSaveStaffNotes}
+              disabled={
+                !staffNotesChanged ||
+                staffNotesTooLong ||
+                staffNotesSave.status === 'saving'
+              }
+            >
+              {staffNotesSave.status === 'saving' ? 'Saving…' : 'Save staff notes'}
+            </Button>
+            {staffNotesSave.status === 'saved' && !staffNotesChanged && (
+              <Typography variant="caption" color="success">
+                Saved
+              </Typography>
+            )}
+          </Box>
+          {staffNotesSave.status === 'error' && (
+            <Alert severity="error">{staffNotesSave.error}</Alert>
           )}
 
           <Divider />

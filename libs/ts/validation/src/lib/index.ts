@@ -40,6 +40,7 @@ export {
 } from './discount.validation';
 export {
   registrationValidation,
+  STAFF_NOTES_MAX_LENGTH,
   type RegistrationValidationInput,
 } from './registration.validation';
 export {

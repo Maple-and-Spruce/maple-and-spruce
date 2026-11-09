@@ -85,6 +85,8 @@ function docToRegistration(
     // existed (all of which were web checkouts) read back with a usable value.
     source: (data.source as RegistrationSource | undefined) ?? 'web',
     notes: data.notes,
+    // Cleared by saving an empty box; read back as absent.
+    staffNotes: data.staffNotes || undefined,
     confirmationSentAt: data.confirmationSentAt
       ? toDate(data.confirmationSentAt)
       : undefined,

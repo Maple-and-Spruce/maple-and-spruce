@@ -116,23 +116,50 @@ describe('updateRegistration', () => {
       );
     });
 
-    it('should update notes alone', async () => {
-      const result = await callFunction<
+    it("should refuse to change the customer's note (#326)", async () => {
+      const result = await callFunction<UpdateRegistrationRequest>({
+        functionName: 'updateRegistration',
+        data: { id: REGISTRATION_ID, notes: 'Rewritten by staff' },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).not.toBe(200);
+
+      const stored = await callFunction<
         UpdateRegistrationRequest,
         UpdateRegistrationResponse
       >({
         functionName: 'updateRegistration',
-        data: {
-          id: REGISTRATION_ID,
-          notes: 'Customer requested a window seat.',
-        },
+        data: { id: REGISTRATION_ID, staffNotes: 'Called back' },
         idToken: adminUser.idToken,
       });
+      expect(stored.data?.registration.notes).toBe(BASE_REGISTRATION.notes);
+    });
 
-      expect(result.status).toBe(200);
-      expect(result.data?.registration.notes).toBe(
-        'Customer requested a window seat.'
-      );
+    it('should save staff notes beside the customer note, and clear them', async () => {
+      const saved = await callFunction<
+        UpdateRegistrationRequest,
+        UpdateRegistrationResponse
+      >({
+        functionName: 'updateRegistration',
+        data: { id: REGISTRATION_ID, staffNotes: 'Window seat is held.' },
+        idToken: adminUser.idToken,
+      });
+      expect(saved.status).toBe(200);
+      expect(saved.data?.registration).toMatchObject({
+        notes: BASE_REGISTRATION.notes,
+        staffNotes: 'Window seat is held.',
+      });
+
+      const cleared = await callFunction<
+        UpdateRegistrationRequest,
+        UpdateRegistrationResponse
+      >({
+        functionName: 'updateRegistration',
+        data: { id: REGISTRATION_ID, staffNotes: '' },
+        idToken: adminUser.idToken,
+      });
+      expect(cleared.status).toBe(200);
+      expect(cleared.data?.registration.staffNotes).toBeUndefined();
     });
 
     it('should update customerName with valid value', async () => {
@@ -187,10 +214,10 @@ describe('updateRegistration', () => {
       expect(result.status).not.toBe(200);
     });
 
-    it('should reject notes longer than 500 characters', async () => {
+    it('should reject staff notes longer than 2000 characters', async () => {
       const result = await callFunction<UpdateRegistrationRequest>({
         functionName: 'updateRegistration',
-        data: { id: REGISTRATION_ID, notes: 'x'.repeat(501) },
+        data: { id: REGISTRATION_ID, staffNotes: 'x'.repeat(2001) },
         idToken: adminUser.idToken,
       });
       expect(result.status).not.toBe(200);
