@@ -6,6 +6,19 @@
 
 ## Current Status
 
+### Instructors listed by what they teach (2026-11-08, #323)
+
+- `/suzuki` and `/music-lessons` listed every active instructor, craft teachers included.
+- Instructors now have `programs` (`suzuki`, `music-lessons`, `craft-classes`), set with
+  **Teaches** checkboxes in the admin instructor form. The Webflow sync sends one switch per
+  program (`teaches-suzuki`, `teaches-music-lessons`, `teaches-craft-classes`), always all
+  three, so unticking takes someone off that page.
+- **Done in prod:** the three switch fields added to the Webflow Instructors collection, all
+  four instructors set, and the instructor lists on `/suzuki` and `/music-lessons` filtered on
+  their switch (plus the existing `is-dev-environment` off). Site published.
+- From now on, changing **Teaches** in the admin moves an instructor on or off those pages; no
+  Webflow edit needed. A new instructor with nothing ticked appears on neither page.
+
 ### Free cancellation date on class registrations (2026-11-08)
 
 - Like Airbnb: checkout, the confirmation screen and the confirmation email say "Free
