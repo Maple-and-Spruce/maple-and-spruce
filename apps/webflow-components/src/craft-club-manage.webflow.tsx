@@ -8,14 +8,14 @@
  */
 import { declareComponent } from '@webflow/react';
 import { props } from '@webflow/data-types';
-import { emotionShadowDomDecorator } from '@webflow/emotion-utils';
+import { shadowDomEmotionDecorator } from './lib/shadow-dom-emotion';
 import { CraftClubManageWidget } from './CraftClubManageWidget';
 
 export default declareComponent(CraftClubManageWidget, {
   name: 'Craft Club Manage',
   description:
     'Self-service Craft Club membership management. Reads a ?token= magic link to show status, cancel, or change payment method; otherwise emails a fresh link.',
-  decorators: [emotionShadowDomDecorator],
+  decorators: [shadowDomEmotionDecorator],
   props: {
     squareAppId: props.Text({
       name: 'Square App ID',

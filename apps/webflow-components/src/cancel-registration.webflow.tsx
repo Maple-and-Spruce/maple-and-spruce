@@ -9,14 +9,14 @@
  */
 import { declareComponent } from '@webflow/react';
 import { props } from '@webflow/data-types';
-import { emotionShadowDomDecorator } from '@webflow/emotion-utils';
+import { shadowDomEmotionDecorator } from './lib/shadow-dom-emotion';
 import { CancelRegistrationWidget } from './CancelRegistrationWidget';
 
 export default declareComponent(CancelRegistrationWidget, {
   name: 'Cancel Registration',
   description:
     'Class cancellation requests. A customer enters their confirmation number and email; before the free cancellation date (two weeks before the class) they can ask Katie to cancel.',
-  decorators: [emotionShadowDomDecorator],
+  decorators: [shadowDomEmotionDecorator],
   props: {
     env: props.Variant({
       name: 'Environment',

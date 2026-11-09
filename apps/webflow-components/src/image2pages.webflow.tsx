@@ -7,14 +7,14 @@
  */
 import { declareComponent } from '@webflow/react';
 import { props } from '@webflow/data-types';
-import { emotionShadowDomDecorator } from '@webflow/emotion-utils';
+import { shadowDomEmotionDecorator } from './lib/shadow-dom-emotion';
 import { Image2PagesWidget } from './Image2PagesWidget';
 
 export default declareComponent(Image2PagesWidget, {
   name: 'Image to Pages',
   description:
     'Lets visitors upload an image (e.g. a stained glass pattern) and download a multi-page PDF tiled across as many pages as needed for printing at scale. Runs entirely in the browser.',
-  decorators: [emotionShadowDomDecorator],
+  decorators: [shadowDomEmotionDecorator],
   props: {
     heading: props.Text({
       name: 'Heading',

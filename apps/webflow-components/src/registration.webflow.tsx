@@ -6,14 +6,14 @@
  */
 import { declareComponent } from '@webflow/react';
 import { props } from '@webflow/data-types';
-import { emotionShadowDomDecorator } from '@webflow/emotion-utils';
+import { shadowDomEmotionDecorator } from './lib/shadow-dom-emotion';
 import { RegistrationWidget } from './RegistrationWidget';
 
 export default declareComponent(RegistrationWidget, {
   name: 'Class Registration',
   description:
     'Registration and payment form for a Maple & Spruce class. Includes customer info, Square payment, discount codes, and confirmation.',
-  decorators: [emotionShadowDomDecorator],
+  decorators: [shadowDomEmotionDecorator],
   props: {
     classId: props.Text({
       name: 'Class ID',
