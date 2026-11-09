@@ -469,24 +469,43 @@ Square SDK integration for payments, catalog management, and sync conflict resol
   a class type (`{ kind: 'class', classCategoryId }`): the type must be switched on, and the
   value is its certificate price. An old `{ kind: 'class', classId }` request still works and
   resolves the class's type; the same rules apply.
-- `giftCards/printGiftCertificates` (#314) — admin only. Prints a batch of **pre-loaded**
-  certificates: validates (`printGiftCertificatesValidation`: a dollar amount $5–$500 whole
-  dollars or a switched-on class type at its certificate price, 1–50 certificates, a known
-  `design`, a dialog key), then for each certificate creates a digital card and `ACTIVATE`s it
-  without an order (reference `cert-<10 hex>-<n>`), five at a time, and records
-  `giftCardPurchases/{giftCardId}` with `source: 'stock'`, `batchId` (`cert-<16 hex>`, derived
-  from the dialog key), `batchIndex`, `design`. Every Square key is derived from the dialog key
-  and the place in the batch, so a retry reuses the same cards and loads nothing twice; a
-  retry that changed the amount or design is refused. A partial batch returns the cards made
-  plus an `error`; none made throws. Logs `gift_certificates_printed` (batch id, count, value,
-  uid) and `gift_certificate_print_failed`, never a code. Same function, no new deploy unit.
+- `giftCards/printGiftCertificates` (#314, #332) — admin only. Prints a batch of certificates
+  **with no money on them**: validates (`printGiftCertificatesValidation`: a dollar amount
+  $5–$500 whole dollars or a switched-on class type at its certificate price, 1–50
+  certificates, a known `design`, a dialog key), then for each certificate creates a digital
+  card with a chosen code (`gan` = `MAPLE` + studio year + 3 digits from `crypto.randomInt`,
+  `ganSource: 'OTHER'`; a code Square already has is redrawn, up to 10 tries), five at a time,
+  and records `giftCardPurchases/{giftCardId}` with `source: 'stock'`, `batchId` (`cert-<16
+  hex>`, derived from the dialog key), `batchIndex`, `design` and the face value. **No
+  activation**: the card stays `PENDING` until the Square register loads it at the sale. A
+  retry of the batch makes only the missing certificates; a retry that changed the amount or
+  design is refused. A partial batch returns the cards made plus an `error`; none made
+  throws. Logs `gift_certificates_printed` (batch id, count, value, uid) and
+  `gift_certificate_print_failed`, never a code (certificate codes are redacted from error
+  text). Same function, no new deploy unit.
 - `giftCards/getCertificateBatch` (#314) — admin only. Every certificate in a batch with its
   **full code**, read from Square, for the print view only. Logs
   `gift_certificate_batch_revealed` (batch id, count, uid), never the codes.
-- `giftCards/getGiftCards` since #314 also reads the `issued` and `stock` records in one
-  `source in [...]` query: free cards count as "given free", unused printed stock as "printed
-  certificates not yet used" (not owed), and each card in the list carries its `source` and
-  `batchId`.
+- `giftCards/getGiftCards` since #314 also reads the `issued`, `stock` and (#332)
+  `replacement` records in one `source in [...]` query: free cards count as "given free",
+  pending printed stock as "printed, not sold yet" (a count; not owed), a replacement's load
+  is not a sale, and each card in the list carries its `source` and `batchId`.
+- `giftCards/getGiftCardBuyer` (#332) — admin only. Who bought a card at the register, read
+  live from Square: the card's first `ACTIVATE` (or first `LOAD`) with an `orderId` → the order
+  → its `customerId` → the customer (name, email, phone), plus customers in the card's
+  `customerIds`. Never stored. Logs `gift_card_buyer_viewed` with ids and counts only.
+- `giftCards/searchGiftCardsByCustomer` (#332) — admin only. Finds cards by a customer's name,
+  email or phone: Square customer search (fuzzy email/phone; a name is matched against the
+  2,000 most recently created customers), at most 10 customers; their cards from
+  `giftCards.list({ customerId })` plus cards whose `ACTIVATE`/`LOAD` in the last 2 years came
+  from one of their orders (`orders.search` by customer). Logs `gift_card_customer_search`
+  with counts only, never the query.
+- `giftCards/replaceGiftCard` (#332) — admin only. Replaces a lost card: makes a new digital
+  card, records it (`source: 'replacement'`, `replacesGiftCardId`, the amount), then
+  `ADJUST_DECREMENT`s the lost card (`SUPPORT_ISSUE`), `ACTIVATE`s the new one without an order
+  (reference `repl-<12 hex>`) and `DEACTIVATE`s the lost one. Off before on, so the balance is
+  never on both cards; a retry resumes from the record. Logs `gift_card_replaced` (`oldId`,
+  `newId`, `balanceCents`, `uid`) and `gift_card_replace_failed` (`step`), never a code.
 
 ### Square webhook
 - `squareWebhook` — HTTP endpoint _(memory: 512MiB, concurrency: 10)_. For `catalog.version.updated` events, the handler just bumps the singleton `catalogSyncRequests/pending` doc and acks 200 within Square's 10-second delivery timeout; the actual catalog re-sync runs in `processCatalogSyncRequest`. For `payment.created` / `payment.updated` events with a `COMPLETED` payment, it enqueues a `posSaleRequests/{paymentId}` doc (stays lean — no Square SDK) and returns; `processPosSale` does the work. Inventory and invoice events run inline (fast).

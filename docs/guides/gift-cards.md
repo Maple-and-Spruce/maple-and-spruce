@@ -102,7 +102,7 @@ refunded in full and the buyer is told so. If that refund also fails, Katie gets
 `gift_card_refund_failed`, `gift_card_purchase_record_failed`, `gift_card_email_failed`.
 None of them contain the card code.
 
-## Katie: two things the admin Gift Cards page can do (#310)
+## Katie: two more things the admin Gift Cards page can do (#310)
 
 Both are admin only, under **Money > Gift Cards**.
 
@@ -146,12 +146,25 @@ card dialog shows "Given free by the studio" with it.
 If Square cannot make or load the card, the dialog says nothing was given; trying again
 from the same dialog reuses the same card, so it never makes two.
 
-## Printed gift certificates (#314)
+## Printed gift certificates (#314, #332)
 
 A stack of certificates for the shop, printed from the admin page. Each one is a real
-Square gift card, **made and loaded when it is printed**, so it can be spent from the
-moment it comes off the printer. Katie sells one at the register like any other item;
-nothing happens on the admin page at the sale.
+Square gift card with **no money on it** until it is sold. The register puts the money on
+it at the sale, so a certificate that walks out of the drawer unsold is worth nothing.
+
+### The code
+
+A printed certificate's code is `MAPLE`, the year, and three digits drawn at random, for
+example `MAPLE 2026 ###`. It is printed with spaces for reading and as a barcode of the same
+12 characters for scanning. The three digits are never in order, so one certificate does not
+give away the next. If Square already has a card with the code drawn, another is drawn (up to
+10 tries; then the dialog says this year's codes may be nearly used up). That allows up to
+1,000 certificates a year. Every other card (online, eGift at the register, free cards,
+replacements) keeps Square's own 16-digit number.
+
+**The tradeoff:** 1,000 codes a year are far easier to guess than Square's numbers. That is
+fine at the register, where a person reads the certificate and an unsold one holds nothing.
+It matters online: see "Before switching on online gift card checkout" below.
 
 ### Printing a batch
 
@@ -159,67 +172,128 @@ nothing happens on the admin page at the sale.
 2. Choose the design (today: stained glass leaves), then **A dollar amount** ($5 to $500,
    whole dollars) or **A class** (only class types with certificates switched on, at their
    certificate price), and **How many** (1 to 50).
-3. Click **Make N and print**. Square makes and loads every card, then the print view opens.
+3. Click **Make N and print**. Square makes every card (with nothing on it), then the print
+   view opens.
 4. Click **Print**. Use US Letter paper at 100% scale with background graphics on. One
-   certificate per page: the amount (or "One Pottery class"), "Gift Card", the code in
-   groups of four, a barcode the register can scan, the logo, and a QR code to the
-   upcoming classes page.
-5. Keep the stack somewhere safe, like cash.
+   certificate per page: the amount (or "One Pottery class"), "Gift Card", the code, the
+   barcode, the logo, and a QR code to the upcoming classes page.
 
 If Square makes only some of a batch, the dialog says how many and offers **Try again for
-the rest** (the same batch: it never makes a card twice) or **Print the N ready**. A
-printed batch can be opened again from any of its cards on the Gift Cards page ("Open this
-batch to print it again"); each opening reads the codes from Square and is logged.
+the rest** (the same batch) or **Print the N ready**. A printed batch can be opened again
+from any of its cards ("Open this batch to print it again"); each opening reads the codes
+from Square and is logged.
 
-**Theft caveat:** because the cards are loaded before they are sold, a certificate taken
-from the stack can be spent without anyone paying for it. If one goes missing, find it on
-the Gift Cards page by its last 4 digits, then deactivate it or clear its balance in the Square Dashboard (Gift Cards, search the last 4).
+### Selling one at the Square iPad
 
-### Selling one at the register
+1. Tap **Gift Cards**, then **Check Balance**.
+2. Scan the barcode on the certificate, or type the code (`MAPLE`, the year, the three
+   digits).
+3. Load the amount printed on the certificate.
+4. **Add the customer** to the sale: their name, email or phone. This is what lets the admin
+   page say who bought it and find it later if it is lost.
+5. Charge as usual. Hand over the certificate.
 
-Ring up the **Gift certificate** item, type the amount printed on the certificate, and leave
-tax off. Hand over the certificate. That is all.
+Square books this as a gift card sale (no sales tax: gift cards are taxed when they are
+spent), with the customer on the order. Nothing needs doing on the admin page.
 
-### Setting up the "Gift certificate" item in Square (once)
+> Not yet confirmed against the live register: that the Square iPad will load a card our
+> system created with a `MAPLE` code (Katie is testing this). If it will not, nothing is lost:
+> the certificates hold no money.
 
-In the Square Dashboard (Maple & Spruce account), **Items & services > Items > Create item**:
+The old **"Gift certificate" item** in the Square item library is not needed any more. The
+catalog sync still skips an item with that name, so leaving it there is harmless.
 
-1. **Name:** `Gift certificate`. Exactly that, capital letters optional, no other words. The
-   catalog sync and the POS sale worker recognise the item by this name.
-2. **Price:** leave it **variable** (no price), so the register asks for the amount.
-3. **Taxes:** turn **off** WV sales tax for this item. Gift cards are taxed when they are
-   spent, not when they are sold.
-4. **Category:** whatever Katie likes (for example "Gift cards"). It changes nothing here.
-5. Do not link it to an artist or a product in the admin app.
-6. Save. It shows on the register like the ad hoc music lesson item.
+### What the admin page shows, before and after
 
-**In the books** a certificate sale is gift card money: a liability (money owed in goods or
-classes), not shop income, and it pays no artist. Record it the same way as Square's own
-gift card sales. When the certificate is later spent on a piece, that sale is income and
-pays the artist their usual split.
+| | Before the sale | After the register loads it |
+|---|---|---|
+| Status in the list | **Not sold yet** | Active |
+| Balance | $0.00 | What was loaded, then less as it is spent |
+| Totals | counted in **Printed, not sold yet** (a number of certificates, no dollars) | its load counts in **Sold this month**, its balance in **Owed to customers** |
+| Card dialog | "Printed certificate for $X. It has no money on it until it is sold at the register." | "Sold at the register on <date> to <name> · <email> · <phone>", read live from Square |
 
-**What our system does with it:** the catalog sync (`process-catalog-sync-request`) skips any
-Square item named "Gift certificate", so it never becomes a draft product waiting for an
-artist, and the POS sale worker (`process-pos-sale`) ignores the line, so it is never treated
-as a lesson or a class registration. If the item was created before this shipped, the sync
-may already have made a draft "Gift certificate" product in the admin: delete that draft.
+The buyer line comes from the card's first activation (or first load) in Square: its order,
+and the customer Katie added to that order. If no customer was added it says "No customer was
+added at the register." Customers Square links to the card itself are listed too. None of this
+is stored in Firestore; it is read from Square each time the dialog opens, admin only.
 
-### How the value moves and how it is counted
+## Finding a card by its customer (#332)
 
-- Each certificate is a digital card made with `createDigitalGiftCard` and loaded with an
-  `ACTIVATE` that has no order and no payment (reference `cert-<batch>-<n>`), the same Square
-  calls as a free card. The batch id and every Square key are derived from the dialog's key
-  and the certificate's place in the batch, so a retry reuses the same cards.
-- Each card's record is `giftCardPurchases/{giftCardId}` with `source: 'stock'`, `batchId`,
-  `batchIndex`, `design`, value, kind and class type. Codes are never stored.
-- On the Gift Cards page, a printed certificate still holding exactly what was loaded counts
-  under **Printed certificates not yet used**, not under "Owed to customers". Loading it is
-  not counted as sold. Once it is spent, what is left counts as owed like any card. Free cards
-  count under **Given free this month**, not "Sold this month". A certificate sold at the
-  register shows in Square's item sales as "Gift certificate", not in "Sold this month".
+The search box on the Gift Cards page takes the **last 4 digits** of a card (filtered on the
+page, as before) or a customer's **name, email or phone** (searched in Square):
 
-### Logs
+- An email or a phone number uses Square's customer search, which matches part of either.
+- Square cannot search customers by name, so a name is matched against the **2,000 most
+  recently created** Square customers, word by word ("ash rob" finds a Robin Ashfield). An
+  older customer is still found by email or phone.
+- At most **10** customers are matched. For each, the page lists every card Square links to
+  them, however old, plus every card one of their orders loaded in the **last 2 years** (from
+  the gift card activations and loads of those two years).
+
+The search is logged with counts only, never what was typed.
+
+## Replacing a lost card (#332)
+
+1. Find the card: search the customer's name, email or phone, or the last 4 if they have it.
+2. Open it and click **Replace lost card** (admin only; shown on an active card with money on
+   it).
+3. The confirm dialog shows the balance that will move and says the old card will stop
+   working for good. Click **Replace card**.
+4. The dialog says "New card ending NNNN holds $X". Click **Show and copy code** to put it on
+   a fresh certificate (or email it).
+
+**How the money moves.** Square's own balance transfer cannot be made through the API, so the
+move is made of activities it can:
+
+1. Make a new digital card (nothing on it).
+2. Record it: `giftCardPurchases/{newId}` with `source: 'replacement'`,
+   `replacesGiftCardId` and the amount, before any money moves.
+3. Take the balance off the lost card (`ADJUST_DECREMENT`, reason `SUPPORT_ISSUE`).
+4. Put it on the new card (`ACTIVATE` with the amount and no order, reference `repl-…`).
+5. Turn the lost card off (`DEACTIVATE`).
+
+The balance comes off the lost card **before** it goes on the new one, so a failure never
+leaves the money on both. What each failure leaves:
+
+| Fails at | Where the money is | What to do |
+|---|---|---|
+| 1 or 2 | on the lost card | try again |
+| 3 | on the lost card (Square refuses to take more than is there) | try again |
+| 4 | on neither card for the moment; the amount is in our record and in the lost card's Square history | try again: it finishes and puts it on the new card |
+| 5 | on the new card; the lost card holds $0 | try again to turn it off |
+
+Trying again is always safe: it finds the replacement already started for that card and
+carries on, and every Square call reuses its key, so nothing is moved twice. A class
+certificate's replacement is still a class certificate for the same class type, worth the
+balance moved. The move is not a sale: it is left out of "Sold this month".
+
+**Logged:** `gift_card_replaced {oldId, newId, balanceCents, uid}` and
+`gift_card_replace_failed {step, …}`. Never a code.
+
+## How it is counted
+
+- **Owed to customers:** every active card's balance. Printed certificates are pending until
+  sold, so they are not in it.
+- **Sold this month:** money loaded since the 1st, except free cards' first load, replacements,
+  and certificates printed pre-loaded under #314 (loaded with no order).
+- **Given free this month:** free cards' first load.
+- **Printed, not sold yet:** printed certificates still pending (a count).
+
+## Before switching on online gift card checkout
+
+Paying for a class online with a gift card (#301) is built but switched off. Before it is
+switched on:
+
+- **Add a lockout after repeated wrong codes.** A printed certificate's code is one of 1,000
+  per year, so guessing is cheap without one. Limit wrong tries per visitor and per card, on
+  top of the existing App Check and per-IP throttle on `previewGiftCardForClass`. (Not built
+  yet.)
+
+## Logs
 
 `gift_certificates_printed` (batch id, count, value, who), `gift_certificate_print_failed`
-(batch id, place in batch, step), `gift_certificate_batch_revealed` (batch id, count, who)
-and `gift_certificate_batch_reveal_failed`. None contain a code.
+(batch id, place in batch, step), `gift_certificate_batch_revealed` (batch id, count, who),
+`gift_certificate_batch_reveal_failed`, `gift_card_buyer_viewed` (card id, whether a sale and
+customer were found, who), `gift_card_customer_search` (how it searched, counts, who),
+`gift_card_replaced` and `gift_card_replace_failed`. None contain a code or a customer's
+details.
