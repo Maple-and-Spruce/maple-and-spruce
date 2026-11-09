@@ -5,8 +5,8 @@ import { mockRegistrationConfirmed } from '@maple/react/storybook-fixtures';
 import { RegistrationDetailDialog } from './RegistrationDetailDialog';
 
 /**
- * Cancelling a registration, and what happens to the money (#144). All
- * people are invented.
+ * Cancelling a registration, and what happens to the money (#144), and the
+ * customer's note beside staff's own (#326). All people are invented.
  */
 
 /** A POS registration whose sale Square refunded in part, flagged to check. */
@@ -31,7 +31,7 @@ const meta = {
     onCancel: fn(async (id: string) => ({
       registration: { ...mockRegistrationConfirmed, id, status: 'refunded' as const },
     })),
-    onUpdateNotes: fn(async () => undefined),
+    onUpdateStaffNotes: fn(async () => undefined),
   },
 } satisfies Meta<typeof RegistrationDetailDialog>;
 
@@ -123,5 +123,59 @@ export const PrivateHourBooking: Story = {
     expect(screen().getByText('Sat, Dec 7, 1:00 PM')).toBeInTheDocument();
     expect(screen().getByText('about 8 people')).toBeInTheDocument();
     expect(screen().queryByText(/1 spot/)).toBeNull();
+  },
+};
+
+/** The customer's note is read-only; staff write their own beside it (#326). */
+export const StaffNotes: Story = {
+  args: {
+    registration: {
+      ...mockRegistrationConfirmed,
+      notes: 'Left-handed, could I sit at the end of the bench?',
+    },
+  },
+  play: async ({ args }) => {
+    await expect(await screen().findByText('Customer note')).toBeInTheDocument();
+    await expect(
+      screen().getByText('Left-handed, could I sit at the end of the bench?')
+    ).toBeInTheDocument();
+    // Nothing to save until something is typed.
+    const save = screen().getByRole('button', { name: 'Save staff notes' });
+    await expect(save).toBeDisabled();
+
+    const box = screen().getByRole('textbox', { name: 'Staff notes' });
+    await userEvent.type(box, '  Called, end seat is saved  ');
+    await expect(save).toBeEnabled();
+    await userEvent.click(save);
+    await waitFor(() =>
+      expect(args.onUpdateStaffNotes).toHaveBeenCalledWith(
+        'reg-001',
+        'Called, end seat is saved'
+      )
+    );
+  },
+};
+
+/** A save that fails says so and keeps what was typed. */
+export const StaffNotesSaveFails: Story = {
+  args: {
+    registration: {
+      ...mockRegistrationConfirmed,
+      notes: undefined,
+      staffNotes: 'Paid at the desk',
+    },
+    onUpdateStaffNotes: fn(async () => {
+      throw new Error('Network down');
+    }),
+  },
+  play: async () => {
+    const box = await screen().findByRole('textbox', { name: 'Staff notes' });
+    await expect(box).toHaveValue('Paid at the desk');
+    // No customer note: no empty heading for it.
+    await expect(screen().queryByText('Customer note')).toBeNull();
+    await userEvent.type(box, ', receipt emailed');
+    await userEvent.click(screen().getByRole('button', { name: 'Save staff notes' }));
+    await expect(await screen().findByText('Network down')).toBeInTheDocument();
+    await expect(box).toHaveValue('Paid at the desk, receipt emailed');
   },
 };

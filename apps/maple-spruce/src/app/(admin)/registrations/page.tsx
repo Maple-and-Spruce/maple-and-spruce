@@ -36,16 +36,22 @@ export default function RegistrationsPage() {
     [classesState]
   );
 
-  // Detail dialog state
-  const [selectedRegistration, setSelectedRegistration] =
-    useState<Registration | null>(null);
+  // Detail dialog state: by id, so a save shows the registration as it now is.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedRegistration = useMemo(
+    () =>
+      selectedId && registrationsState.status === 'success'
+        ? (registrationsState.data.find((r) => r.id === selectedId) ?? null)
+        : null,
+    [selectedId, registrationsState]
+  );
 
   const handleViewDetail = useCallback((registration: Registration) => {
-    setSelectedRegistration(registration);
+    setSelectedId(registration.id);
   }, []);
 
   const handleCloseDetail = useCallback(() => {
-    setSelectedRegistration(null);
+    setSelectedId(null);
   }, []);
 
   const handleCancel = useCallback(
@@ -55,9 +61,9 @@ export default function RegistrationsPage() {
     [cancelRegistration]
   );
 
-  const handleUpdateNotes = useCallback(
-    async (id: string, notes: string) => {
-      await updateRegistration({ id, notes });
+  const handleUpdateStaffNotes = useCallback(
+    async (id: string, staffNotes: string) => {
+      await updateRegistration({ id, staffNotes });
     },
     [updateRegistration]
   );
@@ -167,7 +173,7 @@ export default function RegistrationsPage() {
             : undefined
         }
         onCancel={handleCancel}
-        onUpdateNotes={handleUpdateNotes}
+        onUpdateStaffNotes={handleUpdateStaffNotes}
       />
     </>
   );

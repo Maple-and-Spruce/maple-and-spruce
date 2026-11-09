@@ -27,6 +27,14 @@ export const updateRegistration = createRoleFunction<
     throwInvalidArgument('Registration ID is required');
   }
 
+  // The customer's note stays as they wrote it (#326); staff write theirs
+  // in staffNotes.
+  if ('notes' in data) {
+    throwInvalidArgument(
+      "A customer's note can't be changed. Add a staff note instead."
+    );
+  }
+
   const existing = await RegistrationRepository.findById(data.id);
   if (!existing) {
     throwNotFound('Registration', data.id);
