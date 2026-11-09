@@ -594,19 +594,20 @@ describe('ClassRepository', () => {
     });
   });
 
-  describe('claimUnderMinimumAlert', () => {
-    function stubTransaction(snap: { exists: boolean; data: () => unknown }) {
-      const docRef = { id: 'class-1' };
-      vi.mocked(db.collection).mockReturnValue({
-        doc: vi.fn().mockReturnValue(docRef),
-      } as never);
-      const tx = { get: vi.fn().mockResolvedValue(snap), update: vi.fn() };
-      vi.mocked(db.runTransaction).mockImplementation(
-        async (fn: (t: never) => Promise<unknown>) => fn(tx as never)
-      );
-      return { tx, docRef };
-    }
+  /** A one-document transaction: `tx.get` resolves `snap`. */
+  function stubTransaction(snap: { exists: boolean; data: () => unknown }) {
+    const docRef = { id: 'class-1' };
+    vi.mocked(db.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue(docRef),
+    } as never);
+    const tx = { get: vi.fn().mockResolvedValue(snap), update: vi.fn() };
+    vi.mocked(db.runTransaction).mockImplementation(
+      async (fn: (t: never) => Promise<unknown>) => fn(tx as never)
+    );
+    return { tx, docRef };
+  }
 
+  describe('claimUnderMinimumAlert', () => {
     it('stamps the marker and returns true the first time', async () => {
       const at = new Date('2026-05-08T12:00:00.000Z');
       const { tx, docRef } = stubTransaction({
@@ -653,18 +654,6 @@ describe('ClassRepository', () => {
   });
 
   describe('instructor notes marker (#325)', () => {
-    function stubTransaction(snap: { exists: boolean; data: () => unknown }) {
-      const docRef = { id: 'class-1' };
-      vi.mocked(db.collection).mockReturnValue({
-        doc: vi.fn().mockReturnValue(docRef),
-      } as never);
-      const tx = { get: vi.fn().mockResolvedValue(snap), update: vi.fn() };
-      vi.mocked(db.runTransaction).mockImplementation(
-        async (fn: (t: never) => Promise<unknown>) => fn(tx as never)
-      );
-      return { tx, docRef };
-    }
-
     it('reads the marker back, and a cleared one as unset', async () => {
       const sentAt = new Date('2026-05-08T12:00:00.000Z');
       expect((await readBack({ instructorNotesSentAt: ts(sentAt) })).instructorNotesSentAt).toEqual(sentAt);
