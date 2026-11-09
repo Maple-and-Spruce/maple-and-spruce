@@ -280,6 +280,8 @@ export const processPosSale = onDocumentWritten(
                 quantity: regQty,
                 confirmationNumber: webReg.confirmationNumber ?? webReg.id,
                 slotStart: webReg.slotStart,
+                // A hosted (web) checkout: the cancel page can find it.
+                offerFreeCancellation: true,
                 additionalAttendees: webReg.additionalAttendees,
                 subtotalCents: webReg.subtotalCents,
                 taxRatePercent: webReg.taxRatePercent,

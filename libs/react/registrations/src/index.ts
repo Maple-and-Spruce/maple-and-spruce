@@ -15,3 +15,5 @@ export {
   RegistrationNoteLine,
   registrationNoteText,
 } from './lib/RegistrationNoteLine';
+export { FreeCancellationNote } from './lib/FreeCancellationNote';
+export type { FreeCancellationNoteProps } from './lib/FreeCancellationNote';

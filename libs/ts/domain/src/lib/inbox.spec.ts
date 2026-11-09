@@ -40,6 +40,7 @@ function sources(overrides: Partial<InboxSources> = {}): InboxSources {
     syncConflicts: [],
     refundedRegistrations: [],
     refundReviews: [],
+    cancellationRequests: [],
     instructorsNotReady: [],
     minimumClasses: [],
     confirmedSeats: new Map(),
@@ -649,6 +650,65 @@ describe('refunds to check (#144)', () => {
     expect(item.detail).toBe(
       '$0.00 refunded in Square on a sale that included this class. Was it the class?'
     );
+  });
+});
+
+describe('cancellation requests', () => {
+  const request = (overrides: Record<string, unknown> = {}) => ({
+    id: 'reg-1',
+    classId: 'cls-1',
+    customerName: 'Olive Thompson',
+    confirmationNumber: 'MS-ABC234',
+    status: 'confirmed' as const,
+    cancellationRequestedAt: ago(3 * HOUR),
+    freeCancellationUntil: new Date('2026-10-24T14:00:00.000Z'),
+    ...overrides,
+  });
+  const pottery = { id: 'cls-1', name: 'Wheel Pottery', sessions: [] };
+
+  it('asks Katie to cancel and refund', () => {
+    const items = buildInboxItems(
+      sources({ cancellationRequests: [request()], classes: [pottery] })
+    );
+    expect(items).toEqual([
+      {
+        key: `cancellation-request:reg-1:${ago(3 * HOUR).getTime()}`,
+        kind: 'cancellation-request',
+        title: 'Wheel Pottery',
+        detail:
+          'Asked to cancel before the free cancellation date (Sat, Oct 24 at 10:00 AM) · Olive Thompson · MS-ABC234',
+        href: '/classes/cls-1/roster',
+        actionLabel: 'Cancel & refund',
+        occurredAt: ago(3 * HOUR).toISOString(),
+        urgent: false,
+      },
+    ]);
+    expect(INBOX_KIND_LABELS['cancellation-request']).toBe('Cancel request');
+  });
+
+  it('leaves once the registration is cancelled or refunded', () => {
+    const items = buildInboxItems(
+      sources({
+        cancellationRequests: [
+          request({ id: 'a', status: 'cancelled' }),
+          request({ id: 'b', status: 'refunded' }),
+          request({ id: 'c', cancellationRequestedAt: undefined }),
+        ],
+      })
+    );
+    expect(items).toEqual([]);
+  });
+
+  it('falls back when the class or deadline is unknown', () => {
+    const [item] = buildInboxItems(
+      sources({
+        cancellationRequests: [
+          request({ freeCancellationUntil: undefined, customerName: '', confirmationNumber: undefined }),
+        ],
+      })
+    );
+    expect(item.title).toBe('Class registration');
+    expect(item.detail).toBe('Asked to cancel before the free cancellation date');
   });
 });
 

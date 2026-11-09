@@ -48,6 +48,10 @@ import { DEFAULT_LESSON_TIME_ZONE } from './lesson-block';
 import type { NeedsAttentionGroup, NeedsAttentionKind } from './needs-attention';
 import { hasOpenPartialRefund, hasOpenRefundReview } from './registration';
 import type { Registration } from './registration';
+import {
+  formatFreeCancellationDeadline,
+  hasOpenCancellationRequest,
+} from './free-cancellation';
 import { zonedDateKey } from './schedule-format';
 import {
   describeMissingReadiness,
@@ -65,6 +69,7 @@ export type InboxItemKind =
   | 'sync-conflicts'
   | 'refund-partial'
   | 'refund-review'
+  | 'cancellation-request'
   | 'instructor-not-ready'
   | 'class-under-minimum'
   | 'registration-note'
@@ -86,6 +91,7 @@ export const INBOX_KIND_LABELS: Record<InboxItemKind, string> = {
   'sync-conflicts': 'Sync',
   'refund-partial': 'Part refund',
   'refund-review': 'Check refund',
+  'cancellation-request': 'Cancel request',
   'instructor-not-ready': 'Not cleared',
   'class-under-minimum': 'Under minimum',
   'registration-note': 'Note',
@@ -244,6 +250,22 @@ export interface InboxSources {
       | 'refundReviewAmountCents'
       | 'refundReviewId'
     >
+  >;
+  /**
+   * Registrations whose customer asked to cancel on the website's cancel
+   * page; only open ones (still confirmed) are used. Each carries the free
+   * cancellation deadline that applied when they asked.
+   */
+  cancellationRequests: ReadonlyArray<
+    Pick<
+      Registration,
+      | 'id'
+      | 'classId'
+      | 'customerName'
+      | 'confirmationNumber'
+      | 'status'
+      | 'cancellationRequestedAt'
+    > & { freeCancellationUntil?: Date }
   >;
   /** Contract instructors not cleared to teach who have a class coming up. */
   instructorsNotReady: ReadonlyArray<InstructorNotReadyToTeach>;
@@ -789,6 +811,40 @@ function registrationNoteItems(sources: InboxSources): InboxItem[] {
   return items;
 }
 
+function cancellationRequestItems(
+  sources: InboxSources,
+  tz: string
+): InboxItem[] {
+  const classNames = new Map(sources.classes.map((c) => [c.id, c.name]));
+  const items: InboxItem[] = [];
+  for (const registration of sources.cancellationRequests) {
+    if (!hasOpenCancellationRequest(registration)) continue;
+    const at = registration.cancellationRequestedAt;
+    if (!at) continue;
+    const who = registration.customerName?.trim();
+    items.push({
+      key: `cancellation-request:${registration.id}:${ms(at)}`,
+      kind: 'cancellation-request',
+      title: classNames.get(registration.classId) ?? 'Class registration',
+      // The ask first: on a narrow card the end is clipped.
+      detail: [
+        registration.freeCancellationUntil
+          ? `Asked to cancel before the free cancellation date (${formatFreeCancellationDeadline(registration.freeCancellationUntil, tz)})`
+          : 'Asked to cancel before the free cancellation date',
+        who,
+        registration.confirmationNumber,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      href: `/classes/${registration.classId}/roster`,
+      actionLabel: 'Cancel & refund',
+      occurredAt: at.toISOString(),
+      urgent: false,
+    });
+  }
+  return items;
+}
+
 /**
  * Sort rank: failed charges, then agreements for a class within 48 hours,
  * uncleared instructors teaching within a week and classes under their
@@ -832,6 +888,7 @@ export function buildInboxItems(sources: InboxSources): InboxItem[] {
     ...partialRefundItems(sources),
     ...refundReviewItems(sources),
     ...registrationNoteItems(sources),
+    ...cancellationRequestItems(sources, tz),
   ]);
 }
 

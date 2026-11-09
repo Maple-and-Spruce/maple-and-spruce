@@ -348,6 +348,8 @@ describe('processPosSale — dedup', () => {
       quantity: 2,
       confirmationNumber: 'MS-HOST01',
       slotStart,
+      // A web checkout, so the email names the free cancellation date.
+      offerFreeCancellation: true,
       additionalAttendees: attendees,
       subtotalCents: 9000,
       taxRatePercent: 6,

@@ -43,6 +43,8 @@ import type {
   GetRequiredAgreementsForClassResponse,
   LookupDiscountRequest,
   LookupDiscountResponse,
+  LookupRegistrationForCancellationRequest,
+  LookupRegistrationForCancellationResponse,
 } from '@maple/ts/firebase/api-types';
 import { calculateRegistrationCost } from './calculate-registration-cost';
 import { getGiftCardOptions } from './get-gift-card-options';
@@ -53,6 +55,7 @@ import { getPublicMusicTogetherSections } from './get-public-music-together-sect
 import { getRegistrationStatus } from './get-registration-status';
 import { getRequiredAgreementsForClass } from './get-required-agreements-for-class';
 import { lookupDiscount } from './lookup-discount';
+import { lookupRegistrationForCancellation } from '@maple/firebase/maple-functions/request-registration-cancellation';
 
 /** One warm instance in prod; everywhere else scales to zero. */
 export const PUBLIC_SITE_MIN_INSTANCES =
@@ -98,6 +101,20 @@ export const publicSite = Functions.router(
       .withAppCheck('enforce')
       .throttling('lookupDiscount', codeLookupThrottles())
       .asRoute<LookupDiscountRequest, LookupDiscountResponse>(lookupDiscount),
+
+    /**
+     * The website's cancel page: a class registration by confirmation number
+     * and booking email, with its free cancellation date while it is ahead.
+     * Guessable like a code, so App Check and a per-IP throttle (ADR-037).
+     * The request itself is the `requestRegistrationCancellation` function.
+     */
+    lookupRegistrationForCancellation: Functions.endpoint
+      .withAppCheck('enforce')
+      .throttling('lookupRegistrationForCancellation', codeLookupThrottles())
+      .asRoute<
+        LookupRegistrationForCancellationRequest,
+        LookupRegistrationForCancellationResponse
+      >(lookupRegistrationForCancellation),
 
     // ── Music Together widgets ────────────────────────────────────────────
 

@@ -15,8 +15,11 @@
  */
 import { getDb, isAlreadyExists } from '@maple/firebase/database';
 import {
+  cancelPageUrl,
+  formatFreeCancellationDeadline,
   formatPrivateHour,
   formatSessions,
+  freeCancellationUntil,
   isPrivateHoursClass,
   type Attendee,
   type Class,
@@ -66,6 +69,12 @@ export interface RegistrationConfirmationInput {
   agreementsSigned?: boolean;
   waiverUrl?: string;
   referral?: { code: string; expires: string; percent: number };
+  /**
+   * Show "Free cancellation until …" with a link to the website's cancel
+   * page, while that date is still ahead. Web checkouts only: the cancel page
+   * finds web registrations, not register sales.
+   */
+  offerFreeCancellation?: boolean;
 }
 
 export interface RegistrationConfirmationResult {
@@ -147,6 +156,14 @@ export async function queueRegistrationConfirmation(
     const classDate = classDateLine(classEntity, input.slotStart);
     const classDuration = classDurationLine(classEntity.durationMinutes);
     const classLocation = classEntity.location || 'Maple & Spruce';
+    // Only while it is ahead: a booking inside the two weeks gets no
+    // cancellation line at all.
+    const cancelDeadline = input.offerFreeCancellation
+      ? freeCancellationUntil(
+          { sessions: classEntity.sessions, slotStart: input.slotStart },
+          new Date()
+        )
+      : undefined;
 
     // Every session as an .ics, so the mail client offers "Add to Calendar"
     // whatever browser the buyer checked out in. A failure here must not cost
@@ -205,6 +222,12 @@ export async function queueRegistrationConfirmation(
             classDuration,
             classLocation,
             confirmationNumber: input.confirmationNumber,
+            freeCancellationUntil: cancelDeadline
+              ? formatFreeCancellationDeadline(cancelDeadline)
+              : undefined,
+            cancelUrl: cancelDeadline
+              ? cancelPageUrl(input.confirmationNumber)
+              : undefined,
             subtotal: formatCurrency(input.subtotalCents),
             taxRate: input.taxRatePercent,
             taxAmount: formatCurrency(input.taxAmountCents),

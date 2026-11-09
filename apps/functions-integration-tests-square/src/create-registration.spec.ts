@@ -294,6 +294,14 @@ describe('createRegistration', () => {
 
       expect(registrantMail?.template?.name).toBe('registration-confirmation');
       expect(registrantMail?.template?.data?.extrasWithoutEmailCount).toBe(1);
+      // The class is a month out, so the free cancellation date (two weeks
+      // before) is still ahead and the email names it with a cancel link.
+      expect(registrantMail?.template?.data?.freeCancellationUntil).toMatch(
+        /^\w{3}, \w{3} \d{1,2} at \d{1,2}:\d{2} [AP]M$/
+      );
+      expect(registrantMail?.template?.data?.cancelUrl).toMatch(
+        /^https:\/\/mapleandsprucefolkarts\.com\/cancel\?confirmation=MS-/
+      );
       // Full attendee roster (primary purchaser first, then additional
       // attendees) is included so the registrant can see who they signed up.
       expect(registrantMail?.template?.data?.attendees).toEqual([

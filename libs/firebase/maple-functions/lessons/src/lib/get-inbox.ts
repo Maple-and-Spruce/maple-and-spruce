@@ -33,6 +33,9 @@ import {
 import { collectNeedsAttention } from '@maple/firebase/maple-functions/get-needs-attention';
 import {
   buildInboxItems,
+  cancellationAnchor,
+  freeCancellationDeadline,
+  hasOpenCancellationRequest,
   hasOpenPartialRefund,
   hasOpenRefundReview,
   INBOX_NOTE_LOOKBACK_DAYS,
@@ -76,6 +79,7 @@ export async function getInbox(): Promise<GetInboxResponse> {
     flaggedRefunds,
     recentRegistrations,
     recentMusicTogetherRegistrations,
+    requestedCancellations,
   ] = await Promise.all([
     // The whole studio: the inbox is admin-only.
     collectNeedsAttention(undefined, now),
@@ -100,12 +104,19 @@ export async function getInbox(): Promise<GetInboxResponse> {
     MusicTogetherRegistrationRepository.findCreatedSince(
       new Date(now.getTime() - INBOX_NOTE_LOOKBACK_DAYS * 86_400_000)
     ),
+    // Asked to cancel on the website's cancel page; rare, refund lookback.
+    RegistrationRepository.findWithCancellationRequestSince(
+      new Date(now.getTime() - INBOX_REFUND_LOOKBACK_DAYS * 86_400_000)
+    ),
   ]);
   const partialRefunds = refundedRegistrations.filter(hasOpenPartialRefund);
   const refundReviews = flaggedRefunds.filter(hasOpenRefundReview);
   const notedRegistrations = recentRegistrations.filter((r) => r.notes?.trim());
   const notedMusicTogetherRegistrations = recentMusicTogetherRegistrations.filter(
     (r) => r.accommodations?.trim()
+  );
+  const openCancellations = requestedCancellations.filter(
+    hasOpenCancellationRequest
   );
 
   // Only the classes a pending request, a refund or a note names.
@@ -116,12 +127,22 @@ export async function getInbox(): Promise<GetInboxResponse> {
         ...partialRefunds.map((r) => r.classId),
         ...refundReviews.map((r) => r.classId),
         ...notedRegistrations.map((r) => r.classId),
+        ...openCancellations.map((r) => r.classId),
       ].filter((id): id is string => Boolean(id))
     ),
   ];
   const classes: InboxClass[] = (
     await Promise.all(classIds.map((id) => ClassRepository.findById(id)))
   ).filter((c): c is NonNullable<typeof c> => c !== undefined);
+  const classById = new Map(classes.map((c) => [c.id, c]));
+  const cancellationRequests = openCancellations.map((r) => {
+    const cls = classById.get(r.classId);
+    const anchor = cls && cancellationAnchor(cls.sessions, r.slotStart);
+    return {
+      ...r,
+      freeCancellationUntil: anchor ? freeCancellationDeadline(anchor) : undefined,
+    };
+  });
 
   const sectionIds = [
     ...new Set(notedMusicTogetherRegistrations.map((r) => r.sectionId)),
@@ -159,6 +180,7 @@ export async function getInbox(): Promise<GetInboxResponse> {
     syncConflicts,
     refundedRegistrations: partialRefunds,
     refundReviews,
+    cancellationRequests,
     instructorsNotReady: instructorsNotReadyToTeach(
       activeInstructors,
       upcomingClasses,

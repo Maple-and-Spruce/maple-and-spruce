@@ -68,6 +68,7 @@
     "../../libs/firebase/maple-functions/start-craft-club-session/**/*.ts",
     "../../libs/firebase/maple-functions/get-craft-club-subscription/**/*.ts",
     "../../libs/firebase/maple-functions/request-music-together-manage-link/**/*.ts",
+    "../../libs/firebase/maple-functions/request-registration-cancellation/**/*.ts",
     "../../libs/firebase/maple-functions/start-music-together-manage-session/**/*.ts",
     "../../libs/firebase/maple-functions/add-to-music-together-waitlist/**/*.ts",
     "../../libs/firebase/maple-functions/add-music-together-demo-rsvp/**/*.ts",

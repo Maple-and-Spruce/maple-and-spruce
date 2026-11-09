@@ -209,6 +209,7 @@ export { getCraftClubSubscription } from '@maple/firebase/maple-functions/get-cr
 // Music Together — self-service card-on-file management magic-link + session
 // (no Square dep; the card update itself lives in the maple-square codebase).
 export { requestMusicTogetherManageLink } from '@maple/firebase/maple-functions/request-music-together-manage-link';
+export { requestRegistrationCancellation } from '@maple/firebase/maple-functions/request-registration-cancellation';
 export { startMusicTogetherManageSession } from '@maple/firebase/maple-functions/start-music-together-manage-session';
 
 // Lesson billing rules (#81) — the reusable "every 4 lessons, charged the day

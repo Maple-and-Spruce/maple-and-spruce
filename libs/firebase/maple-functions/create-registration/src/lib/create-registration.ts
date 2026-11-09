@@ -438,6 +438,7 @@ export const createRegistration = Functions.endpoint
         quantity: data.quantity,
         confirmationNumber,
         slotStart: data.slotStart,
+        offerFreeCancellation: true,
         additionalAttendees,
         subtotalCents,
         taxRatePercent,

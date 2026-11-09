@@ -21,7 +21,10 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
 import PrintIcon from '@mui/icons-material/Print';
 import { httpsCallable } from 'firebase/functions';
 import { theme } from '@maple/react/theme';
-import { RegistrationCheckoutForm } from '@maple/react/registrations';
+import {
+  FreeCancellationNote,
+  RegistrationCheckoutForm,
+} from '@maple/react/registrations';
 import type { RequiredAgreementTemplate } from '@maple/react/registrations';
 import type { PublicClass } from '@maple/ts/domain';
 import type {
@@ -46,6 +49,7 @@ import type {
 import {
   classCalendarEntries,
   formatCentsAsDollars,
+  freeCancellationUntil,
   type ClassCalendarEntry,
 } from '@maple/ts/domain';
 import { getWidgetFunctions, routeCallable } from './firebase-init';
@@ -264,6 +268,8 @@ interface ConfirmedState {
   location?: string;
   agreementsSigned?: boolean;
   giftCard?: GiftCardPaymentDetails;
+  /** ISO free cancellation deadline, only while it is still ahead. */
+  freeCancellationUntil?: string;
 }
 
 type WidgetState =
@@ -315,6 +321,10 @@ function buildConfirmedState(
     skillLevel: pc.skillLevel,
     location: pc.location,
     agreementsSigned: details.agreementsSigned,
+    freeCancellationUntil: freeCancellationUntil(
+      { sessions: pc.sessions ?? [], slotStart: details.slotStart },
+      new Date()
+    )?.toISOString(),
     ...(details.giftCardPaidCents
       ? {
           giftCard: {
@@ -827,6 +837,16 @@ export function RegistrationWidget({
                 {state.confirmationNumber}
               </Typography>
             </Typography>
+
+            <FreeCancellationNote
+              variant="confirmation"
+              deadline={
+                state.freeCancellationUntil
+                  ? new Date(state.freeCancellationUntil)
+                  : undefined
+              }
+              confirmationNumber={state.confirmationNumber}
+            />
 
             <Divider sx={{ my: 2 }} />
 

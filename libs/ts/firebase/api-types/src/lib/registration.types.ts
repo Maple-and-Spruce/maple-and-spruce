@@ -261,3 +261,40 @@ export interface GetRegistrationStatusResponse {
     slotStart?: string;
   };
 }
+
+/**
+ * The website's cancel page: find a class registration by its confirmation
+ * number and the email it was booked with.
+ */
+export interface LookupRegistrationForCancellationRequest {
+  confirmationNumber: string;
+  email: string;
+}
+
+export type LookupRegistrationForCancellationResponse =
+  | { found: false }
+  | {
+      found: true;
+      className: string;
+      /** ISO start of the class's first session, or of the booked hour. */
+      startsAt?: string;
+      /**
+       * ISO free cancellation deadline, present ONLY while it is still ahead.
+       * Absent means the page says nothing about cancelling.
+       */
+      freeCancellationUntil?: string;
+      /** The customer already asked to cancel; Katie has the request. */
+      cancellationRequested: boolean;
+    };
+
+/** Ask Katie to cancel a registration before its free cancellation date. */
+export interface RequestRegistrationCancellationRequest {
+  confirmationNumber: string;
+  email: string;
+}
+
+export interface RequestRegistrationCancellationResponse {
+  ok: true;
+  /** ISO free cancellation deadline the request was made under. */
+  freeCancellationUntil: string;
+}

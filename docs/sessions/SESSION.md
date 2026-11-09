@@ -6,6 +6,21 @@
 
 ## Current Status
 
+### Free cancellation date on class registrations (2026-11-08)
+
+- Like Airbnb: checkout, the confirmation screen and the confirmation email say "Free
+  cancellation until <date>" (two weeks before the class, or the booked hour; Eastern clock
+  time). After the date nothing mentions cancelling.
+- New `/cancel` page widget: confirmation number + booking email. Before the date,
+  **Request cancellation** records it, emails Katie and the customer, and adds a "Cancel request"
+  to the Home Inbox. Katie cancels and refunds on the roster as before. Nothing auto-refunds
+  (David's call).
+- One new function (`requestRegistrationCancellation`, baseline 154 → 155); the lookup is a
+  `publicSite` route.
+- **After merge:** seed email templates (dev + prod), publish components + site, create the
+  `/cancel` page in Webflow, update the policy page's "How to Cancel". Guide:
+  `docs/guides/free-cancellation.md`.
+
 ### Gift cards for the holidays (2026-11-07, epic #295)
 
 - Plan agreed with David: Square holds every card; physical gifts are printed certificates Katie

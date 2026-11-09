@@ -212,6 +212,37 @@ describe('queueRegistrationConfirmation', () => {
     expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(1);
   });
 
+  it('names the free cancellation date and the cancel page for a web checkout', async () => {
+    // First session Tue May 14 2030, 6:00 PM Eastern → free until Tue Apr 30.
+    await queueRegistrationConfirmation(input({ offerFreeCancellation: true }));
+    const { data } = mail('registration-confirmation-reg-1').template;
+    expect(data['freeCancellationUntil']).toBe('Tue, Apr 30 at 6:00 PM');
+    expect(data['cancelUrl']).toBe(
+      'https://mapleandsprucefolkarts.com/cancel?confirmation=MS-ABC234'
+    );
+  });
+
+  it('says nothing about cancelling for a register sale, or once the date has passed', async () => {
+    await queueRegistrationConfirmation(input());
+    const pos = mail('registration-confirmation-reg-1').template.data;
+    expect(pos['freeCancellationUntil']).toBeUndefined();
+    expect(pos['cancelUrl']).toBeUndefined();
+
+    // Five days out: inside the two weeks.
+    // eslint-disable-next-line no-restricted-syntax -- a duration, not a calendar day
+    const soon = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    await queueRegistrationConfirmation(
+      input({
+        idempotencyKey: 'reg-soon',
+        offerFreeCancellation: true,
+        classEntity: { ...CLASS, sessions: [{ dateTime: soon }] },
+      })
+    );
+    const late = mail('registration-confirmation-reg-soon').template.data;
+    expect(late['freeCancellationUntil']).toBeUndefined();
+    expect(late['cancelUrl']).toBeUndefined();
+  });
+
   it('never throws when the write fails', async () => {
     mocks.failCreate = new Error('firestore down');
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
