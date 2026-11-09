@@ -61,6 +61,12 @@ export interface GiftCardActivityEntry {
   balanceAfterCents: number | null;
   /** When it happened (ISO 8601). */
   createdAt: string;
+  /**
+   * For an `activate` or `load`: the Square order that sold it, when it was
+   * sold through one (the register, or our own buy page). Missing for a card
+   * loaded with no sale, like a free card (#310) or a replacement (#332).
+   */
+  orderId?: string;
 }
 
 /** The numbers at the top of the admin Gift Cards page. */
@@ -74,7 +80,8 @@ export interface GiftCardTotals {
   cardsWithBalance: number;
   /**
    * Money put on cards (sold or reloaded) since the 1st of this month. Free
-   * cards and printed certificates are left out: neither is a sale (#314).
+   * cards and replacements for lost cards are left out: neither is a sale.
+   * A printed certificate counts once it is sold at the register (#332).
    */
   loadedThisMonthCents: number;
   /** Money spent from cards since the 1st of this month. */
@@ -82,13 +89,11 @@ export interface GiftCardTotals {
   /** Money put on cards the studio gave free since the 1st (#314). */
   givenFreeThisMonthCents: number;
   /**
-   * Money on printed certificates nobody has used yet (#314): stock cards
-   * still holding exactly what was loaded. Spendable, but probably still in
-   * the drawer, so kept apart from what is owed to customers.
+   * Printed certificates with no money on them yet (#332): made when they
+   * were printed, loaded only when sold at the register. A count, since they
+   * hold nothing.
    */
-  printedUnusedCents: number;
-  /** How many printed certificates are still unused. */
-  printedUnusedCount: number;
+  printedNotSoldCount: number;
 }
 
 /**
@@ -227,31 +232,56 @@ function timeZoneOffsetMs(at: Date, timeZone: string): number {
 }
 
 /**
- * Whether a card is printed stock nobody has used: a `stock` card, active,
- * still holding exactly what was loaded when it was printed (#314).
+ * Whether a printed certificate is still waiting to be sold (#332).
+ *
+ * Certificates are printed with no money on them (Square `PENDING`), and the
+ * register loads one when it is sold. So a `stock` card is not sold while it
+ * is pending. An active one with nothing on it is not sold either if its
+ * history shows it was never loaded; without the history (the list) an active
+ * card is taken as sold, since Square only activates a card with money.
  */
-export function isUnusedPrintedCertificate(
+export function isUnsoldPrintedCertificate(
   card: Pick<GiftCardSummary, 'state' | 'balanceCents'>,
-  record: GiftCardRecordForTotals | undefined
+  record: Pick<GiftCardPurchase, 'source'> | undefined,
+  history?: readonly Pick<GiftCardActivityEntry, 'type' | 'amountCents'>[]
 ): boolean {
-  return (
-    record?.source === 'stock' &&
-    card.state === 'active' &&
-    card.balanceCents === record.valueCents
+  if (record?.source !== 'stock') return false;
+  if (card.state === 'pending') return true;
+  if (card.state !== 'active' || card.balanceCents !== 0 || !history) return false;
+  return !history.some(
+    (a) => (a.type === 'activate' || a.type === 'load') && (a.amountCents ?? 0) > 0
   );
 }
 
 /**
+ * Whether money put on a card this month is a sale, a free gift, or neither.
+ *
+ * - A free card's first load is given, not sold; a top-up on it is a sale.
+ * - A replacement's first load is the lost card's balance moved over (#332).
+ * - A printed certificate is sold when the register loads it, against an
+ *   order. One loaded with no order was printed pre-loaded under #314, before
+ *   sales moved to the register, and was never a sale.
+ */
+function loadKind(
+  activity: GiftCardActivityEntry,
+  source: GiftCardPurchaseSource | undefined
+): 'sold' | 'free' | 'none' {
+  if (activity.type !== 'activate') return 'sold';
+  if (source === 'issued') return 'free';
+  if (source === 'replacement') return 'none';
+  if (source === 'stock' && !activity.orderId) return 'none';
+  return 'sold';
+}
+
+/**
  * The page totals from every card, this month's activities and our records of
- * cards (#314).
+ * cards (#314, #332).
  *
  * Only active cards count toward the outstanding balance: a blocked or turned
- * off card cannot be spent, and a pending one was never paid for. Printed
- * certificates nobody has used yet are counted on their own, not as owed.
- *
- * Loading a free card is "given free", not "sold". Loading a printed
- * certificate is neither: it is sold later at the register as the "Gift
- * certificate" item, which is not a gift card activity.
+ * off card cannot be spent, and a pending one was never paid for. That is how
+ * a printed certificate stays out of it until it is sold: it is pending until
+ * the register loads it. Those are counted on their own, as a number of
+ * certificates.
  */
 export function summarizeGiftCards(
   cards: readonly GiftCardSummary[],
@@ -262,15 +292,13 @@ export function summarizeGiftCards(
 
   let outstandingCents = 0;
   let cardsWithBalance = 0;
-  let printedUnusedCents = 0;
-  let printedUnusedCount = 0;
+  let printedNotSoldCount = 0;
   for (const card of cards) {
-    if (card.state !== 'active') continue;
-    if (isUnusedPrintedCertificate(card, recordById.get(card.id))) {
-      printedUnusedCents += card.balanceCents;
-      printedUnusedCount += 1;
+    if (isUnsoldPrintedCertificate(card, recordById.get(card.id))) {
+      printedNotSoldCount += 1;
       continue;
     }
+    if (card.state !== 'active') continue;
     outstandingCents += card.balanceCents;
     if (card.balanceCents > 0) cardsWithBalance += 1;
   }
@@ -281,15 +309,9 @@ export function summarizeGiftCards(
   for (const activity of activitiesThisMonth) {
     const amount = Math.abs(activity.amountCents ?? 0);
     if (activity.type === 'activate' || activity.type === 'load') {
-      const source = recordById.get(activity.giftCardId)?.source;
-      // A free card is only free when it is first loaded; a top-up is a sale.
-      if (source === 'issued' && activity.type === 'activate') {
-        givenFreeThisMonthCents += amount;
-      } else if (source === 'stock' && activity.type === 'activate') {
-        // Printed stock: not sold until it is rung up at the register.
-      } else {
-        loadedThisMonthCents += amount;
-      }
+      const kind = loadKind(activity, recordById.get(activity.giftCardId)?.source);
+      if (kind === 'free') givenFreeThisMonthCents += amount;
+      else if (kind === 'sold') loadedThisMonthCents += amount;
     } else if (activity.type === 'redeem') {
       spentThisMonthCents += amount;
     } else if (
@@ -307,8 +329,7 @@ export function summarizeGiftCards(
     loadedThisMonthCents,
     spentThisMonthCents: Math.max(0, spentThisMonthCents),
     givenFreeThisMonthCents,
-    printedUnusedCents,
-    printedUnusedCount,
+    printedNotSoldCount,
   };
 }
 
@@ -331,11 +352,19 @@ export type GiftCardDeliverTo = 'recipient' | 'buyer';
  *   certificate by Katie on the admin Gift Cards page.
  * - `issued`: given free by the studio from the admin page. No money changed
  *   hands; the value comes out of the studio's pocket when it is spent.
- * - `stock`: a printed certificate (#314), made and loaded in a batch from the
- *   admin page and kept in the shop. Spendable as soon as it is printed; sold
- *   at the register as the "Gift certificate" item.
+ * - `stock`: a printed certificate (#314), made in a batch from the admin page
+ *   and kept in the shop. Since #332 it is printed with no money on it, and
+ *   the register loads it when it is sold (Check Balance, then load).
+ * - `replacement`: a new card made from the admin page to replace a lost one
+ *   (#332). The lost card's balance was moved onto it; `replacesGiftCardId`
+ *   names the lost card.
  */
-export type GiftCardPurchaseSource = 'online' | 'register' | 'issued' | 'stock';
+export type GiftCardPurchaseSource =
+  | 'online'
+  | 'register'
+  | 'issued'
+  | 'stock'
+  | 'replacement';
 
 /**
  * What we know about a gift card that Square cannot hold. Square still owns
@@ -354,7 +383,8 @@ export interface GiftCardPurchase {
   kind: GiftCardPurchaseKind;
   /**
    * What the card was worth when it was made, in cents: what was paid online,
-   * what was loaded at the register, or what the studio gave.
+   * what was loaded at the register, what the studio gave, what a printed
+   * certificate says on it, or the balance moved onto a replacement.
    */
   valueCents: number;
   /** How the card came about. Missing means `online`. */
@@ -385,7 +415,7 @@ export interface GiftCardPurchase {
   squarePaymentId?: string;
   /** Issued only: why the studio gave it, in Katie's words. */
   reason?: string;
-  /** Register, issued or stock: the admin who recorded it. */
+  /** Register, issued, stock or replacement: the admin who recorded it. */
   recordedByUid?: string;
   /** Stock only: the printing batch (#314). */
   batchId?: string;
@@ -393,6 +423,8 @@ export interface GiftCardPurchase {
   batchIndex?: number;
   /** Stock only: the certificate design it was printed with. */
   design?: string;
+  /** Replacement only: the lost card whose balance was moved onto this one. */
+  replacesGiftCardId?: string;
   createdAt: Date;
 }
 

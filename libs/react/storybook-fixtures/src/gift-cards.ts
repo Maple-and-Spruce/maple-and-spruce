@@ -48,10 +48,10 @@ export const mockGiftCards: GiftCardSummary[] = [
 export const mockLabelledGiftCards: GiftCardListItem[] = [
   {
     id: 'gftc-stock-1',
-    last4: '5150',
+    last4: '9482',
     kind: 'egift',
-    state: 'active',
-    balanceCents: 2500,
+    state: 'pending',
+    balanceCents: 0,
     createdAt: '2026-11-22T15:00:00Z',
     source: 'stock',
     batchId: 'cert-0a1b2c3d4e5f6071',
@@ -75,8 +75,9 @@ export const mockCertificateBatch = {
   kind: 'amount' as const,
   valueCents: 2500,
   certificates: [
-    { giftCardId: 'gftc-stock-1', last4: '5150', code: '7783320000005150' },
-    { giftCardId: 'gftc-stock-2', last4: '5151', code: '7783320000005151' },
+    // Year 2099 so an invented code can never be a real certificate's.
+    { giftCardId: 'gftc-stock-1', last4: '9482', code: 'MAPLE2099482' },
+    { giftCardId: 'gftc-stock-2', last4: '9017', code: 'MAPLE2099017' },
   ],
 };
 
@@ -86,8 +87,7 @@ export const mockGiftCardTotals: GiftCardTotals = {
   loadedThisMonthCents: 12500,
   spentThisMonthCents: 4250,
   givenFreeThisMonthCents: 2500,
-  printedUnusedCents: 25000,
-  printedUnusedCount: 10,
+  printedNotSoldCount: 10,
 };
 
 /** The full code of `gftc-holiday-1`, for the reveal story. */

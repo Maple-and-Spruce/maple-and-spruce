@@ -81,3 +81,54 @@ export function customGiftCardCodeProblem(input: string): string | undefined {
   }
   return undefined;
 }
+
+// ---------------------------------------------------------------------------
+// Finding a card by its customer (#332)
+// ---------------------------------------------------------------------------
+
+/** Most Square customers one search returns. */
+export const GIFT_CARD_CUSTOMER_MATCH_LIMIT = 10;
+/**
+ * How far back register sales are searched for a customer's cards, in years.
+ * Cards linked to the customer in Square are found however old they are.
+ */
+export const GIFT_CARD_SALE_SEARCH_YEARS = 2;
+/**
+ * Square cannot search customers by name, so a name is matched against the
+ * most recently created customers, at most this many.
+ */
+export const GIFT_CARD_NAME_SEARCH_MAX_CUSTOMERS = 2000;
+/** Shortest and longest customer search, in characters (after trimming). */
+export const GIFT_CARD_CUSTOMER_QUERY_MIN_LENGTH = 2;
+export const GIFT_CARD_CUSTOMER_QUERY_MAX_LENGTH = 100;
+
+export type GiftCardSearchKind = 'none' | 'last4' | 'email' | 'phone' | 'name';
+
+/**
+ * What the Gift Cards search box was given: up to 4 digits are the end of a
+ * card code (searched in the list on the page), more digits a phone number,
+ * anything with an @ an email, and other text a name (searched in Square).
+ */
+export function giftCardSearchKind(input: string): GiftCardSearchKind {
+  const query = input.trim();
+  if (!query) return 'none';
+  if (query.includes('@')) return 'email';
+  const digits = query.replace(/\D/g, '');
+  if (/^[\d\s()+.-]+$/.test(query)) {
+    if (digits.length <= 4) return 'last4';
+    return 'phone';
+  }
+  if (query.length < GIFT_CARD_CUSTOMER_QUERY_MIN_LENGTH) return 'none';
+  return 'name';
+}
+
+/**
+ * Whether a customer's name matches a typed name: every word typed starts a
+ * word of the name, ignoring case, so "ash rob" finds "Robin Ashfield".
+ */
+export function customerNameMatches(name: string, query: string): boolean {
+  const words = name.toLowerCase().split(/[^\p{L}\p{N}']+/u).filter(Boolean);
+  const typed = query.toLowerCase().split(/[^\p{L}\p{N}']+/u).filter(Boolean);
+  if (typed.length === 0) return false;
+  return typed.every((t) => words.some((w) => w.startsWith(t)));
+}

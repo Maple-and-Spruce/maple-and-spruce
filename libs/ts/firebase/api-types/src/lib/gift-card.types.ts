@@ -113,8 +113,9 @@ export interface IssueGiftCardResponse {
 }
 
 /**
- * `giftCards/printGiftCertificates` (#314): make and load a batch of printed
- * certificates. Each is a real Square card, spendable as soon as it exists.
+ * `giftCards/printGiftCertificates` (#314, #332): make a batch of printed
+ * certificates. Each is a real Square card with a `MAPLE` code and no money
+ * on it until the register loads it at the sale.
  * A dollar amount ($5 to $500, whole dollars), or one class of a class type
  * that has certificates switched on, at the type's certificate price.
  */
@@ -142,13 +143,13 @@ export interface PrintGiftCertificatesResponse {
   batchId: string;
   /** How many were asked for. */
   requested: number;
-  /** The certificates that exist, loaded and recorded, in batch order. */
+  /** The certificates that exist and are recorded, in batch order. */
   cards: PrintedCertificateCard[];
-  /** What is on each, in cents. */
+  /** What each certificate says it is worth, in cents. Nothing is on it yet. */
   valueCents: number;
   /**
    * Set when some certificates could not be made. The ones in `cards` are
-   * loaded and fine; trying again with the same dialog makes the rest.
+   * fine; trying again with the same dialog makes the rest.
    */
   error?: string;
 }
@@ -177,4 +178,95 @@ export interface GetCertificateBatchResponse {
   className?: string;
   /** In batch order. */
   certificates: PrintableCertificate[];
+}
+
+/** A Square customer, as the admin shows one (#332). Admin only. */
+export interface GiftCardCustomer {
+  /** Square customer id. */
+  id: string;
+  /** Given and family name together, when Square has either. */
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface GetGiftCardBuyerRequest {
+  /** Square gift card id. */
+  id: string;
+}
+
+/**
+ * `giftCards/getGiftCardBuyer` (#332): who bought a card at the register,
+ * read live from Square each time and never stored. The card's first
+ * activation (or first load) names the Square order that sold it, and the
+ * order names the customer Katie added at the register.
+ */
+export interface GetGiftCardBuyerResponse {
+  /** The register sale that loaded the card. Missing when no order did. */
+  sale?: {
+    /** When it was loaded (ISO 8601). */
+    soldAt: string;
+    orderId: string;
+    /** Missing when no customer was added to the sale. */
+    customer?: GiftCardCustomer;
+  };
+  /** Customers Square has linked to the card itself, if any. */
+  linkedCustomers: GiftCardCustomer[];
+}
+
+export interface SearchGiftCardsByCustomerRequest {
+  /** A name, an email address or a phone number, as typed. 2 to 100 characters. */
+  query: string;
+}
+
+/** One customer the search matched, and their cards. */
+export interface GiftCardCustomerMatch {
+  customer: GiftCardCustomer;
+  /** Ids of the customer's cards, in the `cards` list of the response. */
+  giftCardIds: string[];
+}
+
+/**
+ * `giftCards/searchGiftCardsByCustomer` (#332): find cards by the customer
+ * on them. Square customers matching the query (at most
+ * `GIFT_CARD_CUSTOMER_MATCH_LIMIT` in `@maple/ts/domain`), and every card linked to one of them or
+ * sold to one of them since `searchedSince`.
+ */
+export interface SearchGiftCardsByCustomerResponse {
+  matches: GiftCardCustomerMatch[];
+  /** Every card found, newest first, labelled like the main list. */
+  cards: GiftCardListItem[];
+  /** Register sales are looked for from this date on (ISO 8601). */
+  searchedSince: string;
+  /** How the query was read: an email, a phone number or a name. */
+  searchedBy: 'email' | 'phone' | 'name';
+}
+
+export interface ReplaceGiftCardRequest {
+  /** The lost card. */
+  giftCardId: string;
+  /**
+   * Made by the dialog once each time it opens. A retry of the same click
+   * makes no second card and moves no money twice.
+   */
+  idempotencyKey: string;
+}
+
+/**
+ * `giftCards/replaceGiftCard` (#332): move a lost card's balance to a new
+ * card and turn the lost one off.
+ */
+export interface ReplaceGiftCardResponse {
+  oldGiftCardId: string;
+  newGiftCardId: string;
+  /** Last 4 of the new card; its code comes from `revealGiftCardCode`. */
+  last4: string;
+  /** What was moved, in cents. */
+  balanceCents: number;
+  /**
+   * Set when the money is on the new card but Square did not turn the old
+   * card off. The old card holds nothing, so nothing can be spent from it;
+   * trying again turns it off.
+   */
+  warning?: string;
 }

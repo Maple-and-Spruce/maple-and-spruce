@@ -2,10 +2,11 @@
  * Printed gift certificates (#314).
  *
  * Katie prints a batch of certificates from the admin Gift Cards page. Each
- * one is a real Square gift card, made and loaded when the batch is printed,
- * so it is spendable from the moment it comes off the printer. When she sells
- * one, she rings up the "Gift certificate" item at the register with the
- * amount and no tax (see `gift-certificate-item.ts`); nothing happens here.
+ * one is a real Square gift card with a short `MAPLE` code
+ * (`gift-certificate-code.ts`), made with **no money on it** (#332). When she
+ * sells one, the Square register loads it: Gift Cards, Check Balance, scan or
+ * type the code, load the amount, add the customer, charge. Square books that
+ * as a gift card sale. Nothing happens here at the sale.
  *
  * Shared by the route, its validation suite, the dialog and the print view.
  */
