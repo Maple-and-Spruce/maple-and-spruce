@@ -45,9 +45,9 @@ export default function PrintGiftCertificatesPage({
       <Typography variant="h4" component="h1" sx={{ mb: 1 }}>
         Print gift certificates
       </Typography>
-      <Alert severity="warning" sx={{ mb: 3, maxWidth: 816 }}>
-        These cards are loaded and can be spent now. Print on US Letter paper at
-        100% scale with background graphics on, then keep them somewhere safe.
+      <Alert severity="info" sx={{ mb: 3, maxWidth: 816 }}>
+        These cards have no money on them until they are sold at the register.
+        Print on US Letter paper at 100% scale with background graphics on.
       </Alert>
       <GiftCertificateSheet batchState={batchState} />
     </>

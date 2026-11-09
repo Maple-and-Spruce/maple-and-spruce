@@ -2,8 +2,13 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import {
   mockGiftCardActivities,
+  mockGiftCardBuyer,
   mockGiftCardCode,
   mockGiftCards,
+  mockLabelledGiftCards,
+  mockReplacementCard,
+  mockSoldCertificate,
+  mockSoldCertificateActivities,
 } from '@maple/react/storybook-fixtures';
 import { GiftCardDetailDialog } from './GiftCardDetailDialog';
 
@@ -335,5 +340,236 @@ export const GivenFree: Story = {
     await expect(section.getByText(/Free \$25\.00 card\. Nobody paid for it/)).toBeVisible();
     await expect(section.getByText('Why: Raffle prize at the fall fair')).toBeVisible();
     await expect(section.queryByText(/Bought by/)).toBeNull();
+  },
+};
+
+// ---------------------------------------------------------------------------
+// #332: printed certificates sold at the register, the buyer, lost cards
+// ---------------------------------------------------------------------------
+
+const unsoldCertificate = mockLabelledGiftCards[0];
+const stockRecord = (giftCardId: string, last4: string) => ({
+  giftCardId,
+  last4,
+  kind: 'amount' as const,
+  valueCents: 5000,
+  source: 'stock' as const,
+  batchId: 'cert-0a1b2c3d4e5f6071',
+  batchIndex: 0,
+  design: 'stained-glass',
+  createdAt: '2026-11-03T15:00:00.000Z',
+});
+
+/** Printed, not sold: no money, no buyer, nothing to replace. */
+export const UnsoldCertificate: Story = {
+  args: {
+    card: unsoldCertificate,
+    onLoadBuyer: fn(async () => mockGiftCardBuyer),
+    onReplace: fn(),
+    detailState: {
+      status: 'success',
+      data: {
+        card: unsoldCertificate,
+        activities: [],
+        purchase: stockRecord(unsoldCertificate.id, unsoldCertificate.last4),
+      },
+    },
+  },
+  play: async ({ args }) => {
+    const canvas = await openDialog();
+    await expect(canvas.getByText('Not sold yet')).toBeVisible();
+    const section = within(canvas.getByRole('region', { name: 'Printed certificate' }));
+    await expect(
+      section.getByText(/Printed certificate for \$50\.00\. It has no money on it until it is sold at the register\./)
+    ).toBeVisible();
+    await expect(section.getByRole('link', { name: 'Open this batch to print it again' })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Replace lost card' })).toBeNull();
+    await expect(canvas.queryByRole('region', { name: 'Buyer' })).toBeNull();
+    await expect(args.onLoadBuyer).not.toHaveBeenCalled();
+  },
+};
+
+const soldCertificateArgs = {
+  card: mockSoldCertificate,
+  onReplace: fn(),
+  detailState: {
+    status: 'success' as const,
+    data: {
+      card: mockSoldCertificate,
+      activities: mockSoldCertificateActivities,
+      purchase: stockRecord(mockSoldCertificate.id, mockSoldCertificate.last4),
+    },
+  },
+};
+
+/** Sold at the register: who bought it, read from Square, and Replace. */
+export const SoldCertificateWithBuyer: Story = {
+  args: { ...soldCertificateArgs, onLoadBuyer: fn(async () => mockGiftCardBuyer) },
+  play: async ({ args }) => {
+    const canvas = await openDialog();
+    await expect(canvas.getByText('Active')).toBeVisible();
+    await expect(
+      canvas.getByText(/Printed certificate for \$50\.00, sold at the register\./)
+    ).toBeVisible();
+    const buyer = within(await canvas.findByRole('region', { name: 'Buyer' }));
+    await expect(
+      buyer.getByText(
+        'Sold at the register on Nov 20, 2026 to Robin Ashfield · robin@example.com · (304) 555-0142'
+      )
+    ).toBeVisible();
+    await expect(args.onLoadBuyer).toHaveBeenCalledWith(mockSoldCertificate.id);
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Replace lost card' }));
+    await expect(args.onReplace).toHaveBeenCalledWith(mockSoldCertificate);
+  },
+};
+
+/** Only the parts Square has, and customers linked to the card itself. */
+export const BuyerWithEmailOnlyAndLinkedCustomer: Story = {
+  args: {
+    ...soldCertificateArgs,
+    onLoadBuyer: fn(async () => ({
+      sale: {
+        soldAt: '2026-11-20T17:05:00Z',
+        orderId: 'order-register-1',
+        customer: { id: 'cust-olive', email: 'olive@example.com' },
+      },
+      linkedCustomers: [{ id: 'cust-robin', name: 'Robin Ashfield', phone: '(304) 555-0142' }],
+    })),
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    const buyer = within(await canvas.findByRole('region', { name: 'Buyer' }));
+    await expect(
+      buyer.getByText('Sold at the register on Nov 20, 2026 to olive@example.com')
+    ).toBeVisible();
+    await expect(
+      buyer.getByText('Linked in Square: Robin Ashfield · (304) 555-0142')
+    ).toBeVisible();
+  },
+};
+
+export const BuyerNone: Story = {
+  args: {
+    ...soldCertificateArgs,
+    onLoadBuyer: fn(async () => ({
+      sale: { soldAt: '2026-11-20T17:05:00Z', orderId: 'order-register-1' },
+      linkedCustomers: [],
+    })),
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    const buyer = within(await canvas.findByRole('region', { name: 'Buyer' }));
+    await expect(buyer.getByText(/No customer was added at the register\./)).toBeVisible();
+    await expect(buyer.queryByText(/ to /)).toBeNull();
+  },
+};
+
+export const BuyerLoading: Story = {
+  args: {
+    ...soldCertificateArgs,
+    onLoadBuyer: fn(() => new Promise<never>(() => undefined)),
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    await expect(canvas.getByLabelText('Loading who bought this card')).toHaveAttribute(
+      'aria-busy',
+      'true'
+    );
+    await expect(canvas.queryByText(/No customer was added/)).toBeNull();
+  },
+};
+
+export const BuyerError: Story = {
+  args: {
+    ...soldCertificateArgs,
+    onLoadBuyer: fn(async () => {
+      throw new globalThis.Error('Square is unavailable');
+    }),
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    await expect(
+      await canvas.findByText(/Couldn't read who bought this card from Square: Square is unavailable/)
+    ).toBeVisible();
+    await expect(canvas.queryByText(/No customer was added/)).toBeNull();
+    // The rest of the card still works.
+    await expect(canvas.getByRole('button', { name: 'Replace lost card' })).toBeVisible();
+  },
+};
+
+/** A card bought online already names its buyer; no register lookup. */
+export const NoBuyerBoxWhenGivenFree: Story = {
+  args: {
+    onLoadBuyer: fn(async () => mockGiftCardBuyer),
+    detailState: {
+      status: 'success',
+      data: {
+        card,
+        activities: mockGiftCardActivities,
+        purchase: {
+          giftCardId: card.id,
+          last4: card.last4,
+          kind: 'amount',
+          valueCents: 2500,
+          source: 'issued',
+          reason: 'Raffle prize',
+          createdAt: '2026-11-08T12:00:00.000Z',
+        },
+      },
+    },
+  },
+  play: async ({ args }) => {
+    const canvas = await openDialog();
+    await expect(canvas.queryByRole('region', { name: 'Buyer' })).toBeNull();
+    await expect(args.onLoadBuyer).not.toHaveBeenCalled();
+  },
+};
+
+/** No Replace for a card with nothing on it, or while the card loads. */
+export const NoReplaceWithoutBalance: Story = {
+  args: {
+    card: mockGiftCards[2],
+    onReplace: fn(),
+    detailState: {
+      status: 'success',
+      data: { card: mockGiftCards[2], activities: [] },
+    },
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    await waitFor(() => expect(canvas.getByText('Gift card ending 7710')).toBeVisible());
+    await expect(canvas.queryByRole('button', { name: 'Replace lost card' })).toBeNull();
+  },
+};
+
+export const ReplacementCard: Story = {
+  args: {
+    card: mockReplacementCard,
+    onLoadBuyer: fn(async () => mockGiftCardBuyer),
+    detailState: {
+      status: 'success',
+      data: {
+        card: mockReplacementCard,
+        activities: [],
+        purchase: {
+          giftCardId: mockReplacementCard.id,
+          last4: mockReplacementCard.last4,
+          kind: 'amount',
+          valueCents: 1250,
+          source: 'replacement',
+          replacesGiftCardId: 'gftc-holiday-1',
+          createdAt: '2026-11-24T16:00:00.000Z',
+        },
+      },
+    },
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    const section = within(canvas.getByRole('region', { name: 'Replacement card' }));
+    await expect(
+      section.getByText('Holds $12.50 moved from a lost card, which was turned off.')
+    ).toBeVisible();
+    await expect(canvas.queryByRole('region', { name: 'Buyer' })).toBeNull();
   },
 };

@@ -10,23 +10,28 @@ interface Tile {
   explain: string;
 }
 
+function certificates(count: number): string {
+  return `${count} ${count === 1 ? 'certificate' : 'certificates'}`;
+}
+
 function tiles(totals: GiftCardTotals): Tile[] {
   return [
     {
       label: 'Owed to customers',
       value: formatGiftCardMoney(totals.outstandingCents),
       explain:
-        'Not spent yet, on every active card, apart from printed certificates nobody has used.',
+        'Not spent yet, on every active card. Printed certificates count once they are sold.',
     },
     {
       label: 'Cards with money on them',
       value: String(totals.cardsWithBalance),
-      explain: 'Active cards that still have a balance, apart from unused printed certificates.',
+      explain: 'Active cards that still have a balance.',
     },
     {
       label: 'Sold this month',
       value: formatGiftCardMoney(totals.loadedThisMonthCents),
-      explain: 'Put on cards since the 1st: new cards and top-ups. Not free cards or printed stock.',
+      explain:
+        'Put on cards since the 1st: new cards, printed certificates sold at the register, and top-ups. Not free cards or replacements.',
     },
     {
       label: 'Spent this month',
@@ -39,11 +44,10 @@ function tiles(totals: GiftCardTotals): Tile[] {
       explain: 'Free cards the studio gave since the 1st. Nobody paid for these.',
     },
     {
-      label: 'Printed certificates not yet used',
-      value: formatGiftCardMoney(totals.printedUnusedCents),
-      explain: `${totals.printedUnusedCount} ${
-        totals.printedUnusedCount === 1 ? 'certificate' : 'certificates'
-      } printed and loaded, still holding their full value. Spendable now, so keep them safe.`,
+      label: 'Printed, not sold yet',
+      value: certificates(totals.printedNotSoldCount),
+      explain:
+        'Printed certificates with no money on them. Each one is loaded when it is sold at the register.',
     },
   ];
 }

@@ -10,6 +10,8 @@ import type { RequestState } from '@maple/ts/domain';
 import type {
   GetCertificateBatchRequest,
   GetCertificateBatchResponse,
+  GetGiftCardBuyerRequest,
+  GetGiftCardBuyerResponse,
   GetGiftCardRequest,
   GetGiftCardResponse,
   GetGiftCardsRequest,
@@ -20,8 +22,12 @@ import type {
   MarkClassCertificateResponse,
   PrintGiftCertificatesRequest,
   PrintGiftCertificatesResponse,
+  ReplaceGiftCardRequest,
+  ReplaceGiftCardResponse,
   RevealGiftCardCodeRequest,
   RevealGiftCardCodeResponse,
+  SearchGiftCardsByCustomerRequest,
+  SearchGiftCardsByCustomerResponse,
 } from '@maple/ts/firebase/api-types';
 
 /**
@@ -124,11 +130,59 @@ export function useGiftCards() {
     []
   );
 
+  /**
+   * Who bought a card at the register (#332), read live from Square. Nothing
+   * about the customer is stored.
+   */
+  const fetchGiftCardBuyer = useCallback(
+    async (id: string): Promise<GetGiftCardBuyerResponse> => {
+      const fn = httpsCallableFromURL<GetGiftCardBuyerRequest, GetGiftCardBuyerResponse>(
+        getMapleFunctions(),
+        routerCallableUrl('giftCards', 'getGiftCardBuyer')
+      );
+      const result = await fn({ id });
+      return result.data;
+    },
+    []
+  );
+
+  /** Cards found by a customer's name, email or phone (#332). */
+  const searchGiftCardsByCustomer = useCallback(
+    async (query: string): Promise<SearchGiftCardsByCustomerResponse> => {
+      const fn = httpsCallableFromURL<
+        SearchGiftCardsByCustomerRequest,
+        SearchGiftCardsByCustomerResponse
+      >(getMapleFunctions(), routerCallableUrl('giftCards', 'searchGiftCardsByCustomer'));
+      const result = await fn({ query });
+      return result.data;
+    },
+    []
+  );
+
+  /**
+   * Replace a lost card (#332): moves its balance to a new card and turns the
+   * lost one off. Retry with the same key to finish a half-done replacement.
+   */
+  const replaceGiftCard = useCallback(
+    async (request: ReplaceGiftCardRequest): Promise<ReplaceGiftCardResponse> => {
+      const fn = httpsCallableFromURL<ReplaceGiftCardRequest, ReplaceGiftCardResponse>(
+        getMapleFunctions(),
+        routerCallableUrl('giftCards', 'replaceGiftCard')
+      );
+      const result = await fn(request);
+      return result.data;
+    },
+    []
+  );
+
   useEffect(() => {
     fetchGiftCards();
   }, [fetchGiftCards]);
 
   return {
+    fetchGiftCardBuyer,
+    searchGiftCardsByCustomer,
+    replaceGiftCard,
     giftCardsState,
     fetchGiftCards,
     fetchGiftCard,

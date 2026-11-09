@@ -5,7 +5,8 @@
  * the Square gift card id: `giftCardPurchases/{giftCardId}`. Written when a
  * card is bought on our own buy page (#300), when Katie marks a register card
  * as a class certificate, when the studio gives a free card (#310), or when
- * Katie prints a batch of certificates (#314).
+ * Katie prints a batch of certificates (#314), or when she replaces a lost card
+ * (#332).
  * Square owns the balance and the code; this keeps what Square cannot (who it
  * was for, the message, for a class certificate which class type it covers,
  * and how it came about).
@@ -48,6 +49,7 @@ function docToGiftCardPurchase(
     batchId: data.batchId ?? undefined,
     batchIndex: data.batchIndex ?? undefined,
     design: data.design ?? undefined,
+    replacesGiftCardId: data.replacesGiftCardId ?? undefined,
     createdAt: toDate(data.createdAt),
   };
 }
@@ -111,5 +113,21 @@ export const GiftCardPurchaseRepository = {
       .map(docToGiftCardPurchase)
       .filter((p): p is GiftCardPurchase => p !== undefined)
       .sort((a, b) => (a.batchIndex ?? 0) - (b.batchIndex ?? 0));
+  },
+
+  /**
+   * The card that replaced a lost one (#332), if it was replaced. A
+   * single-field filter, so no composite index. There is at most one: a
+   * replacement is resumed, never started twice, for the same lost card.
+   */
+  async findByReplacesGiftCardId(
+    giftCardId: string
+  ): Promise<GiftCardPurchase | undefined> {
+    const snapshot = await getDb()
+      .collection(COLLECTION)
+      .where('replacesGiftCardId', '==', giftCardId)
+      .limit(1)
+      .get();
+    return snapshot.docs.length > 0 ? docToGiftCardPurchase(snapshot.docs[0]) : undefined;
   },
 };

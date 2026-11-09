@@ -23,6 +23,22 @@ export interface SquareCustomer {
   familyName?: string;
 }
 
+/** A customer found by a search (#332), with its id. */
+export interface FoundSquareCustomer extends SquareCustomer {
+  id: string;
+}
+
+function toFound(customer: Square.Customer): FoundSquareCustomer | undefined {
+  if (!customer.id) return undefined;
+  return {
+    id: customer.id,
+    emailAddress: customer.emailAddress ?? undefined,
+    phoneNumber: customer.phoneNumber ?? undefined,
+    givenName: customer.givenName ?? undefined,
+    familyName: customer.familyName ?? undefined,
+  };
+}
+
 export class CustomersService {
   constructor(private readonly client: SquareClient) {}
 
@@ -47,6 +63,76 @@ export class CustomersService {
       givenName: customer.givenName ?? undefined,
       familyName: customer.familyName ?? undefined,
     };
+  }
+
+  /**
+   * Like `get`, but undefined instead of throwing when Square has no such
+   * customer (deleted, or merged into another), for read-only callers that
+   * should carry on without them (#332).
+   */
+  async find(customerId: string): Promise<FoundSquareCustomer | undefined> {
+    try {
+      const response = await this.client.customers.get({ customerId });
+      return response.customer ? toFound(response.customer) : undefined;
+    } catch (error) {
+      if (error instanceof SquareError && error.statusCode === 404) return undefined;
+      throw error;
+    }
+  }
+
+  /**
+   * Customers whose email or phone matches (#332). Square's `fuzzy` filter
+   * matches part of an email (case-insensitive, by token) and the digits of a
+   * phone number, so a partly typed one still finds the customer.
+   */
+  async searchByContact(
+    field: 'email' | 'phone',
+    query: string,
+    limit: number
+  ): Promise<FoundSquareCustomer[]> {
+    const filter =
+      field === 'email'
+        ? { emailAddress: { fuzzy: query } }
+        : { phoneNumber: { fuzzy: query } };
+    const response = await this.client.customers.search({
+      limit: BigInt(limit),
+      query: { filter },
+    });
+    throwIfErrors(response.errors, 'search customers');
+    return (response.customers ?? [])
+      .map(toFound)
+      .filter((c): c is FoundSquareCustomer => c !== undefined);
+  }
+
+  /**
+   * Customers whose name matches (#332). Square has no name search, so this
+   * reads the most recently created customers, newest first, at most
+   * `maxScanned` of them, and keeps those `matches` accepts, stopping at
+   * `limit`. An older customer beyond that bound is not found by name; their
+   * email or phone still finds them.
+   */
+  async findByName(
+    matches: (fullName: string) => boolean,
+    limit: number,
+    maxScanned: number
+  ): Promise<FoundSquareCustomer[]> {
+    const page = await this.client.customers.list({
+      limit: 100,
+      sortField: 'CREATED_AT',
+      sortOrder: 'DESC',
+    });
+    const out: FoundSquareCustomer[] = [];
+    let scanned = 0;
+    for await (const customer of page) {
+      scanned++;
+      const name = [customer.givenName, customer.familyName, customer.nickname, customer.companyName]
+        .filter(Boolean)
+        .join(' ');
+      const found = toFound(customer);
+      if (found && name && matches(name)) out.push(found);
+      if (out.length >= limit || scanned >= maxScanned) break;
+    }
+    return out;
   }
 
   /** Find a Square customer by exact email, or create one. Returns the ID. */

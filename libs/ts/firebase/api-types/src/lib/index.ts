@@ -694,6 +694,15 @@ export type {
   GetCertificateBatchRequest,
   GetCertificateBatchResponse,
   PrintableCertificate,
+  // Register sales, finding cards by customer, replacing lost cards (#332)
+  GiftCardCustomer,
+  GetGiftCardBuyerRequest,
+  GetGiftCardBuyerResponse,
+  SearchGiftCardsByCustomerRequest,
+  SearchGiftCardsByCustomerResponse,
+  GiftCardCustomerMatch,
+  ReplaceGiftCardRequest,
+  ReplaceGiftCardResponse,
 } from './gift-card.types';
 // Paying for classes with a gift card (#301)
 export type {

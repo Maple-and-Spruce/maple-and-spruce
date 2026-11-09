@@ -12,7 +12,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof GiftCertificateSheet>;
 
-/** Two $25 certificates: Katie's layout, code in fours, barcode and QR code. */
+/** Two $25 certificates: Katie's layout, the MAPLE code (#332), barcode and QR code. */
 export const DollarCertificates: Story = {
   args: { batchState: { status: 'success', data: mockCertificateBatch } },
   play: async ({ canvasElement }) => {
@@ -27,14 +27,14 @@ export const DollarCertificates: Story = {
       first.getByText('Good for classes and handmade goods at Maple & Spruce')
     ).toBeVisible();
     await expect(first.getByText('Code:')).toBeVisible();
-    await expect(first.getByText('7783 3200 0000 5150')).toBeVisible();
+    await expect(first.getByText('MAPLE 2099 482')).toBeVisible();
     await expect(
       first.getByText('Never expires. Not redeemable for cash. Not valid for Music Together.')
     ).toBeVisible();
     await expect(first.getByText('See all available classes here:')).toBeVisible();
 
     // The barcode is drawn: JsBarcode fills the SVG with bars.
-    const barcode = first.getByRole('img', { name: 'Barcode of the code ending 5150' });
+    const barcode = first.getByRole('img', { name: 'Barcode of the code ending 9482' });
     await waitFor(() => expect(barcode.querySelectorAll('rect').length).toBeGreaterThan(20));
 
     // One US Letter page each: 8.5 x 11 inches at 96px to the inch.

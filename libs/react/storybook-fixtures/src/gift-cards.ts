@@ -8,6 +8,11 @@ import type {
   GiftCardSummary,
   GiftCardTotals,
 } from '@maple/ts/domain';
+import type {
+  GetGiftCardBuyerResponse,
+  GiftCardCustomer,
+  SearchGiftCardsByCustomerResponse,
+} from '@maple/ts/firebase/api-types';
 
 export const mockGiftCards: GiftCardSummary[] = [
   {
@@ -65,6 +70,15 @@ export const mockLabelledGiftCards: GiftCardListItem[] = [
     createdAt: '2026-11-22T14:00:00Z',
     source: 'issued',
   },
+  {
+    id: 'gftc-replacement-1',
+    last4: '3388',
+    kind: 'egift',
+    state: 'active',
+    balanceCents: 1250,
+    createdAt: '2026-11-22T13:00:00Z',
+    source: 'replacement',
+  },
   ...mockGiftCards,
 ];
 
@@ -119,3 +133,70 @@ export const mockGiftCardActivities: GiftCardActivityEntry[] = [
     createdAt: '2026-11-14T16:40:00Z',
   },
 ];
+
+// ---------------------------------------------------------------------------
+// #332: certificates sold at the register, buyers, replacements. Invented
+// people and codes only; certificate codes use the year 2099 so a fixture can
+// never be a real card's code.
+// ---------------------------------------------------------------------------
+
+/** An invented customer added to a register sale. */
+export const mockGiftCardCustomer: GiftCardCustomer = {
+  id: 'cust-robin',
+  name: 'Robin Ashfield',
+  email: 'robin@example.com',
+  phone: '(304) 555-0142',
+};
+
+/** A printed certificate the register has loaded: an ordinary sold card. */
+export const mockSoldCertificate: GiftCardListItem = {
+  id: 'gftc-stock-sold',
+  last4: '9017',
+  kind: 'egift',
+  state: 'active',
+  balanceCents: 5000,
+  createdAt: '2026-11-03T15:00:00Z',
+  source: 'stock',
+  batchId: 'cert-0a1b2c3d4e5f6071',
+};
+
+/** Its history: printed with nothing on it, then loaded at the register. */
+export const mockSoldCertificateActivities: GiftCardActivityEntry[] = [
+  {
+    id: 'gcact-stock-1',
+    giftCardId: 'gftc-stock-sold',
+    type: 'activate',
+    amountCents: 5000,
+    balanceAfterCents: 5000,
+    createdAt: '2026-11-20T17:05:00Z',
+    orderId: 'order-register-1',
+  },
+];
+
+/** A card made to replace a lost one. */
+export const mockReplacementCard: GiftCardListItem = {
+  id: 'gftc-replacement-1',
+  last4: '3388',
+  kind: 'egift',
+  state: 'active',
+  balanceCents: 1250,
+  createdAt: '2026-11-24T16:00:00Z',
+  source: 'replacement',
+};
+
+export const mockGiftCardBuyer: GetGiftCardBuyerResponse = {
+  sale: {
+    soldAt: '2026-11-20T17:05:00Z',
+    orderId: 'order-register-1',
+    customer: mockGiftCardCustomer,
+  },
+  linkedCustomers: [],
+};
+
+/** A search for the invented customer, finding the sold certificate. */
+export const mockCustomerSearchResult: SearchGiftCardsByCustomerResponse = {
+  matches: [{ customer: mockGiftCardCustomer, giftCardIds: ['gftc-stock-sold'] }],
+  cards: [mockSoldCertificate],
+  searchedSince: '2024-11-08T05:00:00Z',
+  searchedBy: 'name',
+};

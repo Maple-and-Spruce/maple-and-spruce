@@ -24,8 +24,9 @@ const SECTIONS: Section[] = [
       <>
         Each card&apos;s balance, code and history live in Square. This page
         reads them from Square each time it opens. Selling at the register,
-        adding money and refunds happen in Square. This page makes two kinds
-        of card itself: free ones and printed certificates (see below).
+        adding money and refunds happen in Square. This page makes three kinds
+        of card itself: free ones, printed certificates and replacements for
+        lost cards (see below).
       </>
     ),
   },
@@ -35,9 +36,10 @@ const SECTIONS: Section[] = [
       <>
         <strong>Online</strong> on the gift card page of our own website,
         which emails the code to the buyer or the person it&apos;s for.{' '}
-        <strong>In the shop</strong>, a printed certificate from the stack (see
-        below), or an eGift card at the register: Gift Cards, then eGift Card.
-        Square asks for an email address and sends the card there.
+        <strong>In the shop</strong>, a printed certificate from the stack,
+        loaded at the register when it is sold (see below), or an eGift card at
+        the register: Gift Cards, then eGift Card. Square asks for an email
+        address and sends the card there.
       </>
     ),
   },
@@ -59,21 +61,59 @@ const SECTIONS: Section[] = [
       <Box component="ol" sx={{ m: 0, pl: 2.5 }}>
         <li>
           Click <strong>Print gift certificates</strong> at the top. Choose the
-          design, a dollar amount or a class type, and how many.
+          design, a dollar amount or a class type, and how many. Each one gets
+          a short code like MAPLE 2026 and three digits, with a barcode.
         </li>
         <li>
-          Each one is made and loaded in Square straight away, so it can be
-          spent as soon as it is printed. Print them, then keep the stack
-          somewhere safe, like cash.
+          They are printed with <strong>no money on them</strong>. Until one is
+          sold it says &quot;Not sold yet&quot; here and counts under
+          &quot;Printed, not sold yet&quot;.
         </li>
         <li>
-          To sell one, ring up the <strong>Gift certificate</strong> item at the
-          register, type the amount on the certificate, and leave tax off. That
-          is all: nothing to do on this page.
+          To sell one on the iPad: <strong>Gift Cards</strong>, then{' '}
+          <strong>Check Balance</strong>. Scan the barcode or type the code.
+          Load the amount on the certificate. Add the customer to the sale
+          (name, email or phone). Charge.
         </li>
         <li>
-          Until one is spent, it counts under &quot;Printed certificates not yet
-          used&quot;, not as owed to a customer.
+          Square books it as a gift card sale, with no sales tax and with the
+          customer on it. From then on it counts as sold and as owed, like any
+          card, and opening it here shows who bought it.
+        </li>
+        <li>
+          The old &quot;Gift certificate&quot; item at the register is not
+          needed.
+        </li>
+      </Box>
+    ),
+  },
+  {
+    title: 'Finding a card',
+    body: (
+      <>
+        Search below by the last 4 digits of the code, or by the customer&apos;s
+        name, email or phone. A customer search looks in Square for that person,
+        then shows the cards linked to them and the cards sold to them at the
+        register in the last two years.
+      </>
+    ),
+  },
+  {
+    title: 'A lost card',
+    body: (
+      <Box component="ol" sx={{ m: 0, pl: 2.5 }}>
+        <li>
+          Find the card by the customer&apos;s name, email or phone, or its last
+          4 digits, and open it.
+        </li>
+        <li>
+          Click <strong>Replace lost card</strong> and confirm. The balance moves
+          to a new card and the lost one stops working for good, so nobody who
+          finds it can spend it.
+        </li>
+        <li>
+          Click <strong>Show and copy code</strong> on the new card to write or
+          print a fresh certificate for the customer.
         </li>
       </Box>
     ),
@@ -84,7 +124,7 @@ const SECTIONS: Section[] = [
       <Box component="ol" sx={{ m: 0, pl: 2.5 }}>
         <li>
           Find the card below. The newest is at the top, or search by its last
-          4 digits.
+          4 digits or the customer.
         </li>
         <li>
           If it is a gift for a class, open it and click{' '}
@@ -113,10 +153,11 @@ const SECTIONS: Section[] = [
     title: 'Treat the code like cash',
     body: (
       <>
-        Anyone with the code can spend the balance. Don&apos;t text or post it,
-        and keep printed certificates out of sight until they are sold. Each
-        time codes are shown here, for one card or a printed batch, it is
-        logged with who asked.
+        Anyone with the code can spend the balance. Don&apos;t text or post it.
+        An unsold printed certificate holds nothing, but once it is sold it is
+        as good as cash, so hand it straight to the customer. Each time codes
+        are shown here, for one card or a printed batch, it is logged with who
+        asked.
       </>
     ),
   },

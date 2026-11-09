@@ -298,4 +298,56 @@ export class OrdersService {
       })),
     };
   }
+
+  /**
+   * Ids of the orders at one location that belong to any of these customers,
+   * created in `[since, until]` (#332: finding the cards a customer bought at
+   * the register). Reads at most `maxPages` pages of 500, newest first.
+   */
+  async searchOrderIdsForCustomers(input: {
+    locationId: string;
+    customerIds: string[];
+    since: Date;
+    until: Date;
+    maxPages?: number;
+  }): Promise<Set<string>> {
+    const ids = new Set<string>();
+    if (input.customerIds.length === 0) return ids;
+    let cursor: string | undefined;
+    const maxPages = input.maxPages ?? 10;
+    for (let pageNo = 0; pageNo < maxPages; pageNo++) {
+      const response = await this.client.orders.search({
+        locationIds: [input.locationId],
+        cursor,
+        limit: 500,
+        returnEntries: true,
+        query: {
+          filter: {
+            customerFilter: { customerIds: input.customerIds },
+            dateTimeFilter: {
+              createdAt: {
+                startAt: input.since.toISOString(),
+                endAt: input.until.toISOString(),
+              },
+            },
+          },
+          // Square requires the sort to match a date filter's field.
+          sort: { sortField: 'CREATED_AT', sortOrder: 'DESC' },
+        },
+      });
+      if (response.errors && response.errors.length > 0) {
+        const detail = response.errors.map((e) => e.detail || e.code).join(', ');
+        throw new Error(`Square search orders error: ${detail}`);
+      }
+      for (const entry of response.orderEntries ?? []) {
+        if (entry.orderId) ids.add(entry.orderId);
+      }
+      for (const order of response.orders ?? []) {
+        if (order.id) ids.add(order.id);
+      }
+      cursor = response.cursor ?? undefined;
+      if (!cursor) break;
+    }
+    return ids;
+  }
 }

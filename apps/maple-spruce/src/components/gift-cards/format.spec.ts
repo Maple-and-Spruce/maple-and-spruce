@@ -27,6 +27,11 @@ describe('gift card formatting', () => {
     expect(formatGiftCardCode('7783 3200 0000 4821')).toBe('7783 3200 0000 4821');
   });
 
+  it('prints a certificate code as MAPLE, the year and three digits (#332)', () => {
+    expect(formatGiftCardCode('MAPLE2099482')).toBe('MAPLE 2099 482');
+    expect(formatGiftCardCode('maple 2099 482')).toBe('MAPLE 2099 482');
+  });
+
   it('reads whole dollars as cents, and anything else as NaN', () => {
     expect(parseWholeDollars('25')).toBe(2500);
     expect(parseWholeDollars(' $25.00 ')).toBe(2500);

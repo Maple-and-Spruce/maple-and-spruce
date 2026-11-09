@@ -46,6 +46,15 @@ describe('useGiftCards', () => {
       'giftCards/getCertificateBatch': vi
         .fn()
         .mockResolvedValue({ data: { batchId: 'cert-1', certificates: [] } }),
+      'giftCards/getGiftCardBuyer': vi
+        .fn()
+        .mockResolvedValue({ data: { linkedCustomers: [] } }),
+      'giftCards/searchGiftCardsByCustomer': vi.fn().mockResolvedValue({
+        data: { matches: [], cards: [], searchedSince: '2024-11-01T00:00:00Z', searchedBy: 'name' },
+      }),
+      'giftCards/replaceGiftCard': vi.fn().mockResolvedValue({
+        data: { oldGiftCardId: 'gc', newGiftCardId: 'gc-2', last4: '0002', balanceCents: 1500 },
+      }),
     };
   });
 
@@ -117,6 +126,28 @@ describe('useGiftCards', () => {
     });
     expect(mocks.routes['giftCards/printGiftCertificates']).toHaveBeenCalledWith(request);
     expect(printed).toMatchObject({ batchId: 'cert-1' });
+  });
+
+  it('calls the buyer, search and replace routes (#332) on the giftCards router with its request', async () => {
+    const { result } = renderHook(() => useGiftCards());
+    await waitFor(() => expect(result.current.giftCardsState.status).toBe('success'));
+
+    let replaced: { newGiftCardId: string } | undefined;
+    await act(async () => {
+      await result.current.fetchGiftCardBuyer('gc');
+      await result.current.searchGiftCardsByCustomer('Robin');
+      replaced = await result.current.replaceGiftCard({ giftCardId: 'gc', idempotencyKey: 'k' });
+    });
+
+    expect(mocks.routes['giftCards/getGiftCardBuyer']).toHaveBeenCalledWith({ id: 'gc' });
+    expect(mocks.routes['giftCards/searchGiftCardsByCustomer']).toHaveBeenCalledWith({
+      query: 'Robin',
+    });
+    expect(mocks.routes['giftCards/replaceGiftCard']).toHaveBeenCalledWith({
+      giftCardId: 'gc',
+      idempotencyKey: 'k',
+    });
+    expect(replaced?.newGiftCardId).toBe('gc-2');
   });
 });
 

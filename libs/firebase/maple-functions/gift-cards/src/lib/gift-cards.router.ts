@@ -6,10 +6,13 @@
  * request) a card's code back from Square for Katie. They are admin only: a
  * card's code is as good as cash.
  *
- * Three admin routes write: `markClassCertificate` records that a card sold
+ * Four admin routes write: `markClassCertificate` records that a card sold
  * at the register is a class certificate (no Square write), `issueGiftCard`
- * makes and loads a free card in Square (#310), and `printGiftCertificates`
- * makes and loads a batch of printed certificates (#314).
+ * makes and loads a free card in Square (#310), `printGiftCertificates`
+ * makes a batch of printed certificates with no money on them (#314, #332),
+ * and `replaceGiftCard` moves a lost card's balance to a new card (#332).
+ * `getGiftCardBuyer` and `searchGiftCardsByCustomer` read customers from
+ * Square (#332).
  *
  * `purchaseGiftCard` is the one public route (#300): the Webflow buy page
  * sells a card through it. It is gated the way every public widget payment is
@@ -32,6 +35,12 @@ import {
 import type {
   GetCertificateBatchRequest,
   GetCertificateBatchResponse,
+  GetGiftCardBuyerRequest,
+  GetGiftCardBuyerResponse,
+  ReplaceGiftCardRequest,
+  ReplaceGiftCardResponse,
+  SearchGiftCardsByCustomerRequest,
+  SearchGiftCardsByCustomerResponse,
   GetGiftCardRequest,
   GetGiftCardResponse,
   GetGiftCardsRequest,
@@ -64,6 +73,11 @@ import {
   issueGiftCard,
   markClassCertificate,
 } from './gift-card-admin-actions';
+import {
+  getGiftCardBuyer,
+  searchGiftCardsByCustomer,
+} from './gift-card-customers';
+import { replaceGiftCard } from './replace-gift-card';
 
 export const giftCards = Functions.router('giftCards', {
   /** Every card and this month's totals. */
@@ -114,15 +128,17 @@ export const giftCards = Functions.router('giftCards', {
     .asRoute<IssueGiftCardRequest, IssueGiftCardResponse>(issueGiftCard),
 
   /**
-   * Print a batch of certificates (#314): makes and loads each card in Square
-   * now, so they are spendable as soon as they are printed. Retry-safe.
+   * Print a batch of certificates (#314, #332): makes each card in Square
+   * with a MAPLE code and no money on it; the register loads it when it is
+   * sold. Retry-safe.
    */
   printGiftCertificates: Functions.endpoint
     .requiringRole(Role.Admin)
     .usingSecrets(...SQUARE_SECRET_NAMES)
     .usingStrings(...SQUARE_STRING_NAMES)
     .asRoute<PrintGiftCertificatesRequest, PrintGiftCertificatesResponse>(
-      printGiftCertificates
+      (data, context, secrets, strings) =>
+        printGiftCertificates(data, context, secrets, strings)
     ),
 
   /**
@@ -136,6 +152,39 @@ export const giftCards = Functions.router('giftCards', {
     .asRoute<GetCertificateBatchRequest, GetCertificateBatchResponse>(
       getCertificateBatch
     ),
+
+  /**
+   * Who bought a card at the register (#332), read live from Square: the
+   * order that loaded it and the customer on that order. Never stored.
+   */
+  getGiftCardBuyer: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .usingSecrets(...SQUARE_SECRET_NAMES)
+    .usingStrings(...SQUARE_STRING_NAMES)
+    .asRoute<GetGiftCardBuyerRequest, GetGiftCardBuyerResponse>(getGiftCardBuyer),
+
+  /**
+   * Find cards by a customer's name, email or phone (#332). Logged with
+   * counts only, never the query.
+   */
+  searchGiftCardsByCustomer: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .usingSecrets(...SQUARE_SECRET_NAMES)
+    .usingStrings(...SQUARE_STRING_NAMES)
+    .asRoute<SearchGiftCardsByCustomerRequest, SearchGiftCardsByCustomerResponse>(
+      (data, context, secrets, strings) =>
+        searchGiftCardsByCustomer(data, context, secrets, strings)
+    ),
+
+  /**
+   * Replace a lost card (#332): moves its balance to a new card, then turns
+   * it off. Idempotent per click; never leaves the balance on both cards.
+   */
+  replaceGiftCard: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .usingSecrets(...SQUARE_SECRET_NAMES)
+    .usingStrings(...SQUARE_STRING_NAMES)
+    .asRoute<ReplaceGiftCardRequest, ReplaceGiftCardResponse>(replaceGiftCard),
 
   /**
    * Public (#301): what a gift card would pay toward a class at checkout.
