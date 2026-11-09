@@ -13,7 +13,7 @@
  *
  * Class registrations only. Music Together has its own manage page.
  */
-import { useCallback, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   Alert,
   Box,
@@ -94,9 +94,16 @@ export function CancelRegistrationWidget({
   confirmationNumber: confirmationProp,
 }: CancelRegistrationWidgetProps) {
   const functions = useMemo(() => getWidgetFunctions(env), [env]);
-  const [confirmation, setConfirmation] = useState(
-    () => confirmationProp ?? confirmationFromUrl()
-  );
+  // Starts the same on Webflow's server render (no URL there) and on the
+  // browser's first render, or React reports a hydration mismatch (#418).
+  // The `?confirmation=` from the email link is filled in after mount.
+  const [confirmation, setConfirmation] = useState(confirmationProp ?? '');
+  useEffect(() => {
+    if (confirmationProp !== undefined) return;
+    const fromUrl = confirmationFromUrl();
+    // Never overwrite something the customer has already started typing.
+    if (fromUrl) setConfirmation((current) => current || fromUrl);
+  }, [confirmationProp]);
   const [email, setEmail] = useState('');
   const [view, setView] = useState<View>({ status: 'form' });
   const [error, setError] = useState<string | null>(null);
