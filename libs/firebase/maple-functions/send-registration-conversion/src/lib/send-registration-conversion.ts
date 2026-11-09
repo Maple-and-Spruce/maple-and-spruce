@@ -28,6 +28,10 @@
  * through a tracked link; the order itself carries only the email. It is off
  * until `MAILERLITE_SHOP_ID` is set.
  *
+ * Staff note alert: the same transition also emails staff when the buyer left
+ * a note at checkout (`registration-note-alert.ts`, #327). It rides on this
+ * trigger rather than adding a function (ADR-029).
+ *
  * Best-effort by design: a failure on any beacon is logged and swallowed —
  * a dropped conversion must never retry-loop or affect the registration itself.
  */
@@ -50,6 +54,7 @@ import {
   type MailerLiteProduct,
 } from '@maple/firebase/mailerlite';
 import { ClassRepository } from '@maple/firebase/database';
+import { alertStaffOfNoteIfConfirmed } from './registration-note-alert';
 
 // Reuses the same secret + string params as `tallyLeadWebhook`, so no new
 // Secret Manager value or .env entry is required.
@@ -480,6 +485,7 @@ export const sendRegistrationConversion = onDocumentWritten(
       emitGa4PurchaseIfConfirmed(before, after, (payload) =>
         sendGa4Payload(ga4Config, payload),
       ),
+      alertStaffOfNoteIfConfirmed(event.params.registrationId, before, after),
       emitMailerLiteOrderIfConfirmed(
         before,
         after,

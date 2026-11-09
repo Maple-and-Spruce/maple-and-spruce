@@ -137,6 +137,11 @@ export interface MusicTogetherRegistration {
   notes?: string;
   confirmationSentAt?: Date;
   /**
+   * When staff were emailed about the family's accommodations on this registration
+   * (#327). Set once by the confirmation trigger; never by create/update.
+   */
+  noteAlertSentAt?: Date;
+  /**
    * Unguessable per-family capability token for the auto-updating calendar
    * subscription feed (`/calendar/family/<token>.ics`). Generated on the
    * family's first registration and reused (by email) across their later
@@ -160,7 +165,7 @@ export interface MusicTogetherRegistration {
  */
 export type CreateMusicTogetherRegistrationInput = Omit<
   MusicTogetherRegistration,
-  'id' | 'createdAt' | 'updatedAt' | 'confirmationSentAt'
+  'id' | 'createdAt' | 'updatedAt' | 'confirmationSentAt' | 'noteAlertSentAt'
 >;
 
 /**

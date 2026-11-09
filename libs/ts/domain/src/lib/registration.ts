@@ -163,6 +163,11 @@ export interface Registration {
   /** Confirmation email sent */
   confirmationSentAt?: Date;
   /**
+   * When staff were emailed about the customer's note on this registration
+   * (#327). Set once by the confirmation trigger; never by create/update.
+   */
+  noteAlertSentAt?: Date;
+  /**
    * Most recent day-of class reminder email sent for this registration.
    * Used as the simple "any reminder ever sent?" sentinel.
    */
@@ -190,6 +195,7 @@ export type CreateRegistrationInput = Omit<
   | 'createdAt'
   | 'updatedAt'
   | 'confirmationSentAt'
+  | 'noteAlertSentAt'
   | 'reminderSentAt'
   | 'reminderSentForSessions'
   | 'refundedAt'

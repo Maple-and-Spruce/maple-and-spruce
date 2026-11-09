@@ -69,6 +69,9 @@ function docToRegistration(
     scheduledChargeCount: data.scheduledChargeCount,
     status: data.status as MusicTogetherRegistrationStatus,
     notes: data.notes,
+    noteAlertSentAt: data.noteAlertSentAt
+      ? toDate(data.noteAlertSentAt)
+      : undefined,
     confirmationSentAt: data.confirmationSentAt
       ? toDate(data.confirmationSentAt)
       : undefined,
@@ -131,6 +134,27 @@ export const MusicTogetherRegistrationRepository = {
     return snapshot.docs
       .map((doc) => docToRegistration(doc))
       .filter((r): r is MusicTogetherRegistration => r !== undefined);
+  },
+
+  /**
+   * Claim the one staff email about this registration's note (#327): `true`
+   * if this caller stamped `noteAlertSentAt`, `false` if it was already
+   * stamped or the registration is gone. Transactional, so a re-delivered
+   * trigger cannot send twice.
+   */
+  async claimNoteAlert(id: string, at: Date): Promise<boolean> {
+    const docRef = getDb().collection(COLLECTION).doc(id);
+    return getDb().runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      if (!snap.exists || snap.data()?.noteAlertSentAt) return false;
+      tx.update(docRef, { noteAlertSentAt: at });
+      return true;
+    });
+  },
+
+  /** Undo `claimNoteAlert` when queuing the email failed. */
+  async releaseNoteAlert(id: string): Promise<void> {
+    await getDb().collection(COLLECTION).doc(id).update({ noteAlertSentAt: null });
   },
 
   async findById(id: string): Promise<MusicTogetherRegistration | undefined> {
