@@ -1,4 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
+
+// The trigger now also imports the staff accommodations alert (#327), which
+// reads repositories. Nothing here exercises it, so keep the real database
+// library (and every repository in it) out of this spec.
+vi.mock('@maple/firebase/database', () => ({
+  MusicTogetherRegistrationRepository: {},
+  MusicTogetherSectionRepository: {},
+  getDb: vi.fn(),
+}));
 import {
   buildMusicTogetherPurchaseEvent,
   reportedValueCents,
