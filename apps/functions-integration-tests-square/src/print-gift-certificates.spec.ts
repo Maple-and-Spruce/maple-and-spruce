@@ -1,16 +1,19 @@
 /**
- * Printed gift certificates (#314): `giftCards/printGiftCertificates` and
- * `giftCards/getCertificateBatch`.
+ * Printed gift certificates (#314, #332): `giftCards/printGiftCertificates`,
+ * `giftCards/getCertificateBatch`, and what the page shows once the register
+ * sells one (`getGiftCards`, `getGiftCardBuyer`, `searchGiftCardsByCustomer`).
  *
  * Runs the real routes in the emulator against real Firestore, with Square
  * served by the mock (`routes/gift-cards.ts`), which is idempotent by key the
- * way Square is.
+ * way Square is and refuses a code already in use.
  *
- * What only this level proves: every certificate in a batch really ends up
- * loaded in Square with no order and no payment, a record per card lands in
- * Firestore as printed stock with no code, a retry of the same batch makes no
- * extra cards, a batch that failed part way is finished by a retry, and the
- * print view gets every code while non-admins get nothing.
+ * What only this level proves: every certificate in a batch really ends up in
+ * Square with a MAPLE code and NO money on it (pending, no activation, no
+ * order, no payment), a record per card lands in Firestore as printed stock
+ * with no code, a retry of the same batch makes no extra cards, a year whose
+ * codes are used up fails clearly, the print view gets every code while
+ * non-admins get nothing, and a certificate the register sells moves from
+ * "not sold" to sold and owed, with its buyer readable and findable.
  */
 import {
   ADMIN_USER,
@@ -27,10 +30,14 @@ import type { TestUser } from '@maple/firebase/integration-test-utils';
 import type {
   GetCertificateBatchRequest,
   GetCertificateBatchResponse,
+  GetGiftCardBuyerRequest,
+  GetGiftCardBuyerResponse,
   GetGiftCardsRequest,
   GetGiftCardsResponse,
   PrintGiftCertificatesRequest,
   PrintGiftCertificatesResponse,
+  SearchGiftCardsByCustomerRequest,
+  SearchGiftCardsByCustomerResponse,
 } from '@maple/ts/firebase/api-types';
 
 const SQUARE_MOCK = EMULATOR_CONFIG.squareMockServerUrl;
@@ -51,6 +58,14 @@ async function mockGiftCards(): Promise<Wire[]> {
     giftCards: Wire[];
   };
   return body.giftCards;
+}
+
+/** The year in the studio's time zone, as the codes use. */
+function studioYear(): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+  }).format(new Date());
 }
 
 let keyCounter = 0;
@@ -114,25 +129,29 @@ describe('printed gift certificates (#314)', () => {
     idempotencyKey: newKey(),
   });
 
-  it('loads every certificate in Square and records each as printed stock', async () => {
+  it('makes every certificate with a MAPLE code and no money, and records each as printed stock', async () => {
     const result = await print(amountBatch(3));
 
     expect(result.status).toBe(200);
     expect(result.data?.cards).toHaveLength(3);
     expect(result.data?.error).toBeUndefined();
     // Only last 4s leave the server here.
-    expect(JSON.stringify(result.raw)).not.toMatch(/\d{16}/);
+    expect(JSON.stringify(result.raw)).not.toMatch(/MAPLE\d|\d{16}/);
 
     const cards = await mockGiftCards();
     expect(cards).toHaveLength(3);
+    const year = studioYear();
     for (const card of cards) {
       expect(card).toMatchObject({
-        state: 'ACTIVE',
-        balance_money: { amount: 2500, currency: 'USD' },
+        state: 'PENDING',
+        gan_source: 'OTHER',
+        balance_money: { amount: 0, currency: 'USD' },
       });
+      expect(String(card['gan'])).toMatch(new RegExp(`^MAPLE${year}\\d{3}$`));
     }
 
     const requests = await squareRequests();
+    expect(requests.some((r) => r.path === '/v2/gift-cards/activities')).toBe(false);
     expect(requests.some((r) => r.path === '/v2/orders')).toBe(false);
     expect(requests.some((r) => r.path === '/v2/payments')).toBe(false);
 
@@ -154,7 +173,7 @@ describe('printed gift certificates (#314)', () => {
     }
   });
 
-  it('a retry of the same batch makes no extra cards and loads nothing twice', async () => {
+  it('a retry of the same batch makes no extra cards', async () => {
     const request = amountBatch(2);
     const first = await print(request);
     const second = await print(request);
@@ -162,42 +181,37 @@ describe('printed gift certificates (#314)', () => {
     expect(second.status).toBe(200);
     expect(second.data?.cards).toEqual(first.data?.cards);
     expect(await mockGiftCards()).toHaveLength(2);
-    const activations = (await squareRequests()).filter(
-      (r) => r.method === 'POST' && r.path === '/v2/gift-cards/activities'
-    );
-    // The retry re-sends the same keys; Square answers with the same activity.
-    const keys = new Set(activations.map((r) => r.body['idempotency_key']));
-    expect(keys.size).toBe(2);
     for (const card of await mockGiftCards()) {
-      expect(card['balance_money']).toEqual({ amount: 2500, currency: 'USD' });
+      expect(card['state']).toBe('PENDING');
     }
   });
 
-  it('keeps what was made when Square fails part way, and a retry finishes the batch', async () => {
-    const request = amountBatch(1);
-    await fetch(`${SQUARE_MOCK}/_mock/gift-cards/fail-next-activation`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: 'INTERNAL_SERVER_ERROR' }),
-    });
+  it('fails clearly, recording nothing, when every code this year is taken', async () => {
+    // Square already has all 1,000 of this year's codes.
+    const year = studioYear();
+    for (let n = 0; n < 1000; n++) {
+      await fetch(`${SQUARE_MOCK}/v2/gift-cards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idempotency_key: `fill-${n}`,
+          location_id: 'mock-location',
+          gift_card: {
+            type: 'DIGITAL',
+            gan: `MAPLE${year}${String(n).padStart(3, '0')}`,
+            gan_source: 'OTHER',
+          },
+        }),
+      });
+    }
 
-    const failed = await print(request);
-    expect(failed.status).not.toBe(200);
-    // The card exists but holds nothing, and nothing was recorded.
-    const pending = await mockGiftCards();
-    expect(pending).toHaveLength(1);
-    expect(pending[0]['state']).toBe('PENDING');
+    const result = await print(amountBatch(1));
 
-    const retried = await print(request);
-    expect(retried.status).toBe(200);
-    expect(retried.data?.cards).toHaveLength(1);
-    const cards = await mockGiftCards();
-    expect(cards).toHaveLength(1);
-    expect(cards[0]).toMatchObject({
-      state: 'ACTIVE',
-      balance_money: { amount: 2500, currency: 'USD' },
-    });
-  });
+    expect(result.status).not.toBe(200);
+    expect(JSON.stringify(result.raw)).toMatch(/nearly used up/);
+    expect(JSON.stringify(result.raw)).not.toMatch(/MAPLE\d/);
+    expect(await mockGiftCards()).toHaveLength(1000);
+  }, 60000);
 
   it('prices a class batch from the class type', async () => {
     const result = await print({
@@ -210,10 +224,15 @@ describe('printed gift certificates (#314)', () => {
 
     expect(result.status).toBe(200);
     expect(result.data?.valueCents).toBe(8500);
-    expect((await mockGiftCards())[0]['balance_money']).toEqual({ amount: 8500, currency: 'USD' });
+    expect(await getFirestoreDoc('giftCardPurchases', result.data!.cards[0].giftCardId)).toMatchObject({
+      kind: 'class',
+      valueCents: 8500,
+      classCategoryId: CATEGORY_ID,
+    });
+    expect((await mockGiftCards())[0]['balance_money']).toEqual({ amount: 0, currency: 'USD' });
   });
 
-  it('gives the print view every code, and the page counts them as printed, not owed', async () => {
+  it('gives the print view every code, and the page counts them as not sold, not owed', async () => {
     const printed = await print(amountBatch(2));
     const batch = await readBatch({ batchId: printed.data!.batchId });
 
@@ -229,12 +248,113 @@ describe('printed gift certificates (#314)', () => {
     });
     expect(page.status).toBe(200);
     expect(page.data?.totals).toMatchObject({
-      printedUnusedCents: 5000,
-      printedUnusedCount: 2,
+      printedNotSoldCount: 2,
       outstandingCents: 0,
       loadedThisMonthCents: 0,
     });
-    expect(page.data?.cards.every((c) => c.source === 'stock')).toBe(true);
+    expect(page.data?.cards.every((c) => c.source === 'stock' && c.state === 'pending')).toBe(
+      true
+    );
+  });
+
+  it('once the register sells one, it counts as sold and owed, and its buyer is on file', async () => {
+    const printed = await print(amountBatch(2));
+    const batch = await readBatch({ batchId: printed.data!.batchId });
+    const sold = batch.data!.certificates[0];
+
+    // An invented customer, added to the sale at the register.
+    await fetch(`${SQUARE_MOCK}/_mock/gift-cards/customers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customers: [
+          {
+            id: 'cust-robin',
+            given_name: 'Robin',
+            family_name: 'Ashfield',
+            email_address: 'robin@example.com',
+            phone_number: '+13045550142',
+          },
+        ],
+      }),
+    });
+    const sale = await fetch(`${SQUARE_MOCK}/_mock/gift-cards/register-sale`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gan: sold.code, amount: 2500, customer_id: 'cust-robin' }),
+    });
+    expect(sale.status).toBe(200);
+
+    const page = await callFunction<GetGiftCardsRequest, GetGiftCardsResponse>({
+      functionName: 'giftCards/getGiftCards',
+      data: {},
+      idToken: admin.idToken,
+    });
+    expect(page.data?.totals).toMatchObject({
+      printedNotSoldCount: 1,
+      outstandingCents: 2500,
+      cardsWithBalance: 1,
+      loadedThisMonthCents: 2500,
+    });
+
+    const buyer = await callFunction<GetGiftCardBuyerRequest, GetGiftCardBuyerResponse>({
+      functionName: 'giftCards/getGiftCardBuyer',
+      data: { id: sold.giftCardId },
+      idToken: admin.idToken,
+    });
+    expect(buyer.status).toBe(200);
+    expect(buyer.data?.sale?.customer).toEqual({
+      id: 'cust-robin',
+      name: 'Robin Ashfield',
+      email: 'robin@example.com',
+      phone: '+13045550142',
+    });
+    // Nothing about the customer is stored.
+    const record = await getFirestoreDoc('giftCardPurchases', sold.giftCardId);
+    expect(JSON.stringify(record)).not.toMatch(/Robin|robin@|555/);
+
+    const found = await callFunction<
+      SearchGiftCardsByCustomerRequest,
+      SearchGiftCardsByCustomerResponse
+    >({
+      functionName: 'giftCards/searchGiftCardsByCustomer',
+      data: { query: 'robin@example' },
+      idToken: admin.idToken,
+    });
+    expect(found.status).toBe(200);
+    expect(found.data?.matches).toEqual([
+      { customer: expect.objectContaining({ id: 'cust-robin' }), giftCardIds: [sold.giftCardId] },
+    ]);
+    expect(found.data?.cards.map((c) => c.id)).toEqual([sold.giftCardId]);
+    expect(found.data?.cards[0]).toMatchObject({ source: 'stock', state: 'active' });
+
+    const byPhone = await callFunction<
+      SearchGiftCardsByCustomerRequest,
+      SearchGiftCardsByCustomerResponse
+    >({
+      functionName: 'giftCards/searchGiftCardsByCustomer',
+      data: { query: '(304) 555-0142' },
+      idToken: admin.idToken,
+    });
+    expect(byPhone.data?.cards.map((c) => c.id)).toEqual([sold.giftCardId]);
+
+    const byName = await callFunction<
+      SearchGiftCardsByCustomerRequest,
+      SearchGiftCardsByCustomerResponse
+    >({
+      functionName: 'giftCards/searchGiftCardsByCustomer',
+      data: { query: 'robin ash' },
+      idToken: admin.idToken,
+    });
+    expect(byName.data?.cards.map((c) => c.id)).toEqual([sold.giftCardId]);
+
+    const notAdmin = await callFunction<GetGiftCardBuyerRequest, GetGiftCardBuyerResponse>({
+      functionName: 'giftCards/getGiftCardBuyer',
+      data: { id: sold.giftCardId },
+      idToken: nonAdmin.idToken,
+    });
+    expect(notAdmin.status).not.toBe(200);
+    expect(JSON.stringify(notAdmin.raw)).not.toMatch(/Robin/);
   });
 
   it('is admin only', async () => {
@@ -245,6 +365,6 @@ describe('printed gift certificates (#314)', () => {
     const ok = await print(amountBatch(1));
     const read = await readBatch({ batchId: ok.data!.batchId }, nonAdmin.idToken);
     expect(read.status).not.toBe(200);
-    expect(JSON.stringify(read.raw)).not.toMatch(/\d{16}/);
+    expect(JSON.stringify(read.raw)).not.toMatch(/MAPLE\d|\d{16}/);
   });
 });
