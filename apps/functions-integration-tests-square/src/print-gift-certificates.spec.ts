@@ -74,7 +74,7 @@ function newKey(): string {
   return `it-print-${Date.now()}-${keyCounter}`;
 }
 
-describe('printed gift certificates (#314)', () => {
+describe('printed gift certificates (#314, #332)', () => {
   let admin: TestUser;
   let nonAdmin: TestUser;
 

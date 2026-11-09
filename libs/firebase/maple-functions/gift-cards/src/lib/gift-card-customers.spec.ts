@@ -41,6 +41,7 @@ vi.mock('@maple/firebase/functions', () => ({
   },
 }));
 
+import type { GiftCardActivityEntry } from '@maple/ts/domain';
 import {
   getGiftCardBuyer,
   saleActivity,
@@ -62,7 +63,7 @@ const card = (id: string, createdAt = '2026-10-01T15:00:00Z') => ({
   balanceCents: 2500,
   createdAt,
 });
-const activity = (over: Record<string, unknown>) => ({
+const activity = (over: Partial<GiftCardActivityEntry>): GiftCardActivityEntry => ({
   id: 'a',
   giftCardId: 'gftc-0001',
   type: 'activate',

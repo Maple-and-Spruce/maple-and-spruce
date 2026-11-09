@@ -603,6 +603,7 @@ describe('GiftCardsService #332 additions', () => {
         id: 'a',
         type: 'ACTIVATE',
         giftCardId: 'gc',
+        locationId: 'L1',
         activateActivityDetails: {
           orderId: 'order-1',
           amountMoney: { amount: BigInt(2500), currency: 'USD' },
@@ -614,6 +615,7 @@ describe('GiftCardsService #332 additions', () => {
         id: 'b',
         type: 'LOAD',
         giftCardId: 'gc',
+        locationId: 'L1',
         loadActivityDetails: {
           orderId: 'order-2',
           amountMoney: { amount: BigInt(500), currency: 'USD' },
@@ -625,6 +627,7 @@ describe('GiftCardsService #332 additions', () => {
         id: 'c',
         type: 'ACTIVATE',
         giftCardId: 'gc',
+        locationId: 'L1',
         activateActivityDetails: {
           amountMoney: { amount: BigInt(500), currency: 'USD' },
         },
