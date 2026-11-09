@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mocks = vi.hoisted(() => ({
   findAll: vi.fn(),
   runUnderMinimumAlerts: vi.fn(),
+  runInstructorClassNotes: vi.fn(),
   findByClassId: vi.fn(),
   markReminderSentForSession: vi.fn(),
   mailAdd: vi.fn(),
@@ -28,6 +29,16 @@ vi.mock('@maple/firebase/database', () => ({
 }));
 vi.mock('./under-minimum-alert', () => ({
   runUnderMinimumAlerts: mocks.runUnderMinimumAlerts,
+}));
+vi.mock('./instructor-class-notes', () => ({
+  runInstructorClassNotes: mocks.runInstructorClassNotes,
+  EMPTY_INSTRUCTOR_NOTES_RESULT: {
+    classesChecked: 0,
+    emailsSent: 0,
+    skippedNoNotes: 0,
+    skippedNoEmail: 0,
+    skippedAlreadySent: 0,
+  },
 }));
 
 import { runSendClassReminders } from './send-class-reminders';
@@ -197,5 +208,42 @@ describe('runSendClassReminders: private hours', () => {
       HOUR_12.toISOString(),
       RUN_AT
     );
+  });
+});
+
+describe('runSendClassReminders: customer notes to instructors (#325)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.findAll.mockResolvedValue([]);
+    mocks.runUnderMinimumAlerts.mockResolvedValue({
+      classesChecked: 0,
+      alertsSent: 0,
+      skippedMinimumMet: 0,
+      skippedAlreadyAlerted: 0,
+    });
+  });
+
+  it('runs against the published classes and reports it', async () => {
+    const counts = {
+      classesChecked: 2,
+      emailsSent: 1,
+      skippedNoNotes: 1,
+      skippedNoEmail: 0,
+      skippedAlreadySent: 0,
+    };
+    mocks.runInstructorClassNotes.mockResolvedValue(counts);
+
+    const result = await runSendClassReminders(NOW);
+
+    expect(mocks.runInstructorClassNotes).toHaveBeenCalledWith([], NOW);
+    expect(result.instructorNotes).toEqual(counts);
+  });
+
+  it('never lets a failure stop the reminders', async () => {
+    mocks.runInstructorClassNotes.mockRejectedValue(new Error('boom'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const result = await runSendClassReminders(NOW);
+    expect(result.instructorNotes.emailsSent).toBe(0);
+    expect(result.mailQueued).toBe(0);
   });
 });

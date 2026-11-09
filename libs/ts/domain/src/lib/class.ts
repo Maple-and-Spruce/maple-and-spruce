@@ -141,6 +141,12 @@ export interface Class {
    */
   underMinimumAlertSentAt?: Date;
   /**
+   * When the instructor was emailed the customer notes for this class (the
+   * day before its first session, #325). Set once by the daily class job.
+   * Written by the job only, never by create/update callers.
+   */
+  instructorNotesSentAt?: Date;
+  /**
    * Staff pick for the large photo card on the public /upcoming-classes page.
    * Synced to the Webflow `is-featured` Switch. The page shows the large card
    * only while the class still has seats, so a featured class that fills up
@@ -221,13 +227,17 @@ export type CreateClassInput = Omit<
   | 'squareModifierListId'
   | 'squareCatalogVersion'
   | 'underMinimumAlertSentAt'
+  | 'instructorNotesSentAt'
 >;
 
 /**
  * Input for updating a class (all fields optional except id)
  */
 export type UpdateClassInput = Partial<
-  Omit<Class, 'id' | 'createdAt' | 'updatedAt' | 'underMinimumAlertSentAt'>
+  Omit<
+    Class,
+    'id' | 'createdAt' | 'updatedAt' | 'underMinimumAlertSentAt' | 'instructorNotesSentAt'
+  >
 > & {
   id: string;
 };

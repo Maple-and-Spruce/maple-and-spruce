@@ -43,6 +43,13 @@ interface SendClassRemindersResult {
     skippedMinimumMet: number;
     skippedAlreadyAlerted: number;
   };
+  instructorNotes: {
+    classesChecked: number;
+    emailsSent: number;
+    skippedNoNotes: number;
+    skippedNoEmail: number;
+    skippedAlreadySent: number;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +150,7 @@ function buildRegistration(overrides: {
   name: string;
   status?: string;
   quantity?: number;
+  notes?: string;
   reminderSentForSessions?: Record<string, string>;
 }): Record<string, unknown> {
   return {
@@ -156,6 +164,7 @@ function buildRegistration(overrides: {
     taxRatePercent: 6.0,
     status: overrides.status ?? 'confirmed',
     confirmationNumber: 'MS-TEST',
+    ...(overrides.notes !== undefined ? { notes: overrides.notes } : {}),
     reminderSentForSessions: overrides.reminderSentForSessions ?? {},
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -947,6 +956,153 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
         });
         expect(await underMinimumRow('inbox-later')).toBeUndefined();
       });
+    });
+  });
+  describe('Customer notes to the instructor (class starts tomorrow, #325)', () => {
+    // Invented people throughout.
+    const INSTRUCTOR_EMAIL = 'instructor-notes@example.com';
+
+    async function instructorMail(): Promise<
+      Array<{ to: string; replyTo?: string; message: { subject: string; text: string } }>
+    > {
+      const docs = await listFirestoreDocs('mail');
+      return docs
+        .map(
+          (d) =>
+            d.data as {
+              to: string;
+              replyTo?: string;
+              message?: { subject: string; text: string };
+            }
+        )
+        .filter(
+          (m): m is { to: string; replyTo?: string; message: { subject: string; text: string } } =>
+            Boolean(m.message?.subject.startsWith('Notes from your students: '))
+        );
+    }
+
+    async function seedTomorrowClass(opts: {
+      classId: string;
+      daysOut?: number;
+      instructorEmail?: string | null;
+      registrations: Array<{ name: string; status?: string; notes?: string; quantity?: number }>;
+    }): Promise<void> {
+      const instructorId = `${opts.classId}-instructor`;
+      await setFirestoreDoc('instructors', instructorId, {
+        name: 'Robin Ashfield',
+        ...(opts.instructorEmail === null
+          ? {}
+          : { email: opts.instructorEmail ?? INSTRUCTOR_EMAIL }),
+        status: 'active',
+        bio: 'Wreaths',
+        specialties: ['wreaths'],
+        payRateType: 'flat',
+        payRate: 5000,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      await setFirestoreDoc(
+        'classes',
+        opts.classId,
+        buildClass({
+          name: 'Wreath Making',
+          sessions: [timeAtOffsetDays(opts.daysOut ?? 1, 14)],
+          instructorId,
+        })
+      );
+      for (const [i, reg] of opts.registrations.entries()) {
+        await setFirestoreDoc(
+          'registrations',
+          `${opts.classId}-reg-${i}`,
+          buildRegistration({
+            classId: opts.classId,
+            email: `student${i}@example.com`,
+            name: reg.name,
+            status: reg.status,
+            notes: reg.notes,
+            quantity: reg.quantity,
+          })
+        );
+      }
+    }
+
+    it('emails the instructor once, with the notes from seated registrations', async () => {
+      await seedTomorrowClass({
+        classId: 'class-notes',
+        registrations: [
+          { name: 'Olive Thompson', notes: 'Peanut allergy', quantity: 2 },
+          { name: 'Wren Calloway' },
+          { name: 'Fern Abernathy', status: 'cancelled', notes: 'Cancelled, should not show' },
+          { name: 'Sage Whitcombe', status: 'pending', notes: 'Left-handed' },
+        ],
+      });
+
+      const first = await callTriggerAsAdmin(adminUser.idToken);
+      expect(first.status).toBe(200);
+      expect(first.data?.instructorNotes).toEqual({
+        classesChecked: 1,
+        emailsSent: 1,
+        skippedNoNotes: 0,
+        skippedNoEmail: 0,
+        skippedAlreadySent: 0,
+      });
+
+      const mail = await instructorMail();
+      expect(mail).toHaveLength(1);
+      expect(mail[0].to).toBe(INSTRUCTOR_EMAIL);
+      // Replies reach the studio. The emulator loads .env.dev.
+      expect(mail[0].replyTo).toBe('katie+dev@mapleandsprucefolkarts.com');
+      expect(mail[0].message.subject).toBe(
+        'Notes from your students: Wreath Making, tomorrow'
+      );
+      expect(mail[0].message.text).toContain('Hi Robin,');
+      expect(mail[0].message.text).toContain('- Olive Thompson (2 spots): Peanut allergy');
+      expect(mail[0].message.text).toContain('- Sage Whitcombe: Left-handed');
+      expect(mail[0].message.text).not.toContain('Cancelled, should not show');
+      expect(mail[0].message.text).not.toContain('Wren Calloway');
+
+      const cls = await getFirestoreDoc('classes', 'class-notes');
+      expect(cls?.['instructorNotesSentAt']).toBeTruthy();
+
+      // A rerun (schedule or admin trigger) never resends.
+      const second = await callTriggerAsAdmin(adminUser.idToken);
+      expect(second.data?.instructorNotes.emailsSent).toBe(0);
+      expect(second.data?.instructorNotes.skippedAlreadySent).toBe(1);
+      expect(await instructorMail()).toHaveLength(1);
+    });
+
+    it('sends nothing when nobody left a note', async () => {
+      await seedTomorrowClass({
+        classId: 'class-quiet',
+        registrations: [{ name: 'Wren Calloway' }, { name: 'Olive Thompson', notes: '   ' }],
+      });
+
+      const result = await callTriggerAsAdmin(adminUser.idToken);
+      expect(result.data?.instructorNotes.skippedNoNotes).toBe(1);
+      expect(await instructorMail()).toHaveLength(0);
+      const cls = await getFirestoreDoc('classes', 'class-quiet');
+      expect(cls?.['instructorNotesSentAt']).toBeFalsy();
+    });
+
+    it('skips an instructor with no email, and classes on other days', async () => {
+      await seedTomorrowClass({
+        classId: 'class-no-email',
+        instructorEmail: null,
+        registrations: [{ name: 'Olive Thompson', notes: 'Peanut allergy' }],
+      });
+      await seedTomorrowClass({
+        classId: 'class-two-days',
+        daysOut: 2,
+        registrations: [{ name: 'Olive Thompson', notes: 'Peanut allergy' }],
+      });
+
+      const result = await callTriggerAsAdmin(adminUser.idToken);
+      expect(result.data?.instructorNotes).toMatchObject({
+        classesChecked: 1,
+        emailsSent: 0,
+        skippedNoEmail: 1,
+      });
+      expect(await instructorMail()).toHaveLength(0);
     });
   });
 });

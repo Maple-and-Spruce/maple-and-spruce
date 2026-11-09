@@ -594,19 +594,20 @@ describe('ClassRepository', () => {
     });
   });
 
-  describe('claimUnderMinimumAlert', () => {
-    function stubTransaction(snap: { exists: boolean; data: () => unknown }) {
-      const docRef = { id: 'class-1' };
-      vi.mocked(db.collection).mockReturnValue({
-        doc: vi.fn().mockReturnValue(docRef),
-      } as never);
-      const tx = { get: vi.fn().mockResolvedValue(snap), update: vi.fn() };
-      vi.mocked(db.runTransaction).mockImplementation(
-        async (fn: (t: never) => Promise<unknown>) => fn(tx as never)
-      );
-      return { tx, docRef };
-    }
+  /** A one-document transaction: `tx.get` resolves `snap`. */
+  function stubTransaction(snap: { exists: boolean; data: () => unknown }) {
+    const docRef = { id: 'class-1' };
+    vi.mocked(db.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue(docRef),
+    } as never);
+    const tx = { get: vi.fn().mockResolvedValue(snap), update: vi.fn() };
+    vi.mocked(db.runTransaction).mockImplementation(
+      async (fn: (t: never) => Promise<unknown>) => fn(tx as never)
+    );
+    return { tx, docRef };
+  }
 
+  describe('claimUnderMinimumAlert', () => {
     it('stamps the marker and returns true the first time', async () => {
       const at = new Date('2026-05-08T12:00:00.000Z');
       const { tx, docRef } = stubTransaction({
@@ -649,6 +650,41 @@ describe('ClassRepository', () => {
 
       await ClassRepository.releaseUnderMinimumAlert('class-1');
       expect(mockUpdate).toHaveBeenCalledWith({ underMinimumAlertSentAt: null });
+    });
+  });
+
+  describe('instructor notes marker (#325)', () => {
+    it('reads the marker back, and a cleared one as unset', async () => {
+      const sentAt = new Date('2026-05-08T12:00:00.000Z');
+      expect((await readBack({ instructorNotesSentAt: ts(sentAt) })).instructorNotesSentAt).toEqual(sentAt);
+      expect((await readBack({ instructorNotesSentAt: null })).instructorNotesSentAt).toBeUndefined();
+    });
+
+    it('claims once: stamps the marker the first time, then refuses', async () => {
+      const at = new Date('2026-05-08T12:00:00.000Z');
+      const first = stubTransaction({ exists: true, data: () => rawClassData() });
+      await expect(ClassRepository.claimInstructorNotesEmail('class-1', at)).resolves.toBe(true);
+      expect(first.tx.update).toHaveBeenCalledWith(first.docRef, { instructorNotesSentAt: at });
+
+      const again = stubTransaction({
+        exists: true,
+        data: () => rawClassData({ instructorNotesSentAt: ts(at) }),
+      });
+      await expect(ClassRepository.claimInstructorNotesEmail('class-1', at)).resolves.toBe(false);
+      expect(again.tx.update).not.toHaveBeenCalled();
+
+      const gone = stubTransaction({ exists: false, data: () => undefined });
+      await expect(ClassRepository.claimInstructorNotesEmail('class-1', at)).resolves.toBe(false);
+      expect(gone.tx.update).not.toHaveBeenCalled();
+    });
+
+    it('release clears only the marker', async () => {
+      const mockUpdate = vi.fn().mockResolvedValue(undefined);
+      vi.mocked(db.collection).mockReturnValue({
+        doc: vi.fn().mockReturnValue({ update: mockUpdate }),
+      } as never);
+      await ClassRepository.releaseInstructorNotesEmail('class-1');
+      expect(mockUpdate).toHaveBeenCalledWith({ instructorNotesSentAt: null });
     });
   });
 

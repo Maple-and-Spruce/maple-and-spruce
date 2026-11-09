@@ -9,8 +9,9 @@
  * - Cloned: description, instructorId, durationMinutes, capacity, priceCents,
  *   imageUrl, galleryImages, categoryId, skillLevel, location,
  *   materialsIncluded, whatToBring, minimumAge, minimumEnrollment, format.
- * - `underMinimumAlertSentAt` is not copied: the duplicate is a new run of
- *   the class and gets its own under-minimum alert.
+ * - `underMinimumAlertSentAt` and `instructorNotesSentAt` are not copied:
+ *   the duplicate is a new run of the class and gets its own under-minimum
+ *   alert and its own customer-notes email to the instructor.
  * - `isFeatured` is not copied: featuring a class on /upcoming-classes is a
  *   choice about one run, and a copy would put two large cards on the page.
  * - `name` gets a " (Copy)" suffix so the duplicate is easy to find in
