@@ -756,6 +756,61 @@ describe('RegistrationRepository', () => {
     });
   });
 
+  describe('note alert claim (#327)', () => {
+    const at = new Date('2026-11-08T15:00:00Z');
+
+    function stub(data: Record<string, unknown> | null) {
+      const docRef = { id: 'reg-1' };
+      const txUpdate = vi.fn();
+      const update = vi.fn().mockResolvedValue(undefined);
+      vi.mocked(db.collection).mockReturnValue({
+        doc: vi.fn().mockReturnValue({ ...docRef, update }),
+      } as unknown as ReturnType<typeof db.collection>);
+      vi.mocked(db.runTransaction).mockImplementation((async (
+        fn: (tx: unknown) => Promise<unknown>
+      ) =>
+        fn({
+          get: vi.fn().mockResolvedValue(mockDocSnapshot('reg-1', data)),
+          update: txUpdate,
+        })) as unknown as typeof db.runTransaction);
+      return { txUpdate, update };
+    }
+
+    it('stamps noteAlertSentAt the first time', async () => {
+      const { txUpdate } = stub(firestoreRegData());
+      await expect(RegistrationRepository.claimNoteAlert('reg-1', at)).resolves.toBe(true);
+      expect(txUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'reg-1' }),
+        { noteAlertSentAt: at }
+      );
+    });
+
+    it('refuses when already stamped or gone', async () => {
+      const stamped = stub(firestoreRegData({ noteAlertSentAt: at }));
+      await expect(RegistrationRepository.claimNoteAlert('reg-1', at)).resolves.toBe(false);
+      expect(stamped.txUpdate).not.toHaveBeenCalled();
+      stub(null);
+      await expect(RegistrationRepository.claimNoteAlert('reg-1', at)).resolves.toBe(false);
+    });
+
+    it('reads the stamp back', async () => {
+      vi.mocked(db.collection).mockReturnValue({
+        doc: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue(
+            mockDocSnapshot('reg-1', firestoreRegData({ noteAlertSentAt: at }))
+          ),
+        }),
+      } as unknown as ReturnType<typeof db.collection>);
+      expect((await RegistrationRepository.findById('reg-1'))?.noteAlertSentAt).toEqual(at);
+    });
+
+    it('release clears only the stamp', async () => {
+      const { update } = stub(firestoreRegData());
+      await RegistrationRepository.releaseNoteAlert('reg-1');
+      expect(update).toHaveBeenCalledWith({ noteAlertSentAt: null });
+    });
+  });
+
   describe('applySquareRefund', () => {
     const at = new Date('2026-10-15T15:00:00Z');
 
