@@ -31,7 +31,10 @@ const square = vi.hoisted(() => {
     nextId: 1,
     clock: Date.parse('2026-11-08T15:00:00Z'),
   };
-  const stamp = () => new Date((state.clock += 1000)).toISOString();
+  const stamp = () => {
+    state.clock += 1000;
+    return new Date(state.clock).toISOString();
+  };
   const once = (step: string) => {
     if (state.failNext.has(step)) {
       state.failNext.delete(step);

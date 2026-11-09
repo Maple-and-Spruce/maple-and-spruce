@@ -54,7 +54,7 @@ async function postMock(path: string, body: unknown): Promise<Response> {
 async function cardSoldAtRegister(amount: number): Promise<string> {
   const created = (await (
     await postMock('/v2/gift-cards', {
-      idempotency_key: `it-replace-${Date.now()}-${Math.random()}`,
+      idempotency_key: newKey(),
       location_id: 'mock-location',
       gift_card: { type: 'DIGITAL' },
     })
