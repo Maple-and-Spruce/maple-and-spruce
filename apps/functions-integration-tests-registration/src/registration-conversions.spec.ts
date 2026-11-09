@@ -26,6 +26,7 @@ import {
   EMULATOR_CONFIG,
   clearFirestoreEmulator,
   getFirestoreDoc,
+  listFirestoreDocs,
   setFirestoreDoc,
   TRIGGER_WAIT_TIMEOUT_MS,
 } from '@maple/firebase/integration-test-utils';
@@ -949,4 +950,104 @@ describe('Meta CAPI Purchase triggers', () => {
       });
     });
   });
+});
+
+/**
+ * Staff email for a customer's note (#327). Rides on the same two triggers.
+ * The emulator loads .env.dev, where ADMIN_ALERT_EMAIL is the +dev alias.
+ */
+describe('Staff note alerts on confirmation (#327)', () => {
+  const STAFF_ALERT_INBOX = 'katie+dev@mapleandsprucefolkarts.com';
+
+  async function noteAlerts(
+    subjectPrefix: string,
+    mention: string
+  ): Promise<Array<{ to: string; message: { subject: string; text: string } }>> {
+    const docs = await listFirestoreDocs('mail');
+    return docs
+      .map((d) => d.data as { to: string; message?: { subject: string; text: string } })
+      .filter(
+        (m): m is { to: string; message: { subject: string; text: string } } =>
+          Boolean(
+            m.message?.subject.startsWith(subjectPrefix) && m.message.text.includes(mention)
+          )
+      );
+  }
+
+  async function waitForNoteAlerts(
+    subjectPrefix: string,
+    mention: string,
+    atLeast = 1,
+    timeoutMs = TRIGGER_WAIT_TIMEOUT_MS
+  ) {
+    const deadline = Date.now() + timeoutMs;
+    let found = await noteAlerts(subjectPrefix, mention);
+    while (found.length < atLeast && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      found = await noteAlerts(subjectPrefix, mention);
+    }
+    return found;
+  }
+
+  it('emails staff once when a class registration with a note is confirmed', async () => {
+    const id = `note-reg-${Date.now()}`;
+    const doc = classRegistration({
+      classId: `note-class-${Date.now()}`,
+      notes: `Peanut allergy ${id}`,
+    });
+    await setFirestoreDoc('registrations', id, doc);
+    await setFirestoreDoc('registrations', id, { ...doc, status: 'confirmed' });
+
+    const alerts = await waitForNoteAlerts('Note on a registration: ', id);
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].to).toBe(STAFF_ALERT_INBOX);
+    expect(alerts[0].message.text).toContain(`roster?registration=${id}`);
+    // The claim stamp is written, so a re-delivery cannot send again.
+    await waitForStamp('registrations', id);
+
+    // A later edit of the confirmed registration does not resend.
+    await setFirestoreDoc('registrations', id, {
+      ...doc,
+      status: 'confirmed',
+      customerName: 'Jane Q. Doe',
+    });
+    await settle(2000);
+    expect(await noteAlerts('Note on a registration: ', id)).toHaveLength(1);
+  });
+
+  it('sends nothing for a confirmed registration without a note', async () => {
+    const id = `plain-reg-${Date.now()}`;
+    const doc = classRegistration({ classId: `plain-class-${Date.now()}`, notes: '  ' });
+    await setFirestoreDoc('registrations', id, doc);
+    await setFirestoreDoc('registrations', id, { ...doc, status: 'confirmed' });
+    await settle(3000);
+    const reg = await getFirestoreDoc('registrations', id);
+    expect(reg?.['noteAlertSentAt']).toBeFalsy();
+  });
+
+  it('emails staff once about a Music Together family\'s accommodations', async () => {
+    const id = `note-mt-${Date.now()}`;
+    const doc = mtRegistration({ accommodations: `Uses a hearing aid ${id}` });
+    await setFirestoreDoc('musicTogetherRegistrations', id, doc);
+    await setFirestoreDoc('musicTogetherRegistrations', id, { ...doc, status: 'confirmed' });
+
+    const alerts = await waitForNoteAlerts(
+      'Accommodations on a Music Together registration: ',
+      id
+    );
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].to).toBe(STAFF_ALERT_INBOX);
+    expect(alerts[0].message.text).toContain('Sam Rivera listed accommodations');
+    await waitForStamp('musicTogetherRegistrations', id);
+  });
+
+  async function waitForStamp(collection: string, id: string): Promise<void> {
+    const deadline = Date.now() + TRIGGER_WAIT_TIMEOUT_MS;
+    let doc = await getFirestoreDoc(collection, id);
+    while (!doc?.['noteAlertSentAt'] && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      doc = await getFirestoreDoc(collection, id);
+    }
+    expect(doc?.['noteAlertSentAt']).toBeTruthy();
+  }
 });

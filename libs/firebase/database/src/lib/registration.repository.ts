@@ -88,6 +88,9 @@ function docToRegistration(
     confirmationSentAt: data.confirmationSentAt
       ? toDate(data.confirmationSentAt)
       : undefined,
+    noteAlertSentAt: data.noteAlertSentAt
+      ? toDate(data.noteAlertSentAt)
+      : undefined,
     reminderSentAt: data.reminderSentAt
       ? toDate(data.reminderSentAt)
       : undefined,
@@ -488,6 +491,27 @@ export const RegistrationRepository = {
         registration: { ...current, ...result.updates, updatedAt },
       };
     });
+  },
+
+  /**
+   * Claim the one staff email about this registration's note (#327): `true`
+   * if this caller stamped `noteAlertSentAt`, `false` if it was already
+   * stamped or the registration is gone. Transactional, so a re-delivered
+   * trigger cannot send twice.
+   */
+  async claimNoteAlert(id: string, at: Date): Promise<boolean> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      if (!snap.exists || snap.data()?.noteAlertSentAt) return false;
+      tx.update(docRef, { noteAlertSentAt: at });
+      return true;
+    });
+  },
+
+  /** Undo `claimNoteAlert` when queuing the email failed. */
+  async releaseNoteAlert(id: string): Promise<void> {
+    await db.collection(COLLECTION).doc(id).update({ noteAlertSentAt: null });
   },
 
   /**

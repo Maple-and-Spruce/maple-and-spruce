@@ -57,6 +57,7 @@ import {
   type MetaCapiConfig,
   type MetaCapiEvent,
 } from '@maple/firebase/meta-capi';
+import { alertStaffOfAccommodationsIfConfirmed } from './music-together-note-alert';
 
 // Reuses the same secret as `tallyLeadWebhook` and `sendRegistrationConversion`
 // (all maple-core) — one system-user token covers both pixels, so no new Secret
@@ -282,11 +283,20 @@ export const sendMusicTogetherConversion = onDocumentWritten(
       accessToken: metaCapiToken.value(),
     };
 
-    await emitMusicTogetherPurchaseIfConfirmed(
-      event.params.registrationId,
-      before,
-      after,
-      (evt) => trySendMetaCapiEvents(config, [evt])
-    );
+    // Independent: neither throws, and one must not hold up the other.
+    await Promise.all([
+      emitMusicTogetherPurchaseIfConfirmed(
+        event.params.registrationId,
+        before,
+        after,
+        (evt) => trySendMetaCapiEvents(config, [evt])
+      ),
+      // Staff email for a family's accommodations (#327).
+      alertStaffOfAccommodationsIfConfirmed(
+        event.params.registrationId,
+        before,
+        after
+      ),
+    ]);
   }
 );
