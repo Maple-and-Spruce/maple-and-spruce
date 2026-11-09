@@ -33,13 +33,13 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 /**
- * Free cards and printed stock, which change the totals and the list labels
- * (#314). One query, not one per card. A failed read leaves the page working
+ * Free cards, printed stock and replacements, which change the totals and the
+ * list labels (#314, #332). One query, not one per card. A failed read leaves the page working
  * with every card counted as a sale, rather than failing it.
  */
 async function readRecordsForTotals(): Promise<GiftCardPurchase[]> {
   try {
-    return await GiftCardPurchaseRepository.findBySources(['issued', 'stock']);
+    return await GiftCardPurchaseRepository.findBySources(['issued', 'stock', 'replacement']);
   } catch (error) {
     console.error('[getGiftCards] could not read gift card records', error);
     return [];

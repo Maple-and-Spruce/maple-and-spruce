@@ -1,3 +1,5 @@
+import { formatGiftCardCode as formatDomainGiftCardCode } from '@maple/ts/domain';
+
 /** Cents as dollars, e.g. 1250 → "$12.50". */
 export function formatGiftCardMoney(cents: number): string {
   return (cents / 100).toLocaleString('en-US', {
@@ -24,9 +26,13 @@ export function formatGiftCardDate(iso: string): string {
   });
 }
 
-/** A card code in groups of four, as printed: "7783 3200 0000 4821". */
+/**
+ * A card code as printed: Square's numbers in groups of four,
+ * "7783 3200 0000 4821", and a printed certificate's code as
+ * "MAPLE 2026 482" (#332). The domain owns the rule, so emails match.
+ */
 export function formatGiftCardCode(code: string): string {
-  return code.replace(/\s+/g, '').replace(/(.{4})(?=.)/g, '$1 ');
+  return formatDomainGiftCardCode(code);
 }
 
 /**

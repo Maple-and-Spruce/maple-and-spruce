@@ -1,6 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, within } from 'storybook/test';
-import { mockGiftCards, mockLabelledGiftCards } from '@maple/react/storybook-fixtures';
+import {
+  mockCustomerSearchResult,
+  mockGiftCards,
+  mockLabelledGiftCards,
+  mockSoldCertificate,
+} from '@maple/react/storybook-fixtures';
 import { GiftCardsTable } from './GiftCardsTable';
 
 const meta = {
@@ -26,13 +31,20 @@ export const WithCards: Story = {
   },
 };
 
-/** Printed certificates and free cards say so (#314). */
+/**
+ * Printed certificates, replacements and free cards say so (#314, #332). A
+ * certificate the register has not loaded yet is "Not sold yet".
+ */
 export const PrintedAndFreeCards: Story = {
   args: { cardsState: { status: 'success', data: mockLabelledGiftCards } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const printed = canvas.getByRole('row', { name: 'Gift card ending 5150' });
+    const printed = canvas.getByRole('row', { name: 'Gift card ending 9482' });
     await expect(within(printed).getByText('Printed certificate (batch 5f6071)')).toBeVisible();
+    await expect(within(printed).getByText('Not sold yet')).toBeVisible();
+    await expect(within(printed).getByText('$0.00')).toBeVisible();
+    const replacement = canvas.getByRole('row', { name: 'Gift card ending 3388' });
+    await expect(within(replacement).getByText('Replacement for a lost card')).toBeVisible();
     const free = canvas.getByRole('row', { name: 'Gift card ending 6262' });
     await expect(within(free).getByText('Given free')).toBeVisible();
     const sold = canvas.getByRole('row', { name: 'Gift card ending 4821' });
@@ -45,6 +57,7 @@ export const SearchByLastDigits: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const search = canvas.getByLabelText('Last 4 digits');
+    await expect(search).toHaveAttribute('maxlength', '4');
 
     await userEvent.type(search, '48');
     await expect(canvas.getByRole('row', { name: 'Gift card ending 4821' })).toBeVisible();
@@ -81,5 +94,124 @@ export const Error: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('alert')).toHaveTextContent('Square is unavailable');
     await expect(canvas.queryByText(/No gift cards yet/)).toBeNull();
+  },
+};
+
+const SEARCH_LABEL = 'Last 4 digits, name, email or phone';
+
+const customerArgs = {
+  cardsState: { status: 'success' as const, data: mockLabelledGiftCards },
+};
+
+/** Last 4 digits still filter on the page when customer search is on (#332). */
+export const LastDigitsWithCustomerSearch: Story = {
+  args: { ...customerArgs, onSearchCustomers: fn() },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByLabelText(SEARCH_LABEL), '33');
+    await expect(canvas.getByRole('row', { name: 'Gift card ending 3388' })).toBeVisible();
+    await expect(canvas.queryByRole('row', { name: 'Gift card ending 4821' })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Search customers' })).toBeNull();
+    await expect(args.onSearchCustomers).not.toHaveBeenCalled();
+  },
+};
+
+/** A name is searched in Square; the customer's cards replace the list (#332). */
+export const SearchByCustomer: Story = {
+  args: {
+    ...customerArgs,
+    onSearchCustomers: fn(async () => mockCustomerSearchResult),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const search = canvas.getByLabelText(SEARCH_LABEL);
+    await userEvent.type(search, 'Robin Ash');
+    await expect(canvas.getByText('Press Enter to search Square customers.')).toBeVisible();
+    await userEvent.type(search, '{Enter}');
+
+    await expect(args.onSearchCustomers).toHaveBeenCalledWith('Robin Ash');
+    await expect(
+      await canvas.findByText('Robin Ashfield · robin@example.com · (304) 555-0142: 1 card')
+    ).toBeVisible();
+    await expect(canvas.getByText(/Register sales searched since Nov 8, 2024/)).toBeVisible();
+    await expect(
+      canvas.getByRole('row', { name: `Gift card ending ${mockSoldCertificate.last4}` })
+    ).toBeVisible();
+    await expect(canvas.queryByRole('row', { name: 'Gift card ending 4821' })).toBeNull();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Show all cards' }));
+    await expect(canvas.getByRole('row', { name: 'Gift card ending 4821' })).toBeVisible();
+    await expect(search).toHaveValue('');
+  },
+};
+
+/** While Square is searched, the rows are skeletons, never "no cards". */
+export const SearchByCustomerLoading: Story = {
+  args: {
+    ...customerArgs,
+    onSearchCustomers: fn(() => new Promise<never>(() => undefined)),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(
+      canvas.getByLabelText(SEARCH_LABEL),
+      'robin@example.com'
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Search customers' }));
+    await expect(canvas.getByRole('table', { name: 'Gift cards' })).toHaveAttribute(
+      'aria-busy',
+      'true'
+    );
+    await expect(canvas.queryByText(/No gift cards found/)).toBeNull();
+    await expect(canvas.queryByRole('row', { name: 'Gift card ending 4821' })).toBeNull();
+  },
+};
+
+export const SearchByCustomerError: Story = {
+  args: {
+    ...customerArgs,
+    onSearchCustomers: fn(async () => {
+      throw new globalThis.Error('Square is unavailable');
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(
+      canvas.getByLabelText(SEARCH_LABEL),
+      '304 555 0142{Enter}'
+    );
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      "Couldn't search Square customers: Square is unavailable"
+    );
+    await expect(canvas.queryByText(/No gift cards found/)).toBeNull();
+  },
+};
+
+export const SearchByCustomerNoCards: Story = {
+  args: {
+    ...customerArgs,
+    onSearchCustomers: fn(async () => ({
+      ...mockCustomerSearchResult,
+      matches: [{ ...mockCustomerSearchResult.matches[0], giftCardIds: [] }],
+      cards: [],
+    })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByLabelText(SEARCH_LABEL), 'Robin{Enter}');
+    await expect(await canvas.findByText('No gift cards found for that customer.')).toBeVisible();
+    await expect(canvas.getByText(/Robin Ashfield .*: 0 cards/)).toBeVisible();
+  },
+};
+
+export const SearchByCustomerNobody: Story = {
+  args: {
+    ...customerArgs,
+    onSearchCustomers: fn(async () => ({ ...mockCustomerSearchResult, matches: [], cards: [] })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByLabelText(SEARCH_LABEL), 'Nobody{Enter}');
+    await expect(await canvas.findByText('No Square customer matches "Nobody".')).toBeVisible();
   },
 };

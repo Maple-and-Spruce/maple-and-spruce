@@ -18,16 +18,22 @@ import {
   Typography,
 } from '@mui/material';
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import {
   giftCardActivityLabel,
   giftCardKindLabel,
   giftCardPurchaseSource,
   giftCardStateLabel,
+  isUnsoldPrintedCertificate,
   type GiftCardActivityEntry,
   type GiftCardSummary,
   type RequestState,
 } from '@maple/ts/domain';
-import type { GiftCardPurchaseDetails } from '@maple/ts/firebase/api-types';
+import type {
+  GetGiftCardBuyerResponse,
+  GiftCardPurchaseDetails,
+} from '@maple/ts/firebase/api-types';
+import { GiftCardBuyerBox } from './GiftCardBuyerBox';
 import { GiftCardCodeReveal } from './GiftCardCodeReveal';
 import {
   formatGiftCardChange,
@@ -59,6 +65,39 @@ interface GiftCardDetailDialogProps {
    * for an active card we have no record of yet.
    */
   onMakeClassCertificate?: (card: GiftCardSummary) => void;
+  /**
+   * Reads who bought the card at the register from Square (#332). The box
+   * only shows for a card that was sold, not bought online or given free.
+   */
+  onLoadBuyer?: (id: string) => Promise<GetGiftCardBuyerResponse>;
+  /**
+   * Opens "Replace lost card" (#332). The button only shows for an active
+   * card with money on it.
+   */
+  onReplace?: (card: GiftCardSummary) => void;
+}
+
+/**
+ * Whether a register sale may name the card's buyer: a card we have no record
+ * of (sold in Square), a register class certificate, or a printed certificate.
+ * Not one bought online (we know that buyer), given free or a replacement.
+ */
+function mayHaveRegisterBuyer(purchase: GiftCardPurchaseDetails | undefined): boolean {
+  if (!purchase) return true;
+  const source = giftCardPurchaseSource(purchase);
+  return source === 'register' || source === 'stock';
+}
+
+/** The status to show: a printed certificate not loaded yet is "Not sold yet". */
+function statusLabel(
+  card: GiftCardSummary,
+  detailState: RequestState<GiftCardDetail>
+): string {
+  if (detailState.status === 'success') {
+    const { purchase, activities } = detailState.data;
+    if (isUnsoldPrintedCertificate(card, purchase, activities)) return 'Not sold yet';
+  }
+  return giftCardStateLabel(card.state);
 }
 
 /**
@@ -72,6 +111,8 @@ export function GiftCardDetailDialog({
   onRevealCode,
   copyToClipboard,
   onMakeClassCertificate,
+  onLoadBuyer,
+  onReplace,
 }: GiftCardDetailDialogProps) {
   const shown = detailState.status === 'success' ? detailState.data.card : card;
   const record =
@@ -83,6 +124,21 @@ export function GiftCardDetailDialog({
     detailState.status === 'success' &&
     !record &&
     detailState.data.card.state === 'active';
+  const loaded = detailState.status === 'success' ? detailState.data : undefined;
+  const unsold =
+    loaded !== undefined &&
+    isUnsoldPrintedCertificate(loaded.card, loaded.purchase, loaded.activities);
+  const showBuyer =
+    onLoadBuyer !== undefined &&
+    loaded !== undefined &&
+    loaded.card.state !== 'pending' &&
+    !unsold &&
+    mayHaveRegisterBuyer(loaded.purchase);
+  const canReplace =
+    onReplace !== undefined &&
+    loaded !== undefined &&
+    loaded.card.state === 'active' &&
+    loaded.card.balanceCents > 0;
 
   return (
     <Dialog open={card !== null} onClose={onClose} fullWidth maxWidth="sm">
@@ -104,9 +160,7 @@ export function GiftCardDetailDialog({
               <Typography variant="overline" color="textSecondary">
                 Status
               </Typography>
-              <Typography component="div">
-                {giftCardStateLabel(shown.state)}
-              </Typography>
+              <Typography component="div">{statusLabel(shown, detailState)}</Typography>
             </Box>
             <Box>
               <Typography variant="overline" color="textSecondary">
@@ -117,7 +171,15 @@ export function GiftCardDetailDialog({
           </Stack>
         )}
 
-        {record && <CardRecord purchase={record} />}
+        {record && <CardRecord purchase={record} unsold={unsold} />}
+
+        {showBuyer && (
+          <GiftCardBuyerBox
+            key={loaded.card.id}
+            giftCardId={loaded.card.id}
+            onLoadBuyer={onLoadBuyer}
+          />
+        )}
 
         {canMakeCertificate && (
           <Box
@@ -135,6 +197,27 @@ export function GiftCardDetailDialog({
               onClick={() => onMakeClassCertificate(detailState.data.card)}
             >
               Make it a class certificate
+            </Button>
+          </Box>
+        )}
+
+        {canReplace && (
+          <Box
+            component="section"
+            aria-label="Lost card"
+            sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
+          >
+            <Typography variant="body2" sx={{ mb: 1.5 }}>
+              Customer lost it? Move the balance to a new card. This card stops
+              working for good.
+            </Typography>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<SwapHorizIcon />}
+              onClick={() => onReplace(loaded.card)}
+            >
+              Replace lost card
             </Button>
           </Box>
         )}
@@ -219,6 +302,7 @@ const RECORD_LABELS = {
   register: 'Class certificate',
   issued: 'Given free by the studio',
   stock: 'Printed certificate',
+  replacement: 'Replacement card',
 } as const;
 
 const RECORD_HEADINGS = {
@@ -226,13 +310,72 @@ const RECORD_HEADINGS = {
   register: 'Made a class certificate',
   issued: 'Given free by the studio',
   stock: 'Printed',
+  replacement: 'Replacement card made',
 } as const;
+
+/** The lines for a card this page made: free, printed, or a replacement. */
+function MadeHereSummary({
+  purchase,
+  source,
+  unsold,
+}: {
+  purchase: GiftCardPurchaseDetails;
+  source: ReturnType<typeof giftCardPurchaseSource>;
+  unsold: boolean;
+}) {
+  return (
+    <>
+        {source === 'issued' && (
+          <>
+            <Typography variant="body2">
+              Free {formatGiftCardMoney(purchase.valueCents)} card. Nobody paid
+              for it; the studio covers it when it is spent.
+            </Typography>
+            {purchase.reason && (
+              <Typography variant="body2">Why: {purchase.reason}</Typography>
+            )}
+          </>
+        )}
+        {source === 'stock' && (
+          <>
+            <Typography variant="body2">
+              {unsold
+                ? `Printed certificate for ${formatGiftCardMoney(purchase.valueCents)}. It has no money on it until it is sold at the register.`
+                : `Printed certificate for ${formatGiftCardMoney(purchase.valueCents)}, sold at the register.`}
+              {purchase.batchId ? ` Batch ${purchase.batchId.slice(-6)}.` : ''}
+            </Typography>
+            {purchase.batchId && (
+              <Link
+                href={`/gift-cards/print/${encodeURIComponent(purchase.batchId)}`}
+                variant="body2"
+              >
+                Open this batch to print it again
+              </Link>
+            )}
+          </>
+        )}
+        {source === 'replacement' && (
+          <Typography variant="body2">
+            Holds {formatGiftCardMoney(purchase.valueCents)} moved from a lost card,
+            which was turned off.
+          </Typography>
+        )}
+    </>
+  );
+}
 
 /**
  * What we know about a card beyond Square: who bought it online and for
  * whom, which class type a certificate covers, or why the studio gave it.
  */
-function CardRecord({ purchase }: { purchase: GiftCardPurchaseDetails }) {
+function CardRecord({
+  purchase,
+  unsold,
+}: {
+  purchase: GiftCardPurchaseDetails;
+  /** A printed certificate the register has not loaded yet (#332). */
+  unsold: boolean;
+}) {
   const source = giftCardPurchaseSource(purchase);
   const heading = RECORD_HEADINGS[source];
   const label = RECORD_LABELS[source];
@@ -252,36 +395,7 @@ function CardRecord({ purchase }: { purchase: GiftCardPurchaseDetails }) {
         {heading} {formatGiftCardDate(purchase.createdAt)}
       </Typography>
       <Stack spacing={0.5}>
-        {source === 'issued' && (
-          <>
-            <Typography variant="body2">
-              Free {formatGiftCardMoney(purchase.valueCents)} card. Nobody paid
-              for it; the studio covers it when it is spent.
-            </Typography>
-            {purchase.reason && (
-              <Typography variant="body2">Why: {purchase.reason}</Typography>
-            )}
-          </>
-        )}
-        {source === 'stock' && (
-          <>
-            <Typography variant="body2">
-              Printed certificate loaded with{' '}
-              {formatGiftCardMoney(purchase.valueCents)}
-              {purchase.batchId ? ` (batch ${purchase.batchId.slice(-6)})` : ''}. It
-              was spendable from the moment it was printed; it is sold at the
-              register as the Gift certificate item.
-            </Typography>
-            {purchase.batchId && (
-              <Link
-                href={`/gift-cards/print/${encodeURIComponent(purchase.batchId)}`}
-                variant="body2"
-              >
-                Open this batch to print it again
-              </Link>
-            )}
-          </>
-        )}
+        <MadeHereSummary purchase={purchase} source={source} unsold={unsold} />
         {purchase.kind === 'class' &&
           (source === 'online' ? (
             <Typography variant="body2">
@@ -294,6 +408,7 @@ function CardRecord({ purchase }: { purchase: GiftCardPurchaseDetails }) {
               {formatGiftCardMoney(purchase.valueCents)}
               {source === 'register' ? ' (sold at the register)' : ''}
               {source === 'stock' ? ' (printed)' : ''}
+              {source === 'replacement' ? ' (moved from a lost card)' : ''}
             </Typography>
           ))}
         {source === 'online' && purchase.buyerName && (

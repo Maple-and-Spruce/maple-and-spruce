@@ -13,7 +13,10 @@ vi.mock('./utilities/database.config', () => {
   const docRef = { create: mocks.create, get: mocks.get };
   const collectionRef = {
     doc: mocks.doc.mockReturnValue(docRef),
-    where: mocks.where.mockReturnValue({ get: mocks.queryGet }),
+    where: mocks.where.mockReturnValue({
+      get: mocks.queryGet,
+      limit: () => ({ get: mocks.queryGet }),
+    }),
   };
   return {
     getDb: () => ({ collection: mocks.collection.mockReturnValue(collectionRef) }),
@@ -203,5 +206,36 @@ describe('GiftCardPurchaseRepository', () => {
 
     expect(mocks.where).toHaveBeenCalledWith('batchId', '==', 'b1');
     expect(batch.map((r) => r.giftCardId)).toEqual(['first', 'second']);
+  });
+
+  it('reads back a replacement with the card it replaces (#332)', async () => {
+    mocks.queryGet.mockResolvedValue({
+      docs: [
+        queryDoc('gftc-new', {
+          last4: '0042',
+          kind: 'amount',
+          valueCents: 1800,
+          source: 'replacement',
+          replacesGiftCardId: 'gftc-lost',
+          recordedByUid: 'admin-1',
+          createdAt: new Date('2026-11-02T15:00:00Z'),
+        }),
+      ],
+    });
+
+    const found = await GiftCardPurchaseRepository.findByReplacesGiftCardId('gftc-lost');
+
+    expect(mocks.where).toHaveBeenCalledWith('replacesGiftCardId', '==', 'gftc-lost');
+    expect(found).toMatchObject({
+      giftCardId: 'gftc-new',
+      source: 'replacement',
+      replacesGiftCardId: 'gftc-lost',
+      valueCents: 1800,
+    });
+  });
+
+  it('finds no replacement for a card that was never replaced (#332)', async () => {
+    mocks.queryGet.mockResolvedValue({ docs: [] });
+    expect(await GiftCardPurchaseRepository.findByReplacesGiftCardId('x')).toBeUndefined();
   });
 });

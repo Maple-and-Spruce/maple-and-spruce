@@ -7,6 +7,7 @@ function createMockClient() {
       create: vi.fn(),
       get: vi.fn(),
       pay: vi.fn(),
+      search: vi.fn(),
     },
   };
 }
@@ -214,6 +215,71 @@ describe('OrdersService', () => {
       await expect(service.getOrder('order-x')).rejects.toThrow(
         'Square order not found: order-x'
       );
+    });
+  });
+
+  describe('searchOrderIdsForCustomers (#332)', () => {
+    const since = new Date('2024-11-08T15:00:00Z');
+    const until = new Date('2026-11-08T15:00:00Z');
+
+    it('searches one location for the customers in the window, newest first', async () => {
+      mockClient.orders.search.mockResolvedValue({ orderEntries: [{ orderId: 'o1' }, { orderId: 'o2' }] });
+      const ids = await service.searchOrderIdsForCustomers({
+        locationId: 'LOC-1',
+        customerIds: ['cust-robin'],
+        since,
+        until,
+      });
+      expect([...ids]).toEqual(['o1', 'o2']);
+      expect(mockClient.orders.search).toHaveBeenCalledWith({
+        locationIds: ['LOC-1'],
+        cursor: undefined,
+        limit: 500,
+        returnEntries: true,
+        query: {
+          filter: {
+            customerFilter: { customerIds: ['cust-robin'] },
+            dateTimeFilter: {
+              createdAt: { startAt: since.toISOString(), endAt: until.toISOString() },
+            },
+          },
+          sort: { sortField: 'CREATED_AT', sortOrder: 'DESC' },
+        },
+      });
+    });
+
+    it('follows the cursor up to the page bound', async () => {
+      mockClient.orders.search.mockImplementation(async ({ cursor }: { cursor?: string }) => ({
+        orderEntries: [{ orderId: `o-${cursor ?? 0}` }],
+        cursor: `${Number(cursor ?? 0) + 1}`,
+      }));
+      const ids = await service.searchOrderIdsForCustomers({
+        locationId: 'LOC-1',
+        customerIds: ['c'],
+        since,
+        until,
+        maxPages: 3,
+      });
+      expect(ids.size).toBe(3);
+      expect(mockClient.orders.search).toHaveBeenCalledTimes(3);
+    });
+
+    it('asks nothing for no customers', async () => {
+      const ids = await service.searchOrderIdsForCustomers({
+        locationId: 'LOC-1',
+        customerIds: [],
+        since,
+        until,
+      });
+      expect(ids.size).toBe(0);
+      expect(mockClient.orders.search).not.toHaveBeenCalled();
+    });
+
+    it('throws on Square errors', async () => {
+      mockClient.orders.search.mockResolvedValue({ errors: [{ code: 'BAD', detail: 'bad sort' }] });
+      await expect(
+        service.searchOrderIdsForCustomers({ locationId: 'L', customerIds: ['c'], since, until })
+      ).rejects.toThrow(/bad sort/);
     });
   });
 });

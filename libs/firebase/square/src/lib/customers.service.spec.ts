@@ -142,3 +142,106 @@ describe('CustomersService.upsertByEmail', () => {
     );
   });
 });
+
+/** Invented people only (#332). */
+const robin = {
+  id: 'cust-robin',
+  givenName: 'Robin',
+  familyName: 'Ashfield',
+  emailAddress: 'robin@example.com',
+  phoneNumber: '+13045550142',
+};
+
+function pageOf<T>(items: T[]): AsyncIterable<T> {
+  return {
+    async *[Symbol.asyncIterator]() {
+      for (const item of items) yield item;
+    },
+  };
+}
+
+describe('CustomersService.find (#332)', () => {
+  it('returns the customer with its id', async () => {
+    const service = new CustomersService(makeGetClient({ customer: robin }));
+    expect(await service.find('cust-robin')).toEqual(robin);
+  });
+
+  it('returns undefined when Square has no such customer', async () => {
+    const client = {
+      customers: {
+        get: vi.fn().mockRejectedValue(new SquareError({ statusCode: 404, message: 'nope' })),
+      },
+    } as unknown as SquareClient;
+    expect(await new CustomersService(client).find('gone')).toBeUndefined();
+  });
+
+  it('rethrows any other failure', async () => {
+    const client = {
+      customers: {
+        get: vi.fn().mockRejectedValue(new SquareError({ statusCode: 500, message: 'down' })),
+      },
+    } as unknown as SquareClient;
+    await expect(new CustomersService(client).find('x')).rejects.toThrow();
+  });
+});
+
+describe('CustomersService.searchByContact (#332)', () => {
+  it('searches email with the fuzzy filter and a limit', async () => {
+    const client = makeClient({ customers: [robin, { givenName: 'no id' }] }, {});
+    const found = await new CustomersService(client).searchByContact('email', 'robin@', 10);
+    expect(client.customers.search).toHaveBeenCalledWith({
+      limit: BigInt(10),
+      query: { filter: { emailAddress: { fuzzy: 'robin@' } } },
+    });
+    expect(found).toEqual([robin]);
+  });
+
+  it('searches phone digits with the fuzzy filter', async () => {
+    const client = makeClient({ customers: [] }, {});
+    await new CustomersService(client).searchByContact('phone', '3045550142', 5);
+    expect(client.customers.search).toHaveBeenCalledWith({
+      limit: BigInt(5),
+      query: { filter: { phoneNumber: { fuzzy: '3045550142' } } },
+    });
+  });
+
+  it('throws on Square errors', async () => {
+    const client = makeClient({ errors: [{ code: 'BAD', detail: 'bad filter' }] }, {});
+    await expect(
+      new CustomersService(client).searchByContact('email', 'x@', 5)
+    ).rejects.toThrow(/bad filter/);
+  });
+});
+
+describe('CustomersService.findByName (#332)', () => {
+  const olive = { id: 'cust-olive', givenName: 'Olive', familyName: 'Thompson' };
+
+  it('reads newest customers first and keeps the matches', async () => {
+    const list = vi.fn().mockResolvedValue(pageOf([olive, robin]));
+    const client = { customers: { list } } as unknown as SquareClient;
+    const found = await new CustomersService(client).findByName(
+      (name) => name.includes('Robin'),
+      10,
+      2000
+    );
+    expect(list).toHaveBeenCalledWith({ limit: 100, sortField: 'CREATED_AT', sortOrder: 'DESC' });
+    expect(found.map((c) => c.id)).toEqual(['cust-robin']);
+  });
+
+  it('stops at the match limit and at the scan bound', async () => {
+    const many = Array.from({ length: 50 }, (_, i) => ({ id: `c${i}`, givenName: 'Robin' }));
+    const client = {
+      customers: { list: vi.fn().mockResolvedValue(pageOf(many)) },
+    } as unknown as SquareClient;
+    const service = new CustomersService(client);
+    expect(await service.findByName(() => true, 3, 2000)).toHaveLength(3);
+    expect(await service.findByName(() => true, 100, 7)).toHaveLength(7);
+  });
+
+  it('skips a customer with no name', async () => {
+    const client = {
+      customers: { list: vi.fn().mockResolvedValue(pageOf([{ id: 'c', emailAddress: 'a@example.com' }])) },
+    } as unknown as SquareClient;
+    expect(await new CustomersService(client).findByName(() => true, 10, 10)).toEqual([]);
+  });
+});

@@ -78,6 +78,13 @@ const printing = vi.hoisted(() => ({
   getCertificateBatch: vi.fn(),
 }));
 vi.mock('./print-gift-certificates', () => printing);
+const customers = vi.hoisted(() => ({
+  getGiftCardBuyer: vi.fn(),
+  searchGiftCardsByCustomer: vi.fn().mockResolvedValue('found'),
+}));
+vi.mock('./gift-card-customers', () => customers);
+const replacing = vi.hoisted(() => ({ replaceGiftCard: vi.fn() }));
+vi.mock('./replace-gift-card', () => replacing);
 
 import { giftCards } from './gift-cards.router';
 
@@ -96,13 +103,16 @@ describe('giftCards router', () => {
     expect(Object.keys(routes).sort()).toEqual([
       'getCertificateBatch',
       'getGiftCard',
+      'getGiftCardBuyer',
       'getGiftCards',
       'issueGiftCard',
       'markClassCertificate',
       'previewGiftCardForClass',
       'printGiftCertificates',
       'purchaseGiftCard',
+      'replaceGiftCard',
       'revealGiftCardCode',
+      'searchGiftCardsByCustomer',
     ]);
   });
 
@@ -141,6 +151,9 @@ describe('giftCards router', () => {
     'issueGiftCard',
     'printGiftCertificates',
     'getCertificateBatch',
+    'getGiftCardBuyer',
+    'searchGiftCardsByCustomer',
+    'replaceGiftCard',
   ])(
     '%s is admin only, with the Square credentials',
     (name) => {
@@ -157,8 +170,15 @@ describe('giftCards router', () => {
     expect(routes['revealGiftCardCode'].handler).toBe(handlers.revealGiftCardCode);
     expect(routes['markClassCertificate'].handler).toBe(adminActions.markClassCertificate);
     expect(routes['issueGiftCard'].handler).toBe(adminActions.issueGiftCard);
-    expect(routes['printGiftCertificates'].handler).toBe(printing.printGiftCertificates);
+    await routes['printGiftCertificates'].handler({ q: 1 }, {}, { a: 1 }, { b: 2 });
+    expect(printing.printGiftCertificates).toHaveBeenCalledWith({ q: 1 }, {}, { a: 1 }, { b: 2 });
     expect(routes['getCertificateBatch'].handler).toBe(printing.getCertificateBatch);
+    expect(routes['getGiftCardBuyer'].handler).toBe(customers.getGiftCardBuyer);
+    expect(await routes['searchGiftCardsByCustomer'].handler({ query: 'x' }, {}, {}, {})).toBe(
+      'found'
+    );
+    expect(customers.searchGiftCardsByCustomer).toHaveBeenCalledWith({ query: 'x' }, {}, {}, {});
+    expect(routes['replaceGiftCard'].handler).toBe(replacing.replaceGiftCard);
   });
 
   it('the admin actions are not public: no App Check bypass, no throttle', () => {
@@ -167,6 +187,9 @@ describe('giftCards router', () => {
       'issueGiftCard',
       'printGiftCertificates',
       'getCertificateBatch',
+      'getGiftCardBuyer',
+      'searchGiftCardsByCustomer',
+      'replaceGiftCard',
     ]) {
       expect(routes[name].appCheck).toBeUndefined();
       expect(routes[name].throttle).toBeUndefined();

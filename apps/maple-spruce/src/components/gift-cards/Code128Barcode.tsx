@@ -4,7 +4,10 @@ import { useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 
 interface Code128BarcodeProps {
-  /** What the barcode encodes: the card code, digits only. */
+  /**
+   * What the barcode encodes: the card code without spaces, e.g. Square's 16
+   * digits or a printed certificate's 12 characters, `MAPLE2026482` (#332).
+   */
   value: string;
   /** Bar height in px at screen scale. */
   height?: number;
@@ -19,7 +22,8 @@ interface Code128BarcodeProps {
 /**
  * A Code 128 barcode of a gift card code (#314), drawn as SVG so it prints
  * sharp at any size. The register scans it like the code on a Square card.
- * For an all-digit code JsBarcode picks Code 128 C, which is the most compact.
+ * For an all-digit code JsBarcode picks Code 128 C, which is the most compact;
+ * for a certificate code with letters it picks Code 128 B.
  */
 export function Code128Barcode({
   value,

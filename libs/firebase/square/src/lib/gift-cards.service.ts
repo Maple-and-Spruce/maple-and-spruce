@@ -25,6 +25,8 @@ export interface ListGiftCardActivitiesInput {
   beginTime?: Date;
   /** Inclusive end (default: now). */
   endTime?: Date;
+  /** Only this kind of activity, e.g. `ACTIVATE`. */
+  type?: Square.GiftCardActivityType;
 }
 
 /** Square's default history window; just under a year to stay inside it. */
@@ -64,6 +66,52 @@ export class GiftCardsService {
     return card?.gan ?? undefined;
   }
 
+  /**
+   * The Square customers linked to a card (#332). Square links a customer
+   * when a card is sold to one at the register or saved to their profile.
+   */
+  async getLinkedCustomerIds(id: string): Promise<string[]> {
+    const card = await this.retrieve(id);
+    return card?.customerIds ?? [];
+  }
+
+  /** Every card linked to one Square customer (#332), newest first. */
+  async listGiftCardsForCustomer(customerId: string): Promise<GiftCardSummary[]> {
+    const page = await this.client.giftCards.list({ customerId, limit: 200 });
+    const out: GiftCardSummary[] = [];
+    for await (const card of page) {
+      const summary = toGiftCardSummary(card);
+      if (summary) out.push(summary);
+    }
+    return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  /**
+   * Activities across every card in `[since, now]`, newest first, read in
+   * windows of just under a year (Square's longest range). Used to find which
+   * orders loaded which cards (#332).
+   */
+  async listActivitiesSince(
+    since: Date,
+    type: Square.GiftCardActivityType,
+    now: Date = new Date()
+  ): Promise<GiftCardActivityEntry[]> {
+    const out: GiftCardActivityEntry[] = [];
+    let end = now.getTime();
+    while (end > since.getTime()) {
+      const begin = Math.max(since.getTime(), end - HISTORY_WINDOW_MS);
+      out.push(
+        ...(await this.listActivities({
+          type,
+          beginTime: new Date(begin),
+          endTime: new Date(end),
+        }))
+      );
+      end = begin - 1;
+    }
+    return out;
+  }
+
   /** Activities, newest first. Follows every page. */
   async listActivities(
     input: ListGiftCardActivitiesInput = {}
@@ -72,6 +120,7 @@ export class GiftCardsService {
       giftCardId: input.giftCardId,
       beginTime: input.beginTime?.toISOString(),
       endTime: input.endTime?.toISOString(),
+      type: input.type,
       sortOrder: 'DESC',
       limit: 100,
     });
@@ -226,6 +275,61 @@ export class GiftCardsService {
   }
 
   /**
+   * Take money off a card without a sale (#332): Square's `ADJUST_DECREMENT`,
+   * with the reason `SUPPORT_ISSUE`. Used to empty a lost card before its
+   * balance goes on the card replacing it. Square refuses more than the
+   * balance, so a card spent in the meantime fails here rather than going
+   * negative.
+   */
+  async adjustDecrement(input: {
+    giftCardId: string;
+    locationId: string;
+    amountCents: number;
+    idempotencyKey: string;
+  }): Promise<{ balanceCents: number }> {
+    if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) {
+      throw new Error('Gift card amount must be a positive whole number of cents');
+    }
+    const response = await this.client.giftCards.activities.create({
+      idempotencyKey: input.idempotencyKey,
+      giftCardActivity: {
+        type: 'ADJUST_DECREMENT',
+        locationId: input.locationId,
+        giftCardId: input.giftCardId,
+        adjustDecrementActivityDetails: {
+          amountMoney: { amount: BigInt(input.amountCents), currency: 'USD' },
+          reason: 'SUPPORT_ISSUE',
+        },
+      },
+    });
+    throwIfGiftCardErrors(response.errors, 'take money off the gift card');
+    return {
+      balanceCents: cents(response.giftCardActivity?.giftCardBalanceMoney) ?? 0,
+    };
+  }
+
+  /**
+   * Turn a card off for good (#332): Square's `DEACTIVATE`. A turned-off card
+   * cannot be spent, loaded or turned back on.
+   */
+  async deactivate(input: {
+    giftCardId: string;
+    locationId: string;
+    idempotencyKey: string;
+  }): Promise<void> {
+    const response = await this.client.giftCards.activities.create({
+      idempotencyKey: input.idempotencyKey,
+      giftCardActivity: {
+        type: 'DEACTIVATE',
+        locationId: input.locationId,
+        giftCardId: input.giftCardId,
+        deactivateActivityDetails: { reason: 'UNKNOWN_REASON' },
+      },
+    });
+    throwIfGiftCardErrors(response.errors, 'turn the gift card off');
+  }
+
+  /**
    * The card behind a Web Payments SDK gift card token, to read its id and
    * balance before charging it. Undefined if the token matches no card.
    */
@@ -362,6 +466,8 @@ export function toGiftCardActivityEntry(
   if (amount !== null && direction !== 0) {
     amountCents = direction * Math.abs(amount);
   }
+  const orderId =
+    activity.activateActivityDetails?.orderId ?? activity.loadActivityDetails?.orderId;
   return {
     id: activity.id,
     giftCardId: activity.giftCardId ?? '',
@@ -369,5 +475,25 @@ export function toGiftCardActivityEntry(
     amountCents,
     balanceAfterCents: cents(activity.giftCardBalanceMoney),
     createdAt: activity.createdAt ?? '',
+    ...(orderId ? { orderId } : {}),
   };
+}
+
+/**
+ * Whether Square refused a card because its code is already in use (#332).
+ * Matches Square's error code or its wording, since the code a custom GAN
+ * clash comes back with is not documented.
+ */
+export function isGiftCardCodeTakenError(error: unknown): boolean {
+  const parts: string[] = [];
+  if (error instanceof Error) parts.push(error.message);
+  const errors = (error as { errors?: Array<{ code?: string; detail?: string }> } | null)
+    ?.errors;
+  if (Array.isArray(errors)) {
+    for (const e of errors) parts.push(e.code ?? '', e.detail ?? '');
+  }
+  const text = parts.join(' ');
+  return /ALREADY_EXISTS|CONFLICT|already (exists|in use|been used|taken)|duplicate|not unique/i.test(
+    text
+  );
 }

@@ -6,6 +6,8 @@ export {
   type GiftCardDetail,
 } from './GiftCardDetailDialog';
 export { GiftCardCodeReveal } from './GiftCardCodeReveal';
+export { GiftCardBuyerBox } from './GiftCardBuyerBox';
+export { ReplaceGiftCardDialog } from './ReplaceGiftCardDialog';
 export { IssueGiftCardDialog } from './IssueGiftCardDialog';
 export { MarkClassCertificateDialog } from './MarkClassCertificateDialog';
 export {

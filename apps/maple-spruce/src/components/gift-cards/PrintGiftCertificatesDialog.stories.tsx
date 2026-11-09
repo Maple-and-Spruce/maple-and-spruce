@@ -30,7 +30,7 @@ const printed = {
   valueCents: 2500,
   cards: Array.from({ length: 10 }, (_, i) => ({
     giftCardId: `gftc-stock-${i}`,
-    last4: String(5150 + i),
+    last4: String(9150 + i),
   })),
 };
 
@@ -51,14 +51,17 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof PrintGiftCertificatesDialog>;
 
-/** Ten $25 certificates: warns they are live, then hands the batch to print. */
+/** Ten $25 certificates: says they hold nothing until sold, then hands the batch to print. */
 export const PrintsAnAmount: Story = {
   play: async ({ args }) => {
     const canvas = await openDialog();
     await expect(
       canvas.getByText(
-        /These cards are loaded now and spendable as soon as they are printed\. Keep them somewhere safe\./
+        /These cards have no money on them until they are sold at the register\./
       )
+    ).toBeVisible();
+    await expect(
+      canvas.getByText(/Gift Cards, Check Balance, scan or type the code, load the amount, add the customer, charge\./)
     ).toBeVisible();
     await expect(canvas.getByRole('radio', { name: 'Stained glass leaves' })).toBeChecked();
 
@@ -133,7 +136,7 @@ export const Loading: Story = {
     await userEvent.type(canvas.getByRole('textbox', { name: 'How many' }), '3');
     await userEvent.click(canvas.getByRole('button', { name: 'Make 3 and print' }));
 
-    await expect(await canvas.findByRole('button', { name: 'Loading the cards…' })).toBeDisabled();
+    await expect(await canvas.findByRole('button', { name: 'Making the cards…' })).toBeDisabled();
     await expect(canvas.getByRole('textbox', { name: 'How many' })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: 'Cancel' })).toBeDisabled();
   },
@@ -143,7 +146,7 @@ export const Loading: Story = {
 export const Error: Story = {
   args: {
     onPrint: fn(async () => {
-      throw new globalThis.Error('Square could not make the certificates, so nothing was loaded. Try again.');
+      throw new globalThis.Error('Square could not make the certificates, so none were made. Try again.');
     }),
   },
   play: async ({ args }) => {
@@ -152,7 +155,7 @@ export const Error: Story = {
     await userEvent.type(canvas.getByRole('textbox', { name: 'How many' }), '3');
     await userEvent.click(canvas.getByRole('button', { name: 'Make 3 and print' }));
 
-    await expect(await canvas.findByText(/nothing was loaded/)).toBeVisible();
+    await expect(await canvas.findByText(/none were made/)).toBeVisible();
     await expect(args.onPrinted).not.toHaveBeenCalled();
     await expect(canvas.getByRole('textbox', { name: 'How many' })).toBeEnabled();
   },
@@ -168,7 +171,7 @@ export const PartialFailure: Story = {
       ...printed,
       cards: printed.cards.slice(0, 4),
       error:
-        'Square made 4 of 10. Those are loaded and ready to print. Try again to make the rest.',
+        'Square made 4 of 10. Those are ready to print. Try again to make the rest.',
     })),
   },
   play: async ({ args }) => {

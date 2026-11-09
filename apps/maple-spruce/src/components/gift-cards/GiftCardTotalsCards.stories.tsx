@@ -20,13 +20,26 @@ export const Loaded: Story = {
     await expect(canvas.getByText('$62.50')).toBeVisible();
     await expect(canvas.getByText('$125.00')).toBeVisible();
     await expect(canvas.getByText('$42.50')).toBeVisible();
-    await expect(canvas.getByText(/apart from printed certificates nobody has used/)).toBeVisible();
-    // Free cards and printed stock are their own tiles, not sales (#314).
+    await expect(canvas.getByText(/Printed certificates count once they are sold/)).toBeVisible();
     await expect(canvas.getByText('Given free this month')).toBeVisible();
     await expect(canvas.getByText('$25.00')).toBeVisible();
-    await expect(canvas.getByText('Printed certificates not yet used')).toBeVisible();
-    await expect(canvas.getByText('$250.00')).toBeVisible();
-    await expect(canvas.getByText(/10 certificates printed and loaded/)).toBeVisible();
+    // Unsold certificates hold no money, so they are a count, not dollars (#332).
+    await expect(canvas.getByText('Printed, not sold yet')).toBeVisible();
+    await expect(canvas.getByText('10 certificates')).toBeVisible();
+    await expect(canvas.getByText(/no money on them/)).toBeVisible();
+  },
+};
+
+export const OneCertificateNotSold: Story = {
+  args: {
+    totalsState: {
+      status: 'success',
+      data: { ...mockGiftCardTotals, printedNotSoldCount: 1 },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('1 certificate')).toBeVisible();
   },
 };
 

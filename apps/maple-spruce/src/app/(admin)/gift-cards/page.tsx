@@ -20,15 +20,18 @@ import {
   IssueGiftCardDialog,
   MarkClassCertificateDialog,
   PrintGiftCertificatesDialog,
+  ReplaceGiftCardDialog,
   type GiftCardDetail,
 } from '../../../components/gift-cards';
 import { useClassCategories, useGiftCards } from '../../../hooks';
 
 /**
  * Gift Cards (#297): balances, history and codes, read live from Square.
- * Selling and loading cards happen in Square. Three things happen here:
- * giving a free card and marking a register card as a class certificate
- * (#310), and printing a batch of pre-loaded certificates (#314).
+ * Selling and loading cards happen in Square. Here Katie can give a free card
+ * and mark a register card as a class certificate (#310), print a batch of
+ * certificates with no money on them, which the register loads when it sells
+ * one (#314, #332), see who bought a card at the register, find cards by the
+ * customer, and replace a lost card (#332).
  */
 export default function GiftCardsPage() {
   const {
@@ -39,6 +42,9 @@ export default function GiftCardsPage() {
     markClassCertificate,
     issueGiftCard,
     printGiftCertificates,
+    fetchGiftCardBuyer,
+    searchGiftCardsByCustomer,
+    replaceGiftCard,
   } = useGiftCards();
   const router = useRouter();
   const { categoriesState } = useClassCategories();
@@ -49,6 +55,7 @@ export default function GiftCardsPage() {
   const [issueOpen, setIssueOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [certificateCard, setCertificateCard] = useState<GiftCardSummary | null>(null);
+  const [replaceCard, setReplaceCard] = useState<GiftCardSummary | null>(null);
 
   const totalsState = useMemo<RequestState<GiftCardTotals>>(
     () =>
@@ -125,7 +132,11 @@ export default function GiftCardsPage() {
 
       <GiftCardsHowItWorks />
       <GiftCardTotalsCards totalsState={totalsState} />
-      <GiftCardsTable cardsState={cardsState} onSelect={openCard} />
+      <GiftCardsTable
+        cardsState={cardsState}
+        onSelect={openCard}
+        onSearchCustomers={searchGiftCardsByCustomer}
+      />
 
       <GiftCardDetailDialog
         card={selected}
@@ -136,6 +147,28 @@ export default function GiftCardsPage() {
         }}
         onRevealCode={revealGiftCardCode}
         onMakeClassCertificate={setCertificateCard}
+        onLoadBuyer={fetchGiftCardBuyer}
+        onReplace={setReplaceCard}
+      />
+
+      <ReplaceGiftCardDialog
+        card={replaceCard}
+        onClose={() => setReplaceCard(null)}
+        onReplace={replaceGiftCard}
+        onRevealCode={revealGiftCardCode}
+        onReplaced={(result) => {
+          setReplaceCard(null);
+          fetchGiftCards();
+          // Shown while the new card's history loads from Square.
+          openCard({
+            id: result.newGiftCardId,
+            last4: result.last4,
+            kind: 'egift',
+            state: 'active',
+            balanceCents: result.balanceCents,
+            createdAt: new Date().toISOString(),
+          });
+        }}
       />
 
       <MarkClassCertificateDialog

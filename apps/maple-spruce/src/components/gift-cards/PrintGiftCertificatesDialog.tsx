@@ -42,7 +42,7 @@ interface PrintGiftCertificatesDialogProps {
   open: boolean;
   categoriesState: RequestState<ClassCategory[]>;
   onClose: () => void;
-  /** Makes and loads the batch in Square. */
+  /** Makes the batch in Square, with no money on the cards. */
   onPrint: (request: PrintGiftCertificatesRequest) => Promise<PrintGiftCertificatesResponse>;
   /** Called with a batch ready to print, so the page can open the print view. */
   onPrinted: (response: PrintGiftCertificatesResponse) => void;
@@ -142,7 +142,7 @@ function CertificateClassTypeField({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       error={Boolean(error)}
-      helperText={error ?? 'Each certificate is loaded with the price set in Settings.'}
+      helperText={error ?? 'Each certificate says the price set in Settings.'}
       disabled={disabled}
       required
       fullWidth
@@ -157,9 +157,10 @@ function CertificateClassTypeField({
 }
 
 /**
- * Print a batch of gift certificates (#314). Each one is a real Square card,
- * made and loaded when Katie clicks Print, so it is spendable the moment it
- * is printed. Selling one is a register job: the "Gift certificate" item.
+ * Print a batch of gift certificates (#314, #332). Each one is a real Square
+ * card with a short MAPLE code, made with no money on it. The register loads
+ * it when it is sold: Gift Cards, Check Balance, scan or type the code, load
+ * the amount, add the customer, charge.
  */
 export function PrintGiftCertificatesDialog({
   open,
@@ -220,9 +221,10 @@ export function PrintGiftCertificatesDialog({
     <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
       <DialogTitle>Print gift certificates</DialogTitle>
       <DialogContent dividers>
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          These cards are loaded now and spendable as soon as they are printed.
-          Keep them somewhere safe.
+        <Alert severity="info" sx={{ mb: 2 }}>
+          These cards have no money on them until they are sold at the register.
+          To sell one: Gift Cards, Check Balance, scan or type the code, load the
+          amount, add the customer, charge.
         </Alert>
         <Stack spacing={2.5}>
           <FormControl disabled={locked}>
@@ -333,7 +335,7 @@ export function PrintGiftCertificatesDialog({
         )}
         <Button variant="contained" onClick={submit} disabled={busy}>
           {busy
-            ? 'Loading the cards…'
+            ? 'Making the cards…'
             : submitState.status === 'partial'
               ? 'Try again for the rest'
               : quantity > 0

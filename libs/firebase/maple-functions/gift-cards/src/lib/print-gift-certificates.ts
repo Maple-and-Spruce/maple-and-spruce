@@ -1,22 +1,24 @@
 /**
- * Printed gift certificates (#314).
+ * Printed gift certificates (#314, #332).
  *
  * - `printGiftCertificates`: Katie prints a batch. Each certificate is a real
- *   Square card, made and loaded now (the same two Square calls as a free card,
- *   `issueGiftCard`), so it is spendable as soon as it is printed. When one is
- *   sold she rings up the "Gift certificate" item at the register; nothing
- *   happens here.
+ *   Square card with a short code (`MAPLE` + year + 3 random digits), made
+ *   with **no money on it**: Square keeps it `PENDING`. It is sold at the
+ *   register, where the Square app loads it (Check Balance, scan or type the
+ *   code, load the amount, add the customer, charge), which Square books as a
+ *   gift card sale. Nothing happens here at the sale.
  * - `getCertificateBatch`: the print view reads every code in a batch. The
  *   codes are never stored and never logged; each read is logged with who
  *   asked.
  *
- * Retries are safe. The batch id and every Square key come from the dialog's
- * key and the certificate's place in the batch: Square's create returns the
- * same card for the same key, its activate returns the same activity for the
- * same key, and our record is written with `create`, which never overwrites.
- * So trying a half-finished batch again finishes it without a second card.
+ * Retries are safe. The batch id comes from the dialog's key, and our record
+ * of each certificate is written with `create`, which never overwrites, so a
+ * retry of a half-finished batch makes only the missing ones. A certificate
+ * whose card was made but whose record was not is made again on a retry with
+ * a new code; the first card holds no money and its code was never printed,
+ * so it is harmless.
  */
-import { createHash } from 'crypto';
+import { createHash, randomInt } from 'crypto';
 import {
   type FunctionContext,
   throwFailedPrecondition,
@@ -29,12 +31,17 @@ import {
   GiftCardPurchaseRepository,
 } from '@maple/firebase/database';
 import {
+  isGiftCardCodeTakenError,
   Square,
   type SquareSecrets,
   type SquareStrings,
 } from '@maple/firebase/square';
 import {
   formatGiftCardDollars,
+  GIFT_CERTIFICATE_CODE_ATTEMPTS,
+  makeGiftCertificateCode,
+  type RandomInt,
+  redactGiftCertificateCodes,
   type GiftCardPurchase,
   isGiftCertificateCategory,
   isGiftCertificateDesignId,
@@ -51,18 +58,45 @@ import { printGiftCertificatesValidation } from '@maple/ts/validation';
 /** How many certificates are made at once. Square allows far more; be gentle. */
 const CONCURRENCY = 5;
 
-/** The batch id and each certificate's Square keys, all from the dialog's key. */
+/**
+ * The batch id and each certificate's Square create key, all from the
+ * dialog's key. The key also names the code tried, so drawing a new code
+ * after a clash is a new request to Square, not a reused key.
+ */
 export function certificateBatchKeys(idempotencyKey: string) {
   const hash = createHash('sha256').update(idempotencyKey).digest('hex');
   return {
     batchId: `cert-${hash.slice(0, 16)}`,
-    card: (index: number) => ({
-      create: `gc-cert-create-${hash.slice(0, 40)}-${index}`,
-      activate: `gc-cert-activate-${hash.slice(0, 40)}-${index}`,
-      /** Shown on the card's Square activity: the batch and its place in it. */
-      referenceId: `cert-${hash.slice(0, 10)}-${index + 1}`,
-    }),
+    create: (index: number, code: string) =>
+      `gc-cert-create-${hash.slice(0, 40)}-${index}-${code}`,
   };
+}
+
+/** Production's random source: Node's cryptographic `randomInt`. */
+const cryptoRandomInt: RandomInt = (maxExclusive) => randomInt(maxExclusive);
+
+/**
+ * Make one certificate's card in Square with a fresh random code, drawing
+ * again when Square already has a card with that code. Gives up after
+ * `GIFT_CERTIFICATE_CODE_ATTEMPTS` clashes with a clear error.
+ */
+export async function createCertificateCard(input: {
+  create: (gan: string, idempotencyKey: string) => Promise<{ id: string; last4: string }>;
+  keyFor: (code: string) => string;
+  now: Date;
+  random: RandomInt;
+}): Promise<{ id: string; last4: string }> {
+  for (let attempt = 1; attempt <= GIFT_CERTIFICATE_CODE_ATTEMPTS; attempt++) {
+    const code = makeGiftCertificateCode(input.now, input.random);
+    try {
+      return await input.create(code, input.keyFor(code));
+    } catch (error) {
+      if (!isGiftCardCodeTakenError(error)) throw error;
+    }
+  }
+  throw new Error(
+    `Square already had a card with each of the ${GIFT_CERTIFICATE_CODE_ATTEMPTS} codes tried. This year's certificate codes may be nearly used up (there are 1,000 a year).`
+  );
 }
 
 /** Run `work` over `items`, a few at a time, stopping after the first failure. */
@@ -81,8 +115,9 @@ async function inGroups<T>(
   return undefined;
 }
 
+/** An error for the logs, with any certificate code hidden. */
 function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return redactGiftCertificateCodes(error instanceof Error ? error.message : String(error));
 }
 
 /** What the batch is worth, and for a class batch which type. */
@@ -107,15 +142,17 @@ async function resolveValue(data: PrintGiftCertificatesRequest): Promise<{
 }
 
 /**
- * Make and load a batch of printed certificates. Returns the ones that exist;
- * if some could not be made, says so, and trying again with the same dialog
- * makes the rest.
+ * Make a batch of printed certificates, with no money on them. Returns the
+ * ones that exist; if some could not be made, says so, and trying again with
+ * the same dialog makes the rest.
  */
 export async function printGiftCertificates(
   data: PrintGiftCertificatesRequest,
   context: FunctionContext,
   secrets: SquareSecrets,
-  strings: SquareStrings
+  strings: SquareStrings,
+  random: RandomInt = cryptoRandomInt,
+  now: Date = new Date()
 ): Promise<PrintGiftCertificatesResponse> {
   const result = printGiftCertificatesValidation(data ?? {});
   if (result.hasErrors()) throwValidationError(result.getErrors());
@@ -157,21 +194,20 @@ export async function printGiftCertificates(
   };
 
   const makeOne = async (index: number): Promise<void> => {
-    const cardKeys = keys.card(index);
     let step = 'create';
     try {
-      const created = await giftCards.createDigitalGiftCard({
-        locationId: square.locationId,
-        idempotencyKey: cardKeys.create,
-      });
-      step = 'activate';
-      await giftCards.activateGiftCardWithoutOrder({
-        giftCardId: created.id,
-        locationId: square.locationId,
-        amountCents: valueCents,
-        referenceId: cardKeys.referenceId,
-        buyerPaymentInstrumentIds: [cardKeys.referenceId],
-        idempotencyKey: cardKeys.activate,
+      // No activation: the card stays PENDING, holding nothing, until the
+      // register loads it at the sale (#332).
+      const created = await createCertificateCard({
+        create: (gan, idempotencyKey) =>
+          giftCards.createDigitalGiftCard({
+            locationId: square.locationId,
+            idempotencyKey,
+            gan,
+          }),
+        keyFor: (code) => keys.create(index, code),
+        now,
+        random,
       });
       step = 'record';
       const record: Omit<GiftCardPurchase, 'createdAt'> = {
@@ -231,7 +267,7 @@ export async function printGiftCertificates(
 
   if (failure && cards.length === 0) {
     throw new Error(
-      'Square could not make the certificates, so nothing was loaded. Try again.',
+      `Square could not make the certificates. Try again. (${errorText(failure)})`,
       { cause: failure }
     );
   }
@@ -243,7 +279,7 @@ export async function printGiftCertificates(
     valueCents,
   };
   if (failure) {
-    response.error = `Square made ${cards.length} of ${data.quantity}. Those are loaded and ready to print. Try again to make the rest.`;
+    response.error = `Square made ${cards.length} of ${data.quantity}. Those are ready to print. Try again to make the rest.`;
   }
   return response;
 }

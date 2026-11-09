@@ -5,6 +5,7 @@
  * the emails, so the limits and the wording of "what this card is for" are
  * the same everywhere.
  */
+import { formatGiftCertificateCode } from './gift-certificate-code';
 import type { GiftCardPurchase } from './gift-card';
 
 /**
@@ -115,9 +116,12 @@ export function isAllowedGiftCardAmount(
 
 /**
  * A card code in groups of four, the way it is easiest to read aloud or copy
- * onto a card: `7783 3200 0000 1111`.
+ * onto a card: `7783 3200 0000 1111`. A printed certificate's code reads as
+ * `MAPLE 2026 482` instead (#332).
  */
 export function formatGiftCardCode(code: string): string {
+  const certificate = formatGiftCertificateCode(code);
+  if (certificate) return certificate;
   return code
     .replace(/\s+/g, '')
     .replace(/(.{4})/g, '$1 ')

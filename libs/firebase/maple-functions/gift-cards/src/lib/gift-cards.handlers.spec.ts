@@ -77,18 +77,17 @@ describe('getGiftCards', () => {
         loadedThisMonthCents: 5000,
         spentThisMonthCents: 0,
         givenFreeThisMonthCents: 0,
-        printedUnusedCents: 0,
-        printedUnusedCount: 0,
+        printedNotSoldCount: 0,
       },
     });
   });
 
-  it('labels free and printed cards and splits the totals with one record query (#314)', async () => {
-    const stock = { ...card, id: 'gc-stock', balanceCents: 2500 };
+  it('labels free and printed cards and splits the totals with one record query (#314, #332)', async () => {
+    // Printed with no money on it, waiting to be sold at the register.
+    const stock = { ...card, id: 'gc-stock', state: 'pending' as const, balanceCents: 0 };
     const free = { ...card, id: 'gc-free', balanceCents: 2500 };
     giftCardsService.listGiftCards.mockResolvedValue([card, stock, free]);
     giftCardsService.listActivities.mockResolvedValue([
-      { id: 'a1', giftCardId: 'gc-stock', type: 'activate', amountCents: 2500, balanceAfterCents: 2500, createdAt: '2026-11-03T15:00:00Z' },
       { id: 'a2', giftCardId: 'gc-free', type: 'activate', amountCents: 2500, balanceAfterCents: 2500, createdAt: '2026-11-03T15:00:00Z' },
     ]);
     repos.GiftCardPurchaseRepository.findBySources.mockResolvedValue([
@@ -99,7 +98,7 @@ describe('getGiftCards', () => {
     const result = await getGiftCards({}, {}, secrets, strings, new Date('2026-11-20T12:00:00Z'));
 
     expect(repos.GiftCardPurchaseRepository.findBySources).toHaveBeenCalledTimes(1);
-    expect(repos.GiftCardPurchaseRepository.findBySources).toHaveBeenCalledWith(['issued', 'stock']);
+    expect(repos.GiftCardPurchaseRepository.findBySources).toHaveBeenCalledWith(['issued', 'stock', 'replacement']);
     expect(repos.GiftCardPurchaseRepository.findByGiftCardId).not.toHaveBeenCalled();
     expect(result.cards).toEqual([
       card,
@@ -108,8 +107,7 @@ describe('getGiftCards', () => {
     ]);
     expect(result.totals).toMatchObject({
       outstandingCents: 5000 + 2500,
-      printedUnusedCents: 2500,
-      printedUnusedCount: 1,
+      printedNotSoldCount: 1,
       givenFreeThisMonthCents: 2500,
       loadedThisMonthCents: 0,
     });

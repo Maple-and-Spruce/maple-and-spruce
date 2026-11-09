@@ -19,6 +19,8 @@ export default defineConfig({
   optimizeDeps: {
     include: [
       '@mui/icons-material/Download',
+      // Replace lost card on the gift card dialog (#332).
+      '@mui/icons-material/SwapHoriz',
       '@mui/icons-material/ContentCopy',
       '@mui/icons-material/EventAvailable',
       '@mui/icons-material/OpenInNew',
