@@ -56,14 +56,18 @@ const meta: Meta<typeof LessonActivity> = {
     instructors,
     busy: false,
     now: NOW,
-    onCharge: fn(),
-    onInvoice: fn(),
-    onCancel: fn(),
-    onRestore: fn(),
-    onReschedule: fn(),
-    onWeather: fn(),
-    onInPerson: fn(),
-    onDelete: fn(),
+    actions: {
+      onMove: fn(),
+      onPushBack: fn(),
+      onCharge: fn(),
+      onInvoice: fn(),
+      onCancel: fn(),
+      onRestore: fn(),
+      onReschedule: fn(),
+      onWeather: fn(),
+      onInPerson: fn(),
+      onDelete: fn(),
+    },
     onAdd: fn(),
   },
 };
@@ -111,12 +115,12 @@ export const EveryRowCanBeCancelledOrDeleted: Story = {
     await expect(screen.queryByRole('menuitem', { name: 'Charge the card' })).not.toBeInTheDocument();
     await expect(screen.queryByRole('menuitem', { name: 'Send an invoice' })).not.toBeInTheDocument();
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Cancel…' }));
-    await expect(args.onCancel).toHaveBeenCalledWith(lessons[4]);
+    await expect(args.actions.onCancel).toHaveBeenCalledWith(lessons[4]);
 
     // A paid past lesson can still be deleted.
     await userEvent.click(menus[3]);
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
-    await expect(args.onDelete).toHaveBeenCalledWith(lessons[1]);
+    await expect(args.actions.onDelete).toHaveBeenCalledWith(lessons[1]);
   },
 };
 
@@ -130,7 +134,7 @@ export const UndoACancel: Story = {
       await screen.findByRole('menuitem', { name: 'Reschedule with a credit…' })
     ).toBeInTheDocument();
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Undo cancel' }));
-    await expect(args.onRestore).toHaveBeenCalledWith(lessons[3]);
+    await expect(args.actions.onRestore).toHaveBeenCalledWith(lessons[3]);
   },
 };
 
@@ -173,7 +177,7 @@ export const RescheduleACancelledLesson: Story = {
     await userEvent.click(
       await screen.findByRole('menuitem', { name: 'Reschedule with a credit…' })
     );
-    await expect(args.onReschedule).toHaveBeenCalledWith(lessons[3]);
+    await expect(args.actions.onReschedule).toHaveBeenCalledWith(lessons[3]);
   },
 };
 
@@ -184,7 +188,7 @@ export const ChargeAPastLesson: Story = {
     const menus = canvas.getAllByRole('button', { name: /^More for/ });
     await userEvent.click(menus[4]);
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Charge the card' }));
-    await expect(args.onCharge).toHaveBeenCalledWith(lessons[0]);
+    await expect(args.actions.onCharge).toHaveBeenCalledWith(lessons[0]);
   },
 };
 
@@ -198,7 +202,7 @@ export const InvoiceWithoutACard: Story = {
       screen.queryByRole('menuitem', { name: 'Charge the card' })
     ).not.toBeInTheDocument();
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Send an invoice' }));
-    await expect(args.onInvoice).toHaveBeenCalledWith(lessons[0]);
+    await expect(args.actions.onInvoice).toHaveBeenCalledWith(lessons[0]);
   },
 };
 
@@ -276,7 +280,7 @@ export const WeatherAndOnline: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /^More for Tue, Oct 13/ }));
     await expect(screen.queryByRole('menuitem', { name: 'Weather…' })).not.toBeInTheDocument();
     await userEvent.click(await screen.findByRole('menuitem', { name: 'In person' }));
-    await expect(args.onInPerson).toHaveBeenCalledWith(online);
+    await expect(args.actions.onInPerson).toHaveBeenCalledWith(online);
   },
 };
 
@@ -287,6 +291,37 @@ export const Weather: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /^More for Tue, Oct 13/ }));
     await expect(screen.queryByRole('menuitem', { name: 'In person' })).not.toBeInTheDocument();
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Weather…' }));
-    await expect(args.onWeather).toHaveBeenCalledWith(lessons[4]);
+    await expect(args.actions.onWeather).toHaveBeenCalledWith(lessons[4]);
+  },
+};
+
+/**
+ * The same menu as Settings and Next lessons: any lesson can be moved, and an
+ * upcoming one pushed back a week. A past lesson is not pushed back, since
+ * that would slide every later one too.
+ */
+export const MoveAndPushBackFromTheRecord: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const menus = canvas.getAllByRole('button', { name: /^More for/ });
+
+    await userEvent.click(menus[0]);
+    await expect(
+      (await screen.findAllByRole('menuitem')).map((i) => i.textContent),
+    ).toEqual(['Move…', 'Push back a week…', 'Cancel…', 'Weather…', 'Delete']);
+    await userEvent.click(
+      screen.getByRole('menuitem', { name: 'Push back a week…' }),
+    );
+    await expect(args.actions.onPushBack).toHaveBeenCalledWith(lessons[4]);
+
+    // A paid past lesson: movable, but not pushed back.
+    await userEvent.click(menus[3]);
+    await expect(
+      screen.queryByRole('menuitem', { name: 'Push back a week…' }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Move…' }),
+    );
+    await expect(args.actions.onMove).toHaveBeenCalledWith(lessons[1]);
   },
 };

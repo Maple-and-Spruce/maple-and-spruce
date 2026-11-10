@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn, expect, userEvent, within } from 'storybook/test';
+import { fn, expect, screen, userEvent, within } from 'storybook/test';
 import type { Lesson } from '@maple/ts/domain';
 import { UpcomingLessonsCard } from './UpcomingLessonsCard';
 
@@ -16,6 +16,24 @@ const lesson = (n: number): Lesson => ({
 
 const eight = Array.from({ length: 8 }, (_, n) => lesson(n));
 
+const actions = {
+  onMove: fn(),
+  onPushBack: fn(),
+  onCancel: fn(),
+  onWeather: fn(),
+  onInPerson: fn(),
+  onDelete: fn(),
+};
+
+/** Opens a row's ⋮ menu and returns the menu's item names. */
+async function openMenu(row: HTMLElement): Promise<string[]> {
+  await userEvent.click(within(row).getByRole('button', { name: /^More for/ }));
+  const menu = await screen.findByRole('menu');
+  return within(menu)
+    .getAllByRole('menuitem')
+    .map((item) => item.textContent ?? '');
+}
+
 const meta: Meta<typeof UpcomingLessonsCard> = {
   title: 'Lessons/UpcomingLessonsCard',
   parameters: { layout: 'padded' },
@@ -30,11 +48,9 @@ const meta: Meta<typeof UpcomingLessonsCard> = {
   args: {
     lessonsState: { status: 'success', data: eight.slice(0, 3) },
     paidLessonIds: new Set(['lesson-0', 'lesson-1']),
-    onMove: fn(),
-    onCancel: fn(),
-    onWeather: fn(),
-    onInPerson: fn(),
-    onDelete: fn(),
+    actions,
+    // Before the first lesson, so every one is upcoming.
+    now: new Date('2026-10-01T12:00:00Z'),
   },
 };
 export default meta;
@@ -47,7 +63,7 @@ export const PaidAndUnpaid: Story = {
     await expect(canvas.getAllByText('Paid')).toHaveLength(2);
     // Nothing to mark: no taught or no-show buttons.
     await expect(
-      canvas.queryByRole('button', { name: /taught|no-show/i })
+      canvas.queryByRole('button', { name: /taught|no-show/i }),
     ).not.toBeInTheDocument();
   },
 };
@@ -61,41 +77,37 @@ export const AtMostFive: Story = {
   },
 };
 
-export const MoveAndDelete: Story = {
-  play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getAllByRole('button', { name: /^Move/ })[0]);
-    await expect(args.onMove).toHaveBeenCalledWith(eight[0]);
-    await userEvent.click(canvas.getAllByRole('button', { name: /^Delete/ })[2]);
-    await expect(args.onDelete).toHaveBeenCalledWith(eight[2]);
-  },
-};
-
-/** Push back is offered only where the page handles it. */
-export const PushBack: Story = {
-  args: { onPushBack: fn() },
-  play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(
-      canvas.getAllByRole('button', { name: /^Push back a week from/ })[1]
-    );
-    await expect(args.onPushBack).toHaveBeenCalledWith(eight[1]);
-  },
-};
-
-export const NoPushBackWithoutHandler: Story = {
+/** The same menu as every other tab, a paid lesson included. */
+export const Menu: Story = {
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.queryByRole('button', { name: /^Push back/ })).toBeNull();
+    const items = within(canvasElement).getAllByRole('listitem');
+    await expect(await openMenu(items[0])).toEqual([
+      'Move…',
+      'Push back a week…',
+      'Cancel…',
+      'Weather…',
+      'Delete',
+    ]);
   },
 };
 
-/** Cancel opens the cancel dialog, where Katie can also reschedule with a credit. */
-export const Cancel: Story = {
-  play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getAllByRole('button', { name: /^Cancel/ })[1]);
-    await expect(args.onCancel).toHaveBeenCalledWith(eight[1]);
+export const MoveAPaidLesson: Story = {
+  play: async ({ canvasElement }) => {
+    const items = within(canvasElement).getAllByRole('listitem');
+    await openMenu(items[0]);
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Move…' }));
+    await expect(actions.onMove).toHaveBeenCalledWith(eight[0]);
+  },
+};
+
+export const PushBack: Story = {
+  play: async ({ canvasElement }) => {
+    const items = within(canvasElement).getAllByRole('listitem');
+    await openMenu(items[1]);
+    await userEvent.click(
+      screen.getByRole('menuitem', { name: 'Push back a week…' }),
+    );
+    await expect(actions.onPushBack).toHaveBeenCalledWith(eight[1]);
   },
 };
 
@@ -125,19 +137,20 @@ export const WeatherAndOnline: Story = {
       data: [eight[0], { ...eight[1], virtual: true }],
     },
   },
-  play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement);
-    const items = canvas.getAllByRole('listitem');
+  play: async ({ canvasElement }) => {
+    const items = within(canvasElement).getAllByRole('listitem');
     await expect(within(items[1]).getByText('Online')).toBeInTheDocument();
-    await expect(within(items[0]).queryByText('Online')).not.toBeInTheDocument();
     await expect(
-      within(items[1]).queryByRole('button', { name: /^Weather/ })
+      within(items[0]).queryByText('Online'),
     ).not.toBeInTheDocument();
-
-    await userEvent.click(within(items[0]).getByRole('button', { name: /^Weather/ }));
-    await expect(args.onWeather).toHaveBeenCalledWith(eight[0]);
-    await userEvent.click(within(items[1]).getByRole('button', { name: /^In person/ }));
-    await expect(args.onInPerson).toHaveBeenCalledWith({ ...eight[1], virtual: true });
+    const online = await openMenu(items[1]);
+    await expect(online).toContain('In person');
+    await expect(online).not.toContain('Weather…');
+    await userEvent.click(screen.getByRole('menuitem', { name: 'In person' }));
+    await expect(actions.onInPerson).toHaveBeenCalledWith({
+      ...eight[1],
+      virtual: true,
+    });
   },
 };
 
@@ -145,9 +158,9 @@ export const Saving: Story = {
   args: { pendingLessonId: 'lesson-1' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const deletes = canvas.getAllByRole('button', { name: /^Delete/ });
-    await expect(deletes[1]).toBeDisabled();
-    await expect(deletes[0]).toBeEnabled();
+    const menus = canvas.getAllByRole('button', { name: /^More for/ });
+    await expect(menus[1]).toBeDisabled();
+    await expect(menus[0]).toBeEnabled();
   },
 };
 

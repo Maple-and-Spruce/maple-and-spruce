@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, expect, userEvent, within, screen } from 'storybook/test';
 import { NextLessonsPanel } from './NextLessonsPanel';
-import type { NextLessonItem } from '@maple/ts/domain';
+import type { Lesson, NextLessonItem } from '@maple/ts/domain';
 
 const at = (iso: string) => new Date(iso);
 
@@ -318,5 +318,64 @@ export const LoadFailed: Story = {
       canvas.getByText('Could not load the next lessons: network down')
     ).toBeInTheDocument();
     await expect(canvas.queryByText(/No weekly time/)).not.toBeInTheDocument();
+  },
+};
+
+const bookedLesson: Lesson = {
+  id: 'lesson-booked',
+  studentId: 'stu-1',
+  teacherId: 'teacher-1',
+  scheduledAt: oneBookedThreeNew[0].scheduledAt,
+  durationMinutes: 45,
+  status: 'scheduled',
+  createdAt: at('2026-09-01T00:00:00Z'),
+  updatedAt: at('2026-09-01T00:00:00Z'),
+};
+
+const lessonActions = {
+  onMove: fn(),
+  onPushBack: fn(),
+  onCancel: fn(),
+  onWeather: fn(),
+  onDelete: fn(),
+};
+
+/**
+ * A lesson already on the calendar has the same ⋮ menu as every other tab.
+ * A date only proposed is not a lesson yet, so it keeps Change.
+ */
+export const BookedLessonHasTheSharedMenu: Story = {
+  args: {
+    viewState: {
+      status: 'success',
+      data: { items: oneBookedThreeNew, noSlot: false },
+    },
+    lessonOf: (id: string) =>
+      id === bookedLesson.id ? bookedLesson : undefined,
+    lessonActions,
+    // Before the first date, so the booked lesson is upcoming.
+    now: at('2026-10-01T12:00:00Z'),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const items = canvas.getAllByRole('listitem');
+    await expect(
+      within(items[0]).queryByRole('button', { name: /^Change/ }),
+    ).not.toBeInTheDocument();
+    await expect(
+      within(items[1]).getByRole('button', { name: /^Change/ }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(items[0]).getByRole('button', { name: /^More for/ }),
+    );
+    const menu = within(await screen.findByRole('menu'));
+    await expect(
+      menu.getAllByRole('menuitem').map((i) => i.textContent),
+    ).toEqual(['Move…', 'Push back a week…', 'Cancel…', 'Weather…', 'Delete']);
+    await userEvent.click(
+      menu.getByRole('menuitem', { name: 'Push back a week…' }),
+    );
+    await expect(lessonActions.onPushBack).toHaveBeenCalledWith(bookedLesson);
   },
 };

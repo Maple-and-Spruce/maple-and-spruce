@@ -11,7 +11,8 @@
  * menu can charge the card or send an invoice — the only place a past lesson
  * can be charged for, and a quiet one.
  *
- * Every row's menu can also, at any time:
+ * Every row's menu is the one every tab shows (`lessonActions`): move it,
+ * push it back a week with every later one, and:
  *  - **Cancel…**: the cancel dialog, which can also reschedule the lesson with
  *    a credit (#209). A cancelled lesson can be undone, or rescheduled with a
  *    credit later; once it has been, its row says where to, and the new
@@ -23,20 +24,9 @@
  * "Add a lesson" sits on the table too, so a lesson that happened but never
  * made it onto the calendar can be recorded where the record is read.
  */
-import { useMemo, useState } from 'react';
-import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  IconButton,
-  Menu,
-  MenuItem,
-  Skeleton,
-  Typography,
-} from '@mui/material';
+import { useMemo } from 'react';
+import { Alert, Box, Button, Chip, Skeleton, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
 import {
   MaterialReactTable,
   useMaterialReactTable,
@@ -45,6 +35,8 @@ import {
 import { SCHEDULE_TIME_ZONE } from '@maple/ts/domain';
 import type { Instructor, Lesson, RequestState } from '@maple/ts/domain';
 import { brandTableOptions, BRAND_TABLE_PAGE_SIZE } from '@maple/react/ui';
+import type { LessonActionHandlers } from './lesson-actions';
+import { LessonActionsMenu } from './LessonActionsMenu';
 
 export type LessonActivityLabel = 'paid' | 'invoiced' | 'cancelled' | 'none';
 
@@ -63,24 +55,13 @@ export interface LessonActivityProps {
   busy: boolean;
   error?: string | null;
   now?: Date;
-  onCharge: (lesson: Lesson) => void;
-  onInvoice: (lesson: Lesson) => void;
-  /** Opens the cancel dialog for a lesson that is not cancelled. */
-  onCancel: (lesson: Lesson) => void;
-  /** Takes a cancelled lesson back to scheduled. */
-  onRestore: (lesson: Lesson) => void;
-  /** Reschedules an already-cancelled lesson with a credit. */
-  onReschedule?: (lesson: Lesson) => void;
-  /** Opens the weather dialog for a lesson not yet cancelled (#210). */
-  onWeather?: (lesson: Lesson) => void;
-  /** Brings a lesson held online back into the room (#210). */
-  onInPerson?: (lesson: Lesson) => void;
+  /** The row menu, the same one every tab shows. */
+  actions: LessonActionHandlers;
   /**
    * The lesson that replaced a cancelled one, if any (#209). A replaced lesson
    * cannot be restored or credited again, and its row says where it went.
    */
   replacementOf?: (lesson: Lesson) => Lesson | undefined;
-  onDelete: (lesson: Lesson) => void;
   /** Offers "Add a lesson" on the table. */
   onAdd?: () => void;
 }
@@ -129,7 +110,6 @@ interface ActivityRow {
   atMs: number;
   label: LessonActivityLabel;
   teacher: string;
-  canSettle: boolean;
   /** "Rescheduled to …" or "Credit for …", for lessons a credit links. */
   note?: string;
   replaced: boolean;
@@ -175,20 +155,10 @@ function ActivityTable({
   busy,
   error,
   now = new Date(),
-  onCharge,
-  onInvoice,
-  onCancel,
-  onRestore,
-  onReschedule,
-  onWeather,
-  onInPerson,
+  actions,
   replacementOf,
-  onDelete,
   onAdd,
 }: LessonActivityProps & { lessons: Lesson[] }) {
-  const [menu, setMenu] = useState<{ anchor: HTMLElement; row: ActivityRow } | null>(
-    null
-  );
   const nowMs = now.getTime();
 
   const rows = useMemo<ActivityRow[]>(() => {
@@ -218,13 +188,11 @@ function ActivityTable({
           atMs: lesson.scheduledAt.getTime(),
           label,
           teacher: names.get(lesson.teacherId) ?? '',
-          canSettle:
-            !isHope && label === 'none' && lesson.scheduledAt.getTime() <= nowMs,
           note,
           replaced: Boolean(replacement),
         };
       });
-  }, [lessons, labelOf, replacementOf, instructors, isHope, nowMs]);
+  }, [lessons, labelOf, replacementOf, instructors]);
 
   const columns = useMemo<MRT_ColumnDef<ActivityRow>[]>(
     () => [
@@ -284,18 +252,24 @@ function ActivityTable({
         enableColumnActions: false,
         muiTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => (
-          <IconButton
-            size="small"
+          <LessonActionsMenu
+            lesson={row.original.lesson}
+            context={{
+              billed:
+                row.original.label === 'paid' || row.original.label === 'invoiced',
+              isHope,
+              hasCard,
+              replaced: row.original.replaced,
+              now: new Date(nowMs),
+            }}
+            handlers={actions}
+            when={formatWhen(row.original.lesson.scheduledAt)}
             disabled={busy}
-            aria-label={`More for ${formatWhen(row.original.lesson.scheduledAt)}`}
-            onClick={(e) => setMenu({ anchor: e.currentTarget, row: row.original })}
-          >
-            <MoreVertIcon fontSize="small" />
-          </IconButton>
+          />
         ),
       },
     ],
-    [instructors, busy]
+    [instructors, busy, isHope, hasCard, actions, nowMs]
   );
 
   const highlightIndex = highlightLessonId
@@ -357,89 +331,6 @@ function ActivityTable({
       <Box aria-label="Lesson activity" role="region">
         <MaterialReactTable table={table} />
       </Box>
-      <Menu
-        anchorEl={menu?.anchor}
-        open={menu !== null}
-        onClose={() => setMenu(null)}
-      >
-        {menu && rowMenuItems(menu.row, hasCard, {
-          onCharge,
-          onInvoice,
-          onCancel,
-          onRestore,
-          onReschedule,
-          onWeather,
-          onInPerson,
-          onDelete,
-        }).map((item) => (
-          <MenuItem
-            key={item.text}
-            onClick={() => {
-              item.run();
-              setMenu(null);
-            }}
-            sx={item.danger ? { color: 'error.main' } : undefined}
-          >
-            {item.text}
-          </MenuItem>
-        ))}
-      </Menu>
     </>
   );
-}
-
-interface RowMenuItem {
-  text: string;
-  run: () => void;
-  danger?: boolean;
-}
-
-/**
- * What a row's menu offers. Delete is always there; a lesson is cancelled, or
- * a cancelled one restored or credited, unless a credit has already replaced
- * it — undoing that would leave the payment on the replacement.
- */
-function rowMenuItems(
-  row: ActivityRow,
-  hasCard: boolean,
-  handlers: Pick<
-    LessonActivityProps,
-    | 'onCharge'
-    | 'onInvoice'
-    | 'onCancel'
-    | 'onRestore'
-    | 'onReschedule'
-    | 'onWeather'
-    | 'onInPerson'
-    | 'onDelete'
-  >
-): RowMenuItem[] {
-  const { lesson } = row;
-  const items: RowMenuItem[] = [];
-  if (row.canSettle && hasCard) {
-    items.push({ text: 'Charge the card', run: () => handlers.onCharge(lesson) });
-  }
-  if (row.canSettle) {
-    items.push({ text: 'Send an invoice', run: () => handlers.onInvoice(lesson) });
-  }
-  if (lesson.status !== 'cancelled') {
-    items.push({ text: 'Cancel…', run: () => handlers.onCancel(lesson) });
-    const { onWeather, onInPerson } = handlers;
-    if (lesson.virtual && onInPerson) {
-      items.push({ text: 'In person', run: () => onInPerson(lesson) });
-    } else if (!lesson.virtual && onWeather) {
-      items.push({ text: 'Weather…', run: () => onWeather(lesson) });
-    }
-  } else if (!row.replaced) {
-    const { onReschedule } = handlers;
-    if (onReschedule) {
-      items.push({
-        text: 'Reschedule with a credit…',
-        run: () => onReschedule(lesson),
-      });
-    }
-    items.push({ text: 'Undo cancel', run: () => handlers.onRestore(lesson) });
-  }
-  items.push({ text: 'Delete', run: () => handlers.onDelete(lesson), danger: true });
-  return items;
 }
