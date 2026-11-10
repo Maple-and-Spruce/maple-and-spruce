@@ -8,6 +8,10 @@
  * to confirm — the four dates and what they cost — and one button. Everything
  * else about the student lives on the other tabs.
  *
+ * A lesson already on the calendar has the same ⋮ menu as every other tab
+ * (`lessonActions`). A date that is only proposed is not a lesson yet, so it
+ * can only be changed or skipped before booking.
+ *
  * Presentational: the page owns booking and payment, and passes the result of
  * `buildNextLessons` in.
  */
@@ -34,7 +38,9 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { SCHEDULE_TIME_ZONE } from '@maple/ts/domain';
 import type { RequestState } from '@maple/ts/domain';
-import type { NextLessonItem, NextLessonsView } from '@maple/ts/domain';
+import type { Lesson, NextLessonItem, NextLessonsView } from '@maple/ts/domain';
+import type { LessonActionHandlers } from './lesson-actions';
+import { LessonActionsMenu } from './LessonActionsMenu';
 
 export interface NextLessonsPanelProps {
   viewState: RequestState<NextLessonsView>;
@@ -60,6 +66,11 @@ export interface NextLessonsPanelProps {
    * is away). Omit to leave the Change dialog as a plain move.
    */
   onPushBack?: (item: NextLessonItem) => void;
+  /** The booked lesson behind an item, so it gets the shared ⋮ menu. */
+  lessonOf?: (lessonId: string) => Lesson | undefined;
+  /** The ⋮ menu for booked lessons, the same one every tab shows. */
+  lessonActions?: LessonActionHandlers;
+  now?: Date;
   onCharge: () => void;
   onInvoice: () => void;
   onBook: () => void;
@@ -104,6 +115,9 @@ export function NextLessonsPanel({
   notice,
   onMove,
   onPushBack,
+  lessonOf,
+  lessonActions,
+  now = new Date(),
   onCharge,
   onInvoice,
   onBook,
@@ -229,32 +243,52 @@ export function NextLessonsPanel({
         {`Next ${count} ${lessonWord}`}
       </Typography>
       <List dense aria-label="Next lessons">
-        {items.map((item) => (
-          <ListItem
-            key={item.key}
-            disableGutters
-            sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}
-          >
-            <ListItemText
-              sx={{ flex: '1 1 12rem', minWidth: 0 }}
-              primary={formatWhen(item.scheduledAt)}
-              secondary={item.lessonId ? 'Already on the calendar' : undefined}
-            />
-            <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-              <Button
-                size="small"
-                disabled={busy}
-                aria-label={`Change ${formatWhen(item.scheduledAt)}`}
-                onClick={() => {
-                  setMoving(item);
-                  setMoveTo(item.scheduledAt);
-                }}
-              >
-                Change
-              </Button>
-            </Box>
-          </ListItem>
-        ))}
+        {items.map((item) => {
+          const booked =
+            item.lessonId && lessonActions ? lessonOf?.(item.lessonId) : undefined;
+          return (
+            <ListItem
+              key={item.key}
+              disableGutters
+              sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}
+            >
+              <ListItemText
+                sx={{ flex: '1 1 12rem', minWidth: 0 }}
+                primary={formatWhen(item.scheduledAt)}
+                secondary={item.lessonId ? 'Already on the calendar' : undefined}
+              />
+              <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                {booked && lessonActions ? (
+                  <LessonActionsMenu
+                    lesson={booked}
+                    context={{
+                      // On this list only because it is not paid yet.
+                      billed: false,
+                      isHope,
+                      hasCard: Boolean(cardLabel),
+                      now,
+                    }}
+                    handlers={lessonActions}
+                    when={formatWhen(item.scheduledAt)}
+                    disabled={busy}
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    disabled={busy}
+                    aria-label={`Change ${formatWhen(item.scheduledAt)}`}
+                    onClick={() => {
+                      setMoving(item);
+                      setMoveTo(item.scheduledAt);
+                    }}
+                  >
+                    Change
+                  </Button>
+                )}
+              </Box>
+            </ListItem>
+          );
+        })}
       </List>
       {!isHope && hasRate && (
         <Typography sx={{ mb: 2 }}>{`Total ${money(totalCents)}`}</Typography>

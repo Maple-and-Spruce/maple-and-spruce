@@ -69,6 +69,7 @@ import {
   NextLessonsPanel,
   PaymentMethodCard,
   PushLessonsBackDialog,
+  type LessonActionHandlers,
   ScheduleLessonDialog,
   StandingScheduleCard,
   StandingScheduleDialog,
@@ -656,6 +657,26 @@ export default function StudentDetailPage() {
 
   // ---- Render -------------------------------------------------------------
 
+  /** One menu for a lesson, whichever tab shows it. */
+  const lessonActionHandlers: LessonActionHandlers = {
+    onMove: (lesson) => setEditLesson(lesson),
+    onPushBack: openPushBack,
+    onCharge: (lesson) => {
+      setSettleError(null);
+      setSettling({ lesson, method: 'card' });
+    },
+    onInvoice: (lesson) => {
+      setSettleError(null);
+      setSettling({ lesson, method: 'invoice' });
+    },
+    onCancel: openCancel,
+    onRestore: (lesson) => setLessonStatus(lesson, 'scheduled'),
+    onReschedule: openCancel,
+    onWeather: openWeather,
+    onInPerson: (lesson) => setVirtual(lesson, false),
+    onDelete: (lesson) => setDeletingLesson(lesson),
+  };
+
   if (studentsState.status === 'idle' || studentsState.status === 'loading') {
     return (
       <Box aria-busy="true">
@@ -741,6 +762,8 @@ export default function StudentDetailPage() {
           notice={payNotice}
           onMove={handleMoveNext}
           onPushBack={handlePushBackNext}
+          lessonOf={(id) => lessons.find((l) => l.id === id)}
+          lessonActions={lessonActionHandlers}
           onCharge={() => handlePay('card')}
           onInvoice={() => handlePay('invoice')}
           onBook={() => handlePay('none')}
@@ -782,12 +805,7 @@ export default function StudentDetailPage() {
             lessonsState={upcomingState}
             paidLessonIds={paidLessonIds}
             pendingLessonId={pendingLessonId}
-            onMove={(lesson) => setEditLesson(lesson)}
-            onPushBack={openPushBack}
-            onCancel={openCancel}
-            onWeather={openWeather}
-            onInPerson={(lesson) => setVirtual(lesson, false)}
-            onDelete={(lesson) => setDeletingLesson(lesson)}
+            actions={lessonActionHandlers}
           />
           <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
             <Button
@@ -887,21 +905,8 @@ export default function StudentDetailPage() {
               isSubmitting || chargePendingId !== null || pendingLessonId !== null
             }
             error={activityError}
-            onCharge={(lesson) => {
-              setSettleError(null);
-              setSettling({ lesson, method: 'card' });
-            }}
-            onInvoice={(lesson) => {
-              setSettleError(null);
-              setSettling({ lesson, method: 'invoice' });
-            }}
-            onCancel={openCancel}
-            onRestore={(lesson) => setLessonStatus(lesson, 'scheduled')}
-            onReschedule={openCancel}
-            onWeather={openWeather}
-            onInPerson={(lesson) => setVirtual(lesson, false)}
+            actions={lessonActionHandlers}
             replacementOf={(lesson) => replacements.get(lesson.id)}
-            onDelete={(lesson) => setDeletingLesson(lesson)}
             onAdd={
               instructors.length > 0 ? () => setAddLessonOpen(true) : undefined
             }

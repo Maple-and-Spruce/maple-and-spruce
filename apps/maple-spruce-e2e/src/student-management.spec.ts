@@ -140,7 +140,8 @@ test.describe('Student management — task order', () => {
       .getByRole('listitem');
     await expect(upcoming).toHaveCount(2, { timeout: 20_000 });
 
-    await page.getByRole('button', { name: /^Delete/ }).first().click();
+    await upcoming.first().getByRole('button', { name: /^More for/ }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
     await page.getByRole('button', { name: 'Delete the lesson' }).click();
     await expect(upcoming).toHaveCount(1, { timeout: 20_000 });
 

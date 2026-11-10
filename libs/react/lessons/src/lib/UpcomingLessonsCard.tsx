@@ -4,9 +4,10 @@
  * The next few lessons on the calendar, to adjust (#158).
  *
  * Katie plans by the weekly time and books a few concrete lessons at a time,
- * so this shows at most five — never a long series — each of which can be
- * moved, pushed back a week along with every later one, cancelled
- * (optionally rescheduled with a credit, #209) or deleted.
+ * so this shows at most five — never a long series. Each has the same ⋮ menu
+ * as everywhere else on the student page (`lessonActions`): move, push back a
+ * week along with every later one, cancel (optionally rescheduling with a
+ * credit, #209), weather, or delete.
  * A lesson rescheduled with a credit says **Credit**. **Weather** (#210)
  * reschedules a lesson with a credit or holds it online; a lesson held online
  * says **Online** and offers to bring it back **In person**.
@@ -14,7 +15,6 @@
 import {
   Alert,
   Box,
-  Button,
   Chip,
   List,
   ListItem,
@@ -25,6 +25,8 @@ import {
 } from '@mui/material';
 import { SCHEDULE_TIME_ZONE } from '@maple/ts/domain';
 import type { Lesson, RequestState } from '@maple/ts/domain';
+import type { LessonActionHandlers } from './lesson-actions';
+import { LessonActionsMenu } from './LessonActionsMenu';
 
 export const UPCOMING_LESSONS_SHOWN = 5;
 
@@ -34,16 +36,9 @@ export interface UpcomingLessonsCardProps {
   paidLessonIds: ReadonlySet<string>;
   /** The lesson whose change is being saved. */
   pendingLessonId?: string | null;
-  onMove: (lesson: Lesson) => void;
-  /** Push this lesson and every later one back a week, together. */
-  onPushBack?: (lesson: Lesson) => void;
-  /** Opens the cancel dialog, where Katie can also reschedule with a credit. */
-  onCancel: (lesson: Lesson) => void;
-  /** Opens the weather dialog: reschedule with a credit, or hold it online. */
-  onWeather?: (lesson: Lesson) => void;
-  /** Brings a lesson held online back into the room. */
-  onInPerson?: (lesson: Lesson) => void;
-  onDelete: (lesson: Lesson) => void;
+  /** The ⋮ menu, the same one every tab shows. */
+  actions: LessonActionHandlers;
+  now?: Date;
 }
 
 function formatWhen(at: Date): string {
@@ -61,12 +56,8 @@ export function UpcomingLessonsCard({
   lessonsState,
   paidLessonIds,
   pendingLessonId,
-  onMove,
-  onPushBack,
-  onCancel,
-  onWeather,
-  onInPerson,
-  onDelete,
+  actions,
+  now = new Date(),
 }: UpcomingLessonsCardProps) {
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
@@ -121,65 +112,19 @@ export function UpcomingLessonsCard({
                     </Box>
                   }
                 />
-                {/* Wraps on a phone: five actions do not fit beside each other. */}
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
-                  <Button
-                    size="small"
-                    disabled={busy}
-                    aria-label={`Move ${when}`}
-                    onClick={() => onMove(lesson)}
-                  >
-                    Move
-                  </Button>
-                  {onPushBack && (
-                    <Button
-                      size="small"
-                      disabled={busy}
-                      aria-label={`Push back a week from ${when}`}
-                      onClick={() => onPushBack(lesson)}
-                    >
-                      Push back
-                    </Button>
-                  )}
-                  <Button
-                    size="small"
-                    disabled={busy}
-                    aria-label={`Cancel ${when}`}
-                    onClick={() => onCancel(lesson)}
-                  >
-                    Cancel
-                  </Button>
-                  {lesson.virtual
-                    ? onInPerson && (
-                        <Button
-                          size="small"
-                          disabled={busy}
-                          aria-label={`In person ${when}`}
-                          onClick={() => onInPerson(lesson)}
-                        >
-                          In person
-                        </Button>
-                      )
-                    : onWeather && (
-                        <Button
-                          size="small"
-                          disabled={busy}
-                          aria-label={`Weather ${when}`}
-                          onClick={() => onWeather(lesson)}
-                        >
-                          Weather
-                        </Button>
-                      )}
-                  <Button
-                    size="small"
-                    color="error"
-                    disabled={busy}
-                    aria-label={`Delete ${when}`}
-                    onClick={() => onDelete(lesson)}
-                  >
-                    Delete
-                  </Button>
-                </Box>
+                <LessonActionsMenu
+                  lesson={lesson}
+                  context={{
+                    billed: paidLessonIds.has(lesson.id),
+                    // Upcoming, so there is nothing to settle after the fact.
+                    isHope: false,
+                    hasCard: false,
+                    now,
+                  }}
+                  handlers={actions}
+                  when={when}
+                  disabled={busy}
+                />
               </ListItem>
             );
           })}

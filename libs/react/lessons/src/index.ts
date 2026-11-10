@@ -92,6 +92,16 @@ export {
   type LessonActivityProps,
 } from './lib/LessonActivity';
 export {
+  lessonActions,
+  type LessonAction,
+  type LessonActionContext,
+  type LessonActionHandlers,
+} from './lib/lesson-actions';
+export {
+  LessonActionsMenu,
+  type LessonActionsMenuProps,
+} from './lib/LessonActionsMenu';
+export {
   buildNextLessons,
   isLessonPaid,
   newLessonKey,
