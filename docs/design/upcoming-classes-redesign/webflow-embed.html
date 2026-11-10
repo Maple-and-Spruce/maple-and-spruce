@@ -124,6 +124,32 @@
     if (d.__iso) o.timeZone = TZ;
     return new Intl.DateTimeFormat('en-US', o).format(d);
   }
+  // The studio's wall-clock time -> the instant it names, whatever zone the visitor is in.
+  function studioInstant(y, mo, d, h, mi) {
+    var want = Date.UTC(y, mo, d, h, mi), guess = want;
+    var f = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hourCycle: 'h23',
+      year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' });
+    for (var i = 0; i < 2; i++) {
+      var p = {};
+      f.formatToParts(new Date(guess)).forEach(function (x) { p[x.type] = +x.value; });
+      guess += want - Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute);
+    }
+    return new Date(guess);
+  }
+  // "6:00 PM" (or "Nov 9 6:00 PM") -> { h: 18, m: 0 }
+  function clockOf(t) {
+    var m = /(\d{1,2}):(\d{2})\s*([AP]M)/i.exec(t || '');
+    return m ? { h: +m[1] % 12 + (m[3].toUpperCase() === 'PM' ? 12 : 0), m: +m[2] } : null;
+  }
+  // When the first session starts. data-date is the CMS date-time as a calendar date
+  // ("November 9, 2026", in the studio's zone) and data-time its clock time; "Varies" puts the
+  // first time in the card's date list instead.
+  function firstStart(d, time, item) {
+    if (!d) return null;
+    if (d.__iso) return d;
+    var c = clockOf(time) || clockOf(((item.querySelector('.cls-card-date') || {}).textContent || '').split(',')[0]);
+    return c ? studioInstant(d.getFullYear(), d.getMonth(), d.getDate(), c.h, c.m) : null;
+  }
   function el(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -138,6 +164,7 @@
     if (!items.length) return;
     grid.classList.add('msx');
 
+    var now = new Date();
     var rows = items.map(function (item) {
       var name = (item.querySelector('.cls-card-name') || {}).textContent || '';
       var cat = item.getAttribute('data-category') || '';
@@ -152,20 +179,28 @@
       var workshop = !series && (sessions === 2 || /workshop/i.test(text) || /each/i.test(item.getAttribute('data-duration') || ''));
       var craft = CRAFTS.filter(function (c) { return c.re.test(cat + ' ' + name); })[0];
       var full = spots != null && spots <= 0;
+      var hours = /hour|slot/i.test(item.getAttribute('data-spots-display') || '');
+      var time = item.getAttribute('data-time') || '';
+      // Registration closes when the first session starts, as on the server
+      // (isClassRegistrationOpen). The list is filtered to date-time on or after *today*, so a
+      // class stays listed for the rest of its own day. A private-hours class stays open while
+      // any hour is ahead, which the list cannot see, so it is never closed here.
+      var start = hours ? null : firstStart(d, time, item);
+      var closed = !!start && start <= now;
       // The [data-msx-featured] marker's visibility is bound to the CMS is-featured Switch, set
       // from the admin portal. (A Switch cannot bind to an attribute, only to visibility.)
       // Off renders it with w-condition-invisible, or leaves it out.
       var flag = item.querySelector('[data-msx-featured]');
       var featured = !!flag && !flag.classList.contains('w-condition-invisible');
       return { item: item, name: name.trim(), date: d, spots: spots, series: series, workshop: workshop,
-        craft: craft ? craft.id : 'other', full: full, big: featured && !full,
-        time: item.getAttribute('data-time') || '',
+        craft: craft ? craft.id : 'other', full: full, closed: closed, big: featured && !full && !closed,
+        time: time,
         // A private-hours class counts open booking slots, not seats. The sync's wording marks it
         // ("17 slots open"; "hours" before the 2026-11 rename).
-        hours: /hour|slot/i.test(item.getAttribute('data-spots-display') || '') ? (spots === 1 ? '1 slot open' : spots + ' slots open') : '' };
+        hours: hours ? (spots === 1 ? '1 slot open' : spots + ' slots open') : '' };
     });
 
-    var next = rows.filter(function (r) { return !r.full; })[0];
+    var next = rows.filter(function (r) { return !r.full && !r.closed; })[0];
 
     rows.forEach(function (r) {
       var item = r.item;
@@ -173,7 +208,8 @@
       var body = item.querySelector('.cls-card-body');
       var footer = item.querySelector('.cls-card-footer');
       if (!link || !body) return;
-      if (r.full) item.classList.add('msx-full');
+      if (r.full || r.closed) item.classList.add('msx-full');
+      if (r.closed) item.classList.add('msx-closed');
       if (r.big) item.classList.add('msx-feature');
 
       if (r.date) {
@@ -209,7 +245,9 @@
         var priceWrap = el('div', 'msx-price');
         var price = footer.querySelector('.cls-card-price');
         if (price) priceWrap.appendChild(price);
-        if (r.spots != null) {
+        if (r.closed) {
+          priceWrap.appendChild(el('span', 'msx-status is-full', 'Registration closed'));
+        } else if (r.spots != null) {
           var txt = r.full ? 'Full' : r.hours ? r.hours : r.spots === 1 ? 'Only 1 seat left' : r.spots <= 3 ? r.spots + ' seats left' : r.spots + ' seats open';
           priceWrap.appendChild(el('span', 'msx-status' + (r.full ? ' is-full' : r.spots <= 3 ? ' is-few' : ''), txt));
         } else {
@@ -217,13 +255,13 @@
           if (spotsEl) priceWrap.appendChild(el('span', 'msx-status', spotsEl.textContent));
         }
         footer.insertBefore(priceWrap, footer.firstChild);
-        var cta = el('span', 'msx-cta', r.full ? 'Join waitlist' : r.big ? 'Save my seat' : 'Reserve');
+        var cta = el('span', 'msx-cta', r.closed ? 'View class' : r.full ? 'Join waitlist' : r.big ? 'Save my seat' : 'Reserve');
         cta.addEventListener('click', function (e) {
           var href = link.getAttribute('href');
           if (!href) return;
           e.preventDefault();
           e.stopPropagation();
-          window.location.href = href.split('#')[0] + '#register';
+          window.location.href = href.split('#')[0] + (r.closed ? '' : '#register');
         });
         footer.appendChild(cta);
       }
@@ -254,7 +292,7 @@
     });
     if (rows.some(function (r) { return r.workshop; })) chips.push({ id: 'workshop', label: 'Workshops' });
     if (rows.some(function (r) { return r.series; })) chips.push({ id: 'series', label: 'Studio Series' });
-    var hasFull = rows.some(function (r) { return r.full; });
+    var hasFull = rows.some(function (r) { return r.full || r.closed; });
     if (chips.length > 2 || hasFull) {
       var bar = el('div', 'msx-filters');
       bar.setAttribute('role', 'group');
@@ -269,7 +307,7 @@
         if (toggle) toggle.setAttribute('aria-pressed', String(state.open));
         var shown = 0;
         rows.forEach(function (r) {
-          var ok = (id === 'all' || (id === 'series' ? r.series : id === 'workshop' ? r.workshop : r.craft === id)) && !(state.open && r.full);
+          var ok = (id === 'all' || (id === 'series' ? r.series : id === 'workshop' ? r.workshop : r.craft === id)) && !(state.open && (r.full || r.closed));
           r.item.style.display = ok ? '' : 'none';
           if (ok) shown++;
         });

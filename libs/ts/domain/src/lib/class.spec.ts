@@ -4,6 +4,7 @@ import {
   toPublicClass,
   formatClassPrice,
   isClassRegistrationOpen,
+  isRegistrationWindowOpen,
   hasAvailableSpots,
   getSessionEndTime,
   getFirstSession,
@@ -140,6 +141,7 @@ describe('Class domain helpers', () => {
         instructorName: 'Sarah Miller',
         sessions: [{ dateTime: '2030-06-15T14:00:00.000Z' }],
         registrationClosesAt: undefined,
+        registrationOpen: true,
         durationMinutes: 120,
         capacity: 8,
         spotsRemaining: 5, // 8 - 3
@@ -286,6 +288,93 @@ describe('Class domain helpers', () => {
         registrationClosesAt: new Date('2025-06-01T00:00:00Z'),
       };
       expect(isClassRegistrationOpen(openClass)).toBe(true);
+    });
+  });
+
+  describe('isRegistrationWindowOpen', () => {
+    const start = '2026-11-09T23:00:00.000Z';
+    const startMs = new Date(start).getTime();
+    const at = (ms: number) => new Date(ms);
+
+    // The shape `publicSite/getPublicClass` returns: ISO strings, no status.
+    const publicSeatClass = {
+      sessions: [{ dateTime: start }],
+      registrationClosesAt: undefined,
+    };
+
+    it('is open until the first session starts and closed from that instant', () => {
+      expect(isRegistrationWindowOpen(publicSeatClass, at(startMs - 1))).toBe(true);
+      expect(isRegistrationWindowOpen(publicSeatClass, at(startMs))).toBe(false);
+      expect(isRegistrationWindowOpen(publicSeatClass, at(startMs + 4 * 3600_000))).toBe(false);
+    });
+
+    it('reads a null override (as Firestore stores it) as no override', () => {
+      const withNull = { ...publicSeatClass, registrationClosesAt: null };
+      expect(isRegistrationWindowOpen(withNull, at(startMs - 1))).toBe(true);
+      expect(isRegistrationWindowOpen(withNull, at(startMs))).toBe(false);
+    });
+
+    it('closes at the earliest session even when sessions are out of order', () => {
+      const series = {
+        sessions: [
+          { dateTime: '2026-11-16T23:00:00.000Z' },
+          { dateTime: start },
+        ],
+      };
+      expect(isRegistrationWindowOpen(series, at(startMs + 1))).toBe(false);
+    });
+
+    it('honours an earlier registrationClosesAt override', () => {
+      const closesAt = '2026-11-08T05:00:00.000Z';
+      const closesMs = new Date(closesAt).getTime();
+      const withOverride = { ...publicSeatClass, registrationClosesAt: closesAt };
+      expect(isRegistrationWindowOpen(withOverride, at(closesMs - 1))).toBe(true);
+      expect(isRegistrationWindowOpen(withOverride, at(closesMs))).toBe(false);
+    });
+
+    it('keeps a private-hours class open while any hour is ahead', () => {
+      const privateHours = {
+        format: 'privateHours' as const,
+        sessions: [
+          { dateTime: start },
+          { dateTime: '2026-11-10T01:00:00.000Z' },
+        ],
+      };
+      // The first hour has started, the second is still ahead.
+      expect(isRegistrationWindowOpen(privateHours, at(startMs + 1))).toBe(true);
+      expect(
+        isRegistrationWindowOpen(privateHours, new Date('2026-11-10T01:00:00.000Z'))
+      ).toBe(false);
+    });
+
+    it('is closed for a class with no sessions', () => {
+      expect(isRegistrationWindowOpen({ sessions: [] }, at(0))).toBe(false);
+    });
+
+    it('agrees with isClassRegistrationOpen, and toPublicClass carries the server verdict', () => {
+      vi.useFakeTimers();
+      try {
+        const published: Class = {
+          ...baseClass,
+          status: 'published',
+          sessions: [{ dateTime: new Date(start) }],
+        };
+        for (const now of [startMs - 1, startMs, startMs + 1]) {
+          vi.setSystemTime(now);
+          const publicClass = toPublicClass(published);
+          expect(publicClass.registrationOpen).toBe(now < startMs);
+          expect(isRegistrationWindowOpen(publicClass)).toBe(
+            isClassRegistrationOpen(published)
+          );
+        }
+        // Status counts too: a class that is not published is never open.
+        vi.setSystemTime(startMs - 1);
+        expect(
+          toPublicClass({ ...published, status: 'cancelled' }).registrationOpen
+        ).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

@@ -272,6 +272,13 @@ export interface PublicClass {
   sessions: PublicClassSession[];
   /** ISO string; omitted if no override (default cutoff = first session). */
   registrationClosesAt?: string;
+  /**
+   * The server's answer to "can this class be booked right now?"
+   * (`isClassRegistrationOpen`), judged by the server's clock when the class
+   * was fetched, so a visitor's wrong clock cannot reopen or close it.
+   * Optional only for responses from a server older than the field.
+   */
+  registrationOpen?: boolean;
   durationMinutes: number;
   capacity: number;
   /**
@@ -548,6 +555,7 @@ export function toPublicClass(
       dateTime: s.dateTime.toISOString(),
     })),
     registrationClosesAt: classEntity.registrationClosesAt?.toISOString(),
+    registrationOpen: isClassRegistrationOpen(classEntity),
     durationMinutes: classEntity.durationMinutes,
     capacity: classEntity.capacity,
     // A private hour is open if it is still ahead and nobody holds it; past
@@ -593,15 +601,45 @@ export function formatClassPrice(priceCents: number): string {
  */
 export function isClassRegistrationOpen(classEntity: Class): boolean {
   if (classEntity.status !== 'published') return false;
-  // A private-hours class stays open while any hour is still ahead; each
-  // hour closes on its own when it starts (`isPrivateHourBookable`).
+  return isRegistrationWindowOpen(classEntity);
+}
+
+/**
+ * The fields the registration-window rule reads. A `Class` and a
+ * `PublicClass` both carry them, so the public widget applies the same rule
+ * the server does.
+ */
+export interface RegistrationWindow {
+  format?: ClassFormat;
+  sessions: ReadonlyArray<{ dateTime: Date | string }>;
+  registrationClosesAt?: Date | string | null;
+}
+
+/**
+ * Whether the registration window is still open, ignoring status. The time
+ * half of `isClassRegistrationOpen`.
+ *
+ * - Seat classes close at the cutoff: `registrationClosesAt`, or the first
+ *   session's start when there is no override.
+ * - A private-hours class stays open while any hour is still ahead; each
+ *   hour closes on its own when it starts (`isPrivateHourBookable`).
+ * - A class with no sessions is never open.
+ */
+export function isRegistrationWindowOpen(
+  classEntity: RegistrationWindow,
+  now: Date = new Date()
+): boolean {
+  const starts = classEntity.sessions.map((s) => ensureDate(s.dateTime).getTime());
+  if (starts.length === 0) return false;
+  const nowMs = now.getTime();
   if (isPrivateHoursClass(classEntity)) {
-    const now = Date.now();
-    return classEntity.sessions.some((s) => ensureDate(s.dateTime).getTime() > now);
+    return starts.some((t) => t > nowMs);
   }
-  const publishable = asPublishable(classEntity);
-  if (!publishable) return false;
-  return getRegistrationCutoff(publishable) > new Date();
+  const cutoff =
+    classEntity.registrationClosesAt != null
+      ? ensureDate(classEntity.registrationClosesAt).getTime()
+      : Math.min(...starts);
+  return cutoff > nowMs;
 }
 
 /**

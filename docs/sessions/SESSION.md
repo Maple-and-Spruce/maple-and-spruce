@@ -6,6 +6,18 @@
 
 ## Current Status
 
+### Class registration closes on the site at the class start (2026-11-09)
+
+- The site decided availability from seats alone, so on a class's own day it kept offering the
+  form after the class had started, and the server refused at payment.
+- The rule now lives once in `isRegistrationWindowOpen` (`@maple/ts/domain`), which the server's
+  `isClassRegistrationOpen` also uses. The registration widget shows "Registration is closed"
+  (no form, no waitlist, no pricing call) from the cutoff.
+- `/upcoming-classes` and the class page hero are restyled by Webflow embeds; their sources in
+  `docs/design/upcoming-classes-redesign/` now draw a started class as closed.
+- **After merge:** accept the library update in the Designer (Libraries panel), paste the two
+  embed sources into their HtmlEmbeds, then publish the site.
+
 ### Instructors listed by what they teach (2026-11-08, #323)
 
 - `/suzuki` and `/music-lessons` listed every active instructor, craft teachers included.
