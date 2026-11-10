@@ -50,6 +50,7 @@ import {
   classCalendarEntries,
   formatCentsAsDollars,
   freeCancellationUntil,
+  isRegistrationWindowOpen,
   type ClassCalendarEntry,
 } from '@maple/ts/domain';
 import { getWidgetFunctions, routeCallable } from './firebase-init';
@@ -108,6 +109,41 @@ function formatClassDateTime(isoString: string): string {
     hour: 'numeric',
     minute: '2-digit',
   });
+}
+
+/**
+ * Shown once registration has closed: the class has started, or staff set an
+ * earlier `registrationClosesAt`. The server refuses to price or take a
+ * booking from then on (`isClassRegistrationOpen`), so the form would only
+ * lead a visitor to a failure at the payment step. A waitlist is no use
+ * either, since no seat will open for a class that has begun.
+ */
+export function RegistrationClosedPanel() {
+  return (
+    <Box
+      data-testid="registration-closed"
+      sx={{ textAlign: 'center', py: 4, px: 2 }}
+    >
+      <Typography variant="h6" component="p" sx={{ mb: 1 }}>
+        Registration is closed
+      </Typography>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+        We are no longer taking sign-ups for this class.
+      </Typography>
+      <Button
+        variant="contained"
+        href="https://mapleandsprucefolkarts.com/upcoming-classes"
+      >
+        See upcoming classes
+      </Button>
+      <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
+        Questions? Email{' '}
+        <a href="mailto:katie@mapleandsprucefolkarts.com">
+          katie@mapleandsprucefolkarts.com
+        </a>
+      </Typography>
+    </Box>
+  );
 }
 
 /**
@@ -275,7 +311,18 @@ interface ConfirmedState {
 type WidgetState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; publicClass: PublicClass; requiredAgreements: RequiredAgreementTemplate[] }
+  | {
+      status: 'ready';
+      publicClass: PublicClass;
+      requiredAgreements: RequiredAgreementTemplate[];
+      /**
+       * Decided once, when the class loads, with the server's rule
+       * (`isRegistrationWindowOpen`). Fixed for the life of the page so a
+       * re-render mid-payment can never swap the form out from under a buyer;
+       * the server still has the last word on a late submit.
+       */
+      registrationOpen: boolean;
+    }
   // Buyer returned from Square's hosted checkout (?reg=<id>); we're polling for
   // the webhook to confirm. `timedOut` = still pending after the poll window.
   | { status: 'confirming'; customerEmail?: string; timedOut: boolean }
@@ -463,6 +510,7 @@ export function RegistrationWidget({
           status: 'ready',
           publicClass,
           requiredAgreements: agreementsResult.data.agreements,
+          registrationOpen: isRegistrationWindowOpen(publicClass),
         });
         trackViewClass(
           typeof window !== 'undefined' ? window : null,
@@ -709,7 +757,9 @@ export function RegistrationWidget({
         {state.status === 'ready' && (
           <>
             {/* Registration Form */}
-            {state.publicClass.spotsRemaining <= 0 ? (
+            {!state.registrationOpen ? (
+              <RegistrationClosedPanel />
+            ) : state.publicClass.spotsRemaining <= 0 ? (
               <SoldOutPanel
                 classId={state.publicClass.id}
                 functions={functions}

@@ -118,6 +118,21 @@ slots and `capacity` is the group size. The listing's
 date tile shows a time only when `data-time` holds a clock time, so "Choose your hour" and
 "Varies" stay under the title.
 
+**Registration closed.** Both scripts treat a class as closed once its first session has started,
+matching the server (`isClassRegistrationOpen`, which closes at `registrationClosesAt` or else the
+first session). They rebuild the start from the CMS date (`data-date` / `data-dates`) and clock time
+(`data-time`, or the first entry of the date list when the time "Varies") in America/New_York. The
+listing is filtered to `date-time` on or after *today*, so a class stays listed for the rest of its
+own day; from its start it is drawn like a full class with "Registration closed" and a "View class"
+button, never gets "Next up", the featured card or the sticky bar, and is hidden by "Open seats". It
+stays visible rather than disappearing, so the page can never go blank late in a day and a
+mis-parsed time can never hide a bookable class. On the class page the hero says "Registration
+closed", the button and phone bar point to /upcoming-classes, and the template's "Register" / "Join
+Waitlist" heading above the widget is hidden, since the widget shows its own closed panel. Private-hours
+classes are never closed by these scripts (they stay open while any hour is ahead; the widget decides).
+A staff-set `registrationClosesAt` earlier than the start is not in the CMS, so only the widget
+honours it.
+
 **Editing any embed means editing it in Webflow and keeping its file here in
 sync.** These files are the source of truth the embeds point to.
 

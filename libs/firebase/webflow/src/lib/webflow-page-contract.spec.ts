@@ -219,6 +219,11 @@ const LISTING_PAGE_CONTRACT: {
     type: 'number',
     usedFor: 'data-spots: seat counts, waitlist state, and the featured card only while seats remain',
   },
+  {
+    slug: 'time-display',
+    type: 'string',
+    usedFor: 'data-time: the start time, and with data-date when registration closes',
+  },
 ];
 
 describe('/upcoming-classes listing field contract', () => {
@@ -234,4 +239,40 @@ describe('/upcoming-classes listing field contract', () => {
       expect(typeof fieldData[slug]).toBe(type);
     }
   );
+});
+
+/**
+ * Both page scripts close registration once the first session has started,
+ * as the server does. They rebuild that instant from the `date-time` field
+ * (bound as a calendar date) and `time-display`, read as a studio clock time.
+ * If `time-display` stopped being a plain "6:00 PM", a started class would go
+ * back to offering "Reserve" until the list drops it at midnight.
+ */
+describe('registration-closed contract', () => {
+  it('sends time-display as the first session start, as a studio clock time', () => {
+    const series: PublishableClass = {
+      ...baseClass,
+      sessions: [
+        { dateTime: new Date('2026-11-16T23:00:00.000Z') },
+        // Earliest, though listed second; 6:00 PM Eastern.
+        { dateTime: new Date('2026-11-09T23:00:00.000Z') },
+      ],
+    };
+    const fieldData = mapClassToFieldData(series, mapOptions);
+    expect(fieldData['time-display']).toBe('6:00 PM');
+    expect(fieldData['date-time']).toBe('2026-11-09T23:00:00.000Z');
+  });
+
+  it('puts each time in date-display when the times vary, earliest first', () => {
+    const varies: PublishableClass = {
+      ...baseClass,
+      sessions: [
+        { dateTime: new Date('2026-11-16T15:00:00.000Z') },
+        { dateTime: new Date('2026-11-09T23:00:00.000Z') },
+      ],
+    };
+    const fieldData = mapClassToFieldData(varies, mapOptions);
+    expect(fieldData['time-display']).toBe('Varies');
+    expect(String(fieldData['date-display']).split(',')[0]).toMatch(/^Nov\s9 6:00\sPM$/);
+  });
 });

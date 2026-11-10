@@ -64,8 +64,22 @@ const SOON_CLASS = {
   ],
 };
 
+/**
+ * A class that started an hour ago with one seat left: the case that used to
+ * show the whole form and then fail at payment. Built from the real clock.
+ */
+const STARTED_CLASS = {
+  ...CLASS,
+  id: 'class-started',
+  spotsRemaining: 1,
+  sessions: [{ dateTime: new Date(Date.now() - 60 * 60 * 1000).toISOString() }],
+};
+
 /** The class `getPublicClass` returns. */
 let currentClass: typeof CLASS = CLASS;
+
+/** How many times the widget asked the server to price a booking. */
+let costCalls = 0;
 
 /** What `getRegistrationStatus` answers, in order; the last one repeats. */
 let statusReplies: Array<GetRegistrationStatusResponse | 'error'> = [];
@@ -80,6 +94,7 @@ function setReturnParam(reg: string | undefined): void {
 
 function installStubs(): void {
   statusCalls = 0;
+  costCalls = 0;
   window.fetch = (async (input: RequestInfo | URL) => {
     const url = typeof input === 'string' ? input : input.toString();
     const json = (body: unknown, status = 200) =>
@@ -107,6 +122,7 @@ function installStubs(): void {
       return json({ data: reply });
     }
     if (url.includes('calculateRegistrationCost')) {
+      costCalls++;
       return json({
         data: {
           quantity: 1,
@@ -273,5 +289,41 @@ export const CheckoutInsideTwoWeeks: Story = {
     await canvas.findByText(/Your Information/);
     await canvas.findByText('Payment');
     await expect(canvas.queryByTestId('free-cancellation-note')).toBeNull();
+  },
+};
+
+/**
+ * The class has started. The server will not price or take a booking now, so
+ * the widget says registration is closed instead of offering the form, and
+ * never asks for a price.
+ */
+export const RegistrationClosedAfterStart: Story = {
+  parameters: {
+    statusReplies: [{ status: 'not-found' }],
+    publicClass: STARTED_CLASS,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText('Registration is closed');
+    await expect(
+      canvas.getByRole('link', { name: 'See upcoming classes' })
+    ).toHaveAttribute('href', 'https://mapleandsprucefolkarts.com/upcoming-classes');
+    await expect(canvas.queryByText(/Your Information/)).toBeNull();
+    await expect(costCalls).toBe(0);
+  },
+};
+
+/** Full and started: closed, not "Join waitlist", since no seat will open. */
+export const FullClassAfterStartIsClosedNotWaitlist: Story = {
+  parameters: {
+    statusReplies: [{ status: 'not-found' }],
+    publicClass: { ...STARTED_CLASS, spotsRemaining: 0 },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText('Registration is closed');
+    await expect(
+      canvas.queryByRole('button', { name: 'Join waitlist' })
+    ).toBeNull();
   },
 };

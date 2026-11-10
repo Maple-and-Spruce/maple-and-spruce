@@ -33,6 +33,9 @@
 .cpx-actions{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
 .cpx .cls-register-btn{display:inline-flex!important;align-items:center;justify-content:center;min-height:50px;padding:0 28px!important;border-radius:999px!important;background:#56664A!important;color:#fff!important;text-decoration:none!important;font-family:Archivo,sans-serif!important;font-size:16px!important;font-weight:600!important;border:1.5px solid #56664A!important;margin:0!important}
 .cpx.cpx-full .cls-register-btn{background:transparent!important;color:#4A3728!important;border-color:#4A3728!important}
+/* Registration closed (the class has started): the widget says so itself, so the template's
+   "Register" / "Join Waitlist" heading above it is hidden. */
+.cpx.cpx-closed #register > .w-container{display:none!important}
 .cpx-ask{font-family:Archivo,sans-serif;font-size:14px;font-weight:600;color:#4A3728}
 /* Details band */
 .cpx .cls-body-section{background:#F6F4EE!important;padding:48px 24px 56px!important}
@@ -150,6 +153,23 @@
     if (d < new Date(now.getFullYear(), now.getMonth() - 6, 1)) d.setFullYear(d.getFullYear() + 1);
     return d;
   }
+  // The studio's wall-clock time -> the instant it names, whatever zone the visitor is in.
+  function studioInstant(y, mo, d, h, mi) {
+    var want = Date.UTC(y, mo, d, h, mi), guess = want;
+    var f = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23',
+      year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' });
+    for (var i = 0; i < 2; i++) {
+      var p = {};
+      f.formatToParts(new Date(guess)).forEach(function (x) { p[x.type] = +x.value; });
+      guess += want - Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute);
+    }
+    return new Date(guess);
+  }
+  // "6:00 PM" (or "Nov 9 6:00 PM") -> { h: 18, m: 0 }
+  function clockOf(t) {
+    var m = /(\d{1,2}):(\d{2})\s*([AP]M)/i.exec(t || '');
+    return m ? { h: +m[1] % 12 + (m[3].toUpperCase() === 'PM' ? 12 : 0), m: +m[2] } : null;
+  }
   function fmtDay(d) { return DAYS[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate(); }
   // "6:00 PM" + 180 -> "6:00 to 9:00 PM"
   function timeRange(t, minutes) {
@@ -209,6 +229,13 @@
     if (full) document.body.classList.add('cpx-full');
     var times = timeRange(D('time'), minutes);
     var days = dates.map(parseDay).filter(Boolean);
+    // Registration closes when the first session starts, as on the server (isClassRegistrationOpen).
+    // "Varies" puts the first time in the dates list instead. A private-hours class stays open while
+    // any hour is ahead, so it is left to the widget, which knows every hour.
+    var firstClock = clockOf(D('time')) || clockOf(dates[0]);
+    var closed = !hours && !!days.length && !!firstClock &&
+      studioInstant(days[0].getFullYear(), days[0].getMonth(), days[0].getDate(), firstClock.h, firstClock.m) <= new Date();
+    if (closed) document.body.classList.add('cpx-full', 'cpx-closed');
 
     // ---- Hero: media left, decision right
     var back = hero.querySelector('.cls-back-link');
@@ -270,16 +297,18 @@
       row.appendChild(el('span', 'cpx-price-note', note));
       pr.insertBefore(row, pr.firstChild);
       if (spots != null) {
-        var seats = el('div', 'cpx-seats' + (full ? ' is-full' : spots <= 3 ? ' is-few' : ''));
-        var label = full ? 'Full · join the waitlist and we will email you if a seat opens'
+        var seats = el('div', 'cpx-seats' + (full || closed ? ' is-full' : spots <= 3 ? ' is-few' : ''));
+        var label = closed ? 'Registration closed'
+          : full ? 'Full · join the waitlist and we will email you if a seat opens'
           : hours ? hours
           : (capacity ? spots + ' of ' + capacity + ' seats open' : spots + (spots === 1 ? ' seat open' : ' seats open'));
-        if (!full && !hours && spots === 1) label = 'Only 1 seat left';
+        if (!closed && !full && !hours && spots === 1) label = 'Only 1 seat left';
         seats.appendChild(el('span', null, label));
         pr.insertBefore(seats, btn || null);
       }
       if (btn) {
-        btn.textContent = full ? 'Join the waitlist' : hours ? 'Reserve your slot' : series ? 'Save my seat' : 'Reserve my seat';
+        btn.textContent = closed ? 'See upcoming classes' : full ? 'Join the waitlist' : hours ? 'Reserve your slot' : series ? 'Save my seat' : 'Reserve my seat';
+        if (closed) btn.setAttribute('href', '/upcoming-classes');
         var actions = el('div', 'cpx-actions');
         pr.insertBefore(actions, btn);
         actions.appendChild(btn);
@@ -367,12 +396,12 @@
       var mt = el('div');
       var priceEl = pr.querySelector('.cls-price-v2');
       mt.appendChild(el('b', null, priceEl ? priceEl.textContent.trim() : ''));
-      var st = full ? 'Full · join the waitlist' : hours ? hours : spots === 1 ? 'Only 1 seat left' : spots != null ? spots + ' seats open' : '';
-      if (!full && days.length) st += (st ? ' · ' : '') + (days.length > 1 ? (hours ? 'from ' : 'starts ') : '') + MONTHS[days[0].getMonth()] + ' ' + days[0].getDate();
-      mt.appendChild(el('small', full ? 'is-full' : spots != null && spots <= 3 ? 'is-few' : '', st));
+      var st = closed ? 'Registration closed' : full ? 'Full · join the waitlist' : hours ? hours : spots === 1 ? 'Only 1 seat left' : spots != null ? spots + ' seats open' : '';
+      if (!closed && !full && days.length) st += (st ? ' · ' : '') + (days.length > 1 ? (hours ? 'from ' : 'starts ') : '') + MONTHS[days[0].getMonth()] + ' ' + days[0].getDate();
+      mt.appendChild(el('small', full || closed ? 'is-full' : spots != null && spots <= 3 ? 'is-few' : '', st));
       mb.appendChild(mt);
-      var ma = el('a', null, full ? 'Join waitlist' : series ? 'Save my seat' : 'Reserve');
-      ma.href = '#register';
+      var ma = el('a', null, closed ? 'Upcoming classes' : full ? 'Join waitlist' : series ? 'Save my seat' : 'Reserve');
+      ma.href = closed ? '/upcoming-classes' : '#register';
       mb.appendChild(ma);
       document.body.appendChild(mb);
       document.body.classList.add('cpx-has-bar');
