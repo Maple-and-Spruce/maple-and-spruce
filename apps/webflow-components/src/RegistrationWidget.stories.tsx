@@ -72,11 +72,13 @@ const STARTED_CLASS = {
   ...CLASS,
   id: 'class-started',
   spotsRemaining: 1,
+  // What getPublicClass sends once the class has started.
+  registrationOpen: false,
   sessions: [{ dateTime: new Date(Date.now() - 60 * 60 * 1000).toISOString() }],
 };
 
 /** The class `getPublicClass` returns. */
-let currentClass: typeof CLASS = CLASS;
+let currentClass: typeof CLASS & { registrationOpen?: boolean } = CLASS;
 
 /** How many times the widget asked the server to price a booking. */
 let costCalls = 0;
@@ -146,7 +148,7 @@ type ReturnParameters = {
   /** `getRegistrationStatus` replies, in order. */
   statusReplies?: Array<GetRegistrationStatusResponse | 'error'>;
   /** The class to show; defaults to one in 2030 (well before the deadline). */
-  publicClass?: typeof CLASS;
+  publicClass?: typeof CLASS & { registrationOpen?: boolean };
 };
 
 const meta: Meta<typeof RegistrationWidget> = {

@@ -316,10 +316,12 @@ type WidgetState =
       publicClass: PublicClass;
       requiredAgreements: RequiredAgreementTemplate[];
       /**
-       * Decided once, when the class loads, with the server's rule
-       * (`isRegistrationWindowOpen`). Fixed for the life of the page so a
-       * re-render mid-payment can never swap the form out from under a buyer;
-       * the server still has the last word on a late submit.
+       * Decided once, when the class loads. The server's verdict
+       * (`PublicClass.registrationOpen`, judged on its clock) wins; the same
+       * rule on the visitor's clock covers a server older than the field.
+       * Fixed for the life of the page so a re-render mid-payment can never
+       * swap the form out from under a buyer; the server still has the last
+       * word on a late submit.
        */
       registrationOpen: boolean;
     }
@@ -510,7 +512,9 @@ export function RegistrationWidget({
           status: 'ready',
           publicClass,
           requiredAgreements: agreementsResult.data.agreements,
-          registrationOpen: isRegistrationWindowOpen(publicClass),
+          registrationOpen:
+            publicClass.registrationOpen ??
+            isRegistrationWindowOpen(publicClass),
         });
         trackViewClass(
           typeof window !== 'undefined' ? window : null,

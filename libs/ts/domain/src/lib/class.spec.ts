@@ -141,6 +141,7 @@ describe('Class domain helpers', () => {
         instructorName: 'Sarah Miller',
         sessions: [{ dateTime: '2030-06-15T14:00:00.000Z' }],
         registrationClosesAt: undefined,
+        registrationOpen: true,
         durationMinutes: 120,
         capacity: 8,
         spotsRemaining: 5, // 8 - 3
@@ -350,7 +351,7 @@ describe('Class domain helpers', () => {
       expect(isRegistrationWindowOpen({ sessions: [] }, at(0))).toBe(false);
     });
 
-    it('agrees with isClassRegistrationOpen for a published class', () => {
+    it('agrees with isClassRegistrationOpen, and toPublicClass carries the server verdict', () => {
       vi.useFakeTimers();
       try {
         const published: Class = {
@@ -358,13 +359,19 @@ describe('Class domain helpers', () => {
           status: 'published',
           sessions: [{ dateTime: new Date(start) }],
         };
-        const publicClass = toPublicClass(published);
         for (const now of [startMs - 1, startMs, startMs + 1]) {
           vi.setSystemTime(now);
+          const publicClass = toPublicClass(published);
+          expect(publicClass.registrationOpen).toBe(now < startMs);
           expect(isRegistrationWindowOpen(publicClass)).toBe(
             isClassRegistrationOpen(published)
           );
         }
+        // Status counts too: a class that is not published is never open.
+        vi.setSystemTime(startMs - 1);
+        expect(
+          toPublicClass({ ...published, status: 'cancelled' }).registrationOpen
+        ).toBe(false);
       } finally {
         vi.useRealTimers();
       }

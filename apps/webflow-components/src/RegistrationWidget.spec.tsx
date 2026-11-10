@@ -87,7 +87,40 @@ function renderWidget() {
   );
 }
 
-describe('RegistrationWidget registration cutoff', () => {
+describe('RegistrationWidget trusts the server clock', () => {
+  beforeEach(() => {
+    calledRoutes.length = 0;
+    vi.useFakeTimers({ toFake: ['Date'] });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it('is closed when the server says so, though the visitor clock is behind', async () => {
+    nextClass = makeClass({ registrationOpen: false });
+    vi.setSystemTime(START_MS - 60 * 60_000);
+    renderWidget();
+    expect(
+      await screen.findByText('Registration is closed')
+    ).toBeInTheDocument();
+    expect(calledRoutes).not.toContain('calculateRegistrationCost');
+  });
+
+  it('shows the form when the server says open, though the visitor clock is ahead', async () => {
+    nextClass = makeClass({ registrationOpen: true });
+    vi.setSystemTime(START_MS + 60 * 60_000);
+    renderWidget();
+    expect(await screen.findByText('Checkout form')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Without `registrationOpen` (a server older than the field) the widget
+ * applies the same rule on the visitor's clock.
+ */
+describe('RegistrationWidget registration cutoff, no server verdict', () => {
   beforeEach(() => {
     calledRoutes.length = 0;
     nextClass = makeClass();

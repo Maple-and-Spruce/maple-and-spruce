@@ -272,6 +272,13 @@ export interface PublicClass {
   sessions: PublicClassSession[];
   /** ISO string; omitted if no override (default cutoff = first session). */
   registrationClosesAt?: string;
+  /**
+   * The server's answer to "can this class be booked right now?"
+   * (`isClassRegistrationOpen`), judged by the server's clock when the class
+   * was fetched, so a visitor's wrong clock cannot reopen or close it.
+   * Optional only for responses from a server older than the field.
+   */
+  registrationOpen?: boolean;
   durationMinutes: number;
   capacity: number;
   /**
@@ -548,6 +555,7 @@ export function toPublicClass(
       dateTime: s.dateTime.toISOString(),
     })),
     registrationClosesAt: classEntity.registrationClosesAt?.toISOString(),
+    registrationOpen: isClassRegistrationOpen(classEntity),
     durationMinutes: classEntity.durationMinutes,
     capacity: classEntity.capacity,
     // A private hour is open if it is still ahead and nobody holds it; past
