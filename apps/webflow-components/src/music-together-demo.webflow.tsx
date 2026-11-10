@@ -9,14 +9,14 @@
  */
 import { declareComponent } from '@webflow/react';
 import { props } from '@webflow/data-types';
-import { emotionShadowDomDecorator } from '@webflow/emotion-utils';
+import { shadowDomEmotionDecorator } from './lib/shadow-dom-emotion';
 import { MusicTogetherDemoWidget } from './MusicTogetherDemoWidget';
 
 export default declareComponent(MusicTogetherDemoWidget, {
   name: 'Music Together Demo Classes',
   description:
     'RSVP for a FREE Music Together demo class. The widget loads the upcoming demos created in the admin portal (date, location, capacity); families pick one and enter their name + email — no payment. RSVPs (confirmed + waitlist) are visible to admins for follow-up.',
-  decorators: [emotionShadowDomDecorator],
+  decorators: [shadowDomEmotionDecorator],
   props: {
     env: props.Variant({
       name: 'Environment',

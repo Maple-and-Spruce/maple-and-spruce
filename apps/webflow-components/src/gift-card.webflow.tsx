@@ -10,7 +10,7 @@
  */
 import { declareComponent } from '@webflow/react';
 import { props } from '@webflow/data-types';
-import { emotionShadowDomDecorator } from '@webflow/emotion-utils';
+import { shadowDomEmotionDecorator } from './lib/shadow-dom-emotion';
 import {
   GIFT_CARD_DEFAULT_FINE_PRINT,
   GIFT_CARD_DEFAULT_HEADING,
@@ -22,7 +22,7 @@ export default declareComponent(GiftCardWidget, {
   name: 'Gift Card',
   description:
     'Buy a Maple & Spruce gift card: a dollar amount or a class gift certificate, emailed to the recipient or to the buyer to print. Amounts and class types are set in the admin. Pays with Square.',
-  decorators: [emotionShadowDomDecorator],
+  decorators: [shadowDomEmotionDecorator],
   props: {
     squareAppId: props.Text({
       name: 'Square App ID',

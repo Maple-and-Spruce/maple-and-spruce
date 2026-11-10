@@ -7,14 +7,14 @@
  */
 import { declareComponent } from '@webflow/react';
 import { props } from '@webflow/data-types';
-import { emotionShadowDomDecorator } from '@webflow/emotion-utils';
+import { shadowDomEmotionDecorator } from './lib/shadow-dom-emotion';
 import { CraftClubSignupWidget } from './CraftClubSignupWidget';
 
 export default declareComponent(CraftClubSignupWidget, {
   name: 'Craft Club Signup',
   description:
     'Approved-only Craft Club membership signup with Square recurring payment. Enter email → eligibility → subscribe ($30/mo) or request access.',
-  decorators: [emotionShadowDomDecorator],
+  decorators: [shadowDomEmotionDecorator],
   props: {
     squareAppId: props.Text({
       name: 'Square App ID',

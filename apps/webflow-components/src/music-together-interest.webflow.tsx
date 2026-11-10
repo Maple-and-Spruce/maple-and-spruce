@@ -8,14 +8,14 @@
  */
 import { declareComponent } from '@webflow/react';
 import { props } from '@webflow/data-types';
-import { emotionShadowDomDecorator } from '@webflow/emotion-utils';
+import { shadowDomEmotionDecorator } from './lib/shadow-dom-emotion';
 import { MusicTogetherInterestWidget } from './MusicTogetherInterestWidget';
 
 export default declareComponent(MusicTogetherInterestWidget, {
   name: 'Music Together Interest List',
   description:
     'Cross-section interest / waitlist form. Families check the section time(s) they’d join and answer preference + alternate-time + notes questions, so you can gauge demand and decide what class times to add. No payment.',
-  decorators: [emotionShadowDomDecorator],
+  decorators: [shadowDomEmotionDecorator],
   props: {
     env: props.Variant({
       name: 'Environment',

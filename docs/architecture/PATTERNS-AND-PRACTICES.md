@@ -753,6 +753,23 @@ without it one click on an ascending date column returns the table to unsorted l
 Hide history behind a switch in `renderTopToolbarCustomActions` by filtering `data`, not with MRT
 column filters (see `LessonList`, `BillingTable`).
 
+### Webflow Code Components: `shadowDomEmotionDecorator`
+
+Decorate every code component with `shadowDomEmotionDecorator` from
+`apps/webflow-components/src/lib/shadow-dom-emotion.tsx`, never with
+`emotionShadowDomDecorator` from `@webflow/emotion-utils`.
+
+Webflow server-renders each component into a `<code-island>` shadow root, and on the server
+Emotion writes its styles as inline `<style>` tags. The browser render has no such tags, so with
+Webflow's decorator every widget threw React #418 on load and was thrown away and rendered again.
+Emotion only clears its server styles out of `document`, never out of a shadow root. Our
+decorator moves them out of the hydrated tree when the component's module loads.
+
+The first render must also match the server's, which has no URL and no `window`: read
+`window.location` in an effect, not in `useState` (see `CancelRegistrationWidget`).
+`shadow-dom-emotion.spec.tsx` hydrates a real server render; its fixture is refreshed with
+`npx vitest run apps/webflow-components/src/lib/shadow-dom-emotion.ssr.spec.tsx -u`.
+
 ---
 
 ## Error Handling

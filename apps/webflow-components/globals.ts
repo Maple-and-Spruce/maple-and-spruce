@@ -1,3 +1,3 @@
-import { emotionShadowDomDecorator } from '@webflow/emotion-utils';
+import { shadowDomEmotionDecorator } from './src/lib/shadow-dom-emotion';
 
-export const decorators = [emotionShadowDomDecorator];
+export const decorators = [shadowDomEmotionDecorator];

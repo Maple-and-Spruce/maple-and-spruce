@@ -8,14 +8,14 @@
  */
 import { declareComponent } from '@webflow/react';
 import { props } from '@webflow/data-types';
-import { emotionShadowDomDecorator } from '@webflow/emotion-utils';
+import { shadowDomEmotionDecorator } from './lib/shadow-dom-emotion';
 import { MusicTogetherRegistrationWidget } from './MusicTogetherRegistrationWidget';
 
 export default declareComponent(MusicTogetherRegistrationWidget, {
   name: 'Music Together Registration',
   description:
     'Family enrollment + payment for a Music Together section. Collects parent/child details, offers pay-in-full or two installments (card-on-file), and shows a waitlist when full. Routes payment to MT’s Square account.',
-  decorators: [emotionShadowDomDecorator],
+  decorators: [shadowDomEmotionDecorator],
   props: {
     sectionId: props.Text({
       name: 'Section ID',
