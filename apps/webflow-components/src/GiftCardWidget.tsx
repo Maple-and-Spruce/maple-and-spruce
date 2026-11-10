@@ -372,10 +372,15 @@ export function GiftCardWidget({
             {toThem ? 'Your gift card is on its way' : 'Your gift card is ready'}
           </Typography>
           <Typography variant="body1">
-            {step.description} gift card, ending in{' '}
-            <Box component="span" sx={{ fontFamily: fonts.mono }}>
-              {result.last4}
-            </Box>
+            {step.description} gift card
+            {result.last4 ? (
+              <>
+                , ending in{' '}
+                <Box component="span" sx={{ fontFamily: fonts.mono }}>
+                  {result.last4}
+                </Box>
+              </>
+            ) : null}
             .
           </Typography>
           <Typography variant="body2" color="textSecondary">

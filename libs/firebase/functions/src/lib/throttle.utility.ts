@@ -17,6 +17,7 @@
  */
 import { createHash } from 'node:crypto';
 import { RequestThrottleRepository } from '@maple/firebase/database';
+import { HttpsError } from 'firebase-functions/v2/https';
 
 /** What a rule can key on besides the request body. */
 export interface ThrottleContext {
@@ -138,6 +139,18 @@ export const THROTTLE_LIMITS = {
   codeLookup: {
     perIp: { limit: 30, windowSeconds: 10 * 60 },
   },
+  /**
+   * Gift card numbers that matched no card, counted only when one does not
+   * match. A family mistypes a number once or twice; these leave room for
+   * that and stop a run of guesses. The site-wide cap bounds tries spread
+   * across many visitors; reaching it pauses gift card lookups for the rest
+   * of the hour, and paying by card still works.
+   */
+  giftCardWrongCode: {
+    perIp: { limit: 5, windowSeconds: HOUR },
+    perAccount: { limit: 5, windowSeconds: HOUR },
+    everyone: { limit: 40, windowSeconds: HOUR },
+  },
 } as const;
 
 /** Per-IP + per-account rules for a card-taking endpoint. */
@@ -163,3 +176,83 @@ export function codeLookupThrottles(): ThrottleRule[] {
   const { perIp } = THROTTLE_LIMITS.codeLookup;
   return [Throttle.perClientIp(perIp.limit, perIp.windowSeconds)];
 }
+
+/** Who a wrong gift card number is counted against. */
+export interface WrongCodeKeys {
+  /** The trusted client IP (see `extractTrustedClientIp`). */
+  clientIp?: string;
+  /** An email on the request, when there is one (the registration's). */
+  email?: string;
+}
+
+/** What a locked-out visitor is told. */
+export const GIFT_CARD_LOCKED_OUT_MESSAGE =
+  "Too many gift card numbers didn't match. Please try again in an hour, or pay by card.";
+
+type WrongCodeBucket = { id: string; limit: number; windowSeconds: number };
+
+function wrongCodeBuckets(scope: string, keys: WrongCodeKeys): WrongCodeBucket[] {
+  const { perIp, perAccount, everyone } = THROTTLE_LIMITS.giftCardWrongCode;
+  const buckets: WrongCodeBucket[] = [
+    { id: `${scope}:all:all`, ...everyone },
+  ];
+  if (keys.clientIp?.trim()) {
+    buckets.push({ id: `${scope}:ip:${hashThrottleKey(keys.clientIp)}`, ...perIp });
+  }
+  if (keys.email?.trim()) {
+    buckets.push({ id: `${scope}:email:${hashThrottleKey(keys.email)}`, ...perAccount });
+  }
+  return buckets;
+}
+
+/**
+ * Limit wrong gift card numbers (#301). Shared by every place that looks a
+ * gift card up from a number the public typed, under one scope, so a visitor's
+ * wrong tries count the same wherever they make them.
+ *
+ * `assertAllowed` refuses with `resource-exhausted` once any count is at its
+ * limit; `recordWrongCode` counts one number that matched no card. Like the
+ * request throttles it fails open: a counter error never stops a family
+ * paying with a real card.
+ */
+export const GiftCardWrongCodeLockout = {
+  scope: 'giftCardWrongCode',
+
+  async assertAllowed(
+    keys: WrongCodeKeys,
+    count: (bucketId: string, windowSeconds: number) => Promise<number> =
+      RequestThrottleRepository.count
+  ): Promise<void> {
+    for (const bucket of wrongCodeBuckets(this.scope, keys)) {
+      let seen = 0;
+      try {
+        seen = await count(bucket.id, bucket.windowSeconds);
+      } catch (error) {
+        console.error('[throttle] gift card lockout counter unavailable', error);
+        continue;
+      }
+      if (seen >= bucket.limit) {
+        console.warn(
+          JSON.stringify({
+            event: 'gift_card_wrong_code_locked',
+            bucket: bucket.id.split(':')[1],
+          })
+        );
+        throw new HttpsError('resource-exhausted', GIFT_CARD_LOCKED_OUT_MESSAGE);
+      }
+    }
+  },
+
+  async recordWrongCode(
+    keys: WrongCodeKeys,
+    hit: ThrottleHitFn = RequestThrottleRepository.hit
+  ): Promise<void> {
+    for (const bucket of wrongCodeBuckets(this.scope, keys)) {
+      try {
+        await hit(bucket.id, bucket.limit, bucket.windowSeconds);
+      } catch (error) {
+        console.error('[throttle] gift card lockout counter unavailable', error);
+      }
+    }
+  },
+};

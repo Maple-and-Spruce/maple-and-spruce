@@ -20,6 +20,7 @@ import type {
   MarkClassCertificateRequest,
   MarkClassCertificateResponse,
 } from '@maple/ts/firebase/api-types';
+import { giftCardEndingText } from '@maple/ts/domain';
 import { markClassCertificateValidation } from '@maple/ts/validation';
 import { ClassTypeField } from './ClassTypeField';
 import {
@@ -109,7 +110,7 @@ export function MarkClassCertificateDialog({
   return (
     <Dialog open={card !== null} onClose={close} fullWidth maxWidth="sm">
       <DialogTitle>
-        Make card {card ? `ending ${card.last4}` : ''} a class certificate
+        Make card{giftCardEndingText(card?.last4)} a class certificate
       </DialogTitle>
       <DialogContent dividers>
         <Typography variant="body2" sx={{ mb: 2 }}>

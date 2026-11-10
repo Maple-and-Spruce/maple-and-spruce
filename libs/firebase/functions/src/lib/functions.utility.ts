@@ -49,6 +49,12 @@ export interface FunctionContext {
    * Never authorize on this — it's trivially spoofable behind a proxy.
    */
   ip?: string;
+  /**
+   * The client IP Google's front end vouches for (the right-most
+   * `x-forwarded-for` entry, see `extractTrustedClientIp`). For counting
+   * requests per visitor; never for authorizing.
+   */
+  trustedIp?: string;
   /** The caller's `User-Agent` header, if sent. */
   userAgent?: string;
 }
@@ -735,6 +741,7 @@ async function runRequestPipeline(
       uid: auth?.uid,
       email: auth?.email,
       ip: extractClientIp(req),
+      trustedIp: extractTrustedClientIp(req),
       userAgent:
         typeof req.headers['user-agent'] === 'string'
           ? req.headers['user-agent']

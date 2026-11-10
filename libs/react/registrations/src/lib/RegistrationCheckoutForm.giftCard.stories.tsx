@@ -271,6 +271,19 @@ export const ClassCertificate: Story = {
   },
 };
 
+/**
+ * A card with a MAPLE code: its last 4 would be the whole code, so the server
+ * sends none and the summary names it plainly.
+ */
+export const MapleCodeCard: Story = {
+  args: { onPreviewGiftCard: fn(async () => ({ ...certificate, last4: '' })) },
+  play: async ({ canvasElement }) => {
+    const canvas = await openAndApply(canvasElement);
+    await expect(await canvas.findByText('Gift card:')).toBeInTheDocument();
+    await expect(canvas.queryByText(/Gift card ending/)).toBeNull();
+  },
+};
+
 /** Removing the card goes back to paying in full by card. */
 export const Remove: Story = {
   play: async ({ canvasElement }) => {

@@ -19,7 +19,8 @@ import { GiftCardWidget } from './GiftCardWidget';
  */
 
 const STORY_APP_CHECK_TOKEN = 'story-app-check-token';
-const CODE = '7783320000004242';
+/** The card's MAPLE code, which the browser is never given. */
+const CODE = 'MAPLE2099482';
 
 const POTTERY_CLASS = {
   id: 'class-wheel',
@@ -160,7 +161,8 @@ function installStubs(
       return json({
         data: {
           giftCardId: 'gftc:story-1',
-          last4: CODE.slice(-4),
+          // A MAPLE card's last 4 are never sent: they would be the whole code.
+          last4: '',
           kind: data['kind'],
           valueCents: isClass ? type?.priceCents : data['amountCents'],
           className: isClass ? type?.name : undefined,
@@ -236,8 +238,8 @@ async function payButton(canvasElement: HTMLElement): Promise<HTMLButtonElement>
 }
 
 /**
- * The main flow: $100, emailed to the recipient. The browser gets back the
- * last 4 digits and never the full code.
+ * The main flow: $100, emailed to the recipient. The browser gets back none
+ * of the card's MAPLE code, so the page says no "ending in".
  */
 export const AmountEmailedToThem: Story = {
   play: async ({ canvasElement }) => {
@@ -267,7 +269,8 @@ export const AmountEmailedToThem: Story = {
     await expect(canvas.getByRole('heading', { level: 1, name: 'Give the gift of making' })).toBeInTheDocument();
     await expect(canvas.queryByText(/good for handmade goods/)).toBeNull();
     await expect(canvas.queryByText(/Gift cards never expire/)).toBeNull();
-    await expect(canvas.getByText('4242')).toBeInTheDocument();
+    await expect(canvas.queryByText(/ending in/)).toBeNull();
+    await expect(canvasElement.textContent).not.toContain('482');
     await expect(canvas.getByText(/We emailed it to olive@example\.com/)).toBeInTheDocument();
     await expect(canvasElement.textContent).not.toContain(CODE);
 

@@ -11,7 +11,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import type { GiftCardSummary } from '@maple/ts/domain';
+import { giftCardEndingText, type GiftCardSummary } from '@maple/ts/domain';
 import type {
   ReplaceGiftCardRequest,
   ReplaceGiftCardResponse,
@@ -90,14 +90,14 @@ export function ReplaceGiftCardDialog({
 
   return (
     <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
-      <DialogTitle>Replace lost card {card ? `ending ${card.last4}` : ''}</DialogTitle>
+      <DialogTitle>Replace lost card{card ? giftCardEndingText(card.last4) : ''}</DialogTitle>
       <DialogContent dividers>
         {submitState.status === 'success' ? (
           <Stack spacing={2}>
             <Alert severity="success">
               New card ending {submitState.data.last4} holds{' '}
-              {formatGiftCardMoney(submitState.data.balanceCents)}. The card ending{' '}
-              {card?.last4} no longer works.
+              {formatGiftCardMoney(submitState.data.balanceCents)}. The card
+              {giftCardEndingText(card?.last4)} no longer works.
             </Alert>
             {submitState.data.warning && (
               <Alert severity="warning">{submitState.data.warning}</Alert>
@@ -119,7 +119,7 @@ export function ReplaceGiftCardDialog({
               to a new card?
             </Typography>
             <Alert severity="warning">
-              The card ending {card?.last4} will stop working for good. Anyone who
+              The card{giftCardEndingText(card?.last4)} will stop working for good. Anyone who
               finds it will not be able to spend it. Only do this when the customer
               has lost it.
             </Alert>

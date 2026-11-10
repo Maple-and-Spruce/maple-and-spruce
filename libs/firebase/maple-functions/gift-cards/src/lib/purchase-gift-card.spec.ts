@@ -18,6 +18,7 @@ vi.mock('@maple/firebase/square', () => {
   }
   return {
     PaymentError,
+    isGiftCardCodeTakenError: vi.fn(() => false),
     Square: vi.fn().mockImplementation(function () {
       return square;
     }),
@@ -45,11 +46,20 @@ vi.mock('@maple/firebase/functions', () => ({
   },
 }));
 
-import { PaymentError } from '@maple/firebase/square';
+import { isGiftCardCodeTakenError, PaymentError } from '@maple/firebase/square';
 import type { PurchaseGiftCardRequest } from '@maple/ts/firebase/api-types';
-import { giftCardPurchaseKeys, purchaseGiftCard } from './purchase-gift-card';
+import {
+  giftCardPurchaseKeys,
+  purchaseCardKey,
+  purchaseCodeRandom,
+  purchaseGiftCard,
+} from './purchase-gift-card';
 
-const CODE = '7783320000004242';
+/** The MAPLE code the purchase gave its card (read back from the Square call). */
+function madeCode(): string {
+  const call = square.giftCardsService.createDigitalGiftCard.mock.calls.at(-1);
+  return call?.[0]?.gan ?? 'MAPLE-not-made';
+}
 const secrets = { SQUARE_ACCESS_TOKEN: 't' };
 const strings = {
   SQUARE_ENV: 'LOCAL',
@@ -103,11 +113,11 @@ function happySquare(totalCents = 5000): void {
     status: 'COMPLETED',
     totalCents,
   });
-  square.giftCardsService.createDigitalGiftCard.mockResolvedValue({
-    id: 'gc-1',
-    gan: CODE,
-    last4: '4242',
-  });
+  // As Square does: the card takes the code it is given. A MAPLE code's last 4
+  // are never shown, so the service reports none (see giftCardLast4).
+  square.giftCardsService.createDigitalGiftCard.mockImplementation(
+    async ({ gan }: { gan: string }) => ({ id: 'gc-1', gan, last4: '' })
+  );
   square.giftCardsService.activateGiftCard.mockResolvedValue({ balanceCents: totalCents });
 }
 
@@ -153,7 +163,7 @@ describe('purchaseGiftCard', () => {
 
     expect(result).toEqual({
       giftCardId: 'gc-1',
-      last4: '4242',
+      last4: '',
       kind: 'amount',
       valueCents: 5000,
       className: undefined,
@@ -188,7 +198,7 @@ describe('purchaseGiftCard', () => {
     });
     expect(repos.GiftCardPurchaseRepository.create).toHaveBeenCalledWith({
       giftCardId: 'gc-1',
-      last4: '4242',
+      last4: '',
       kind: 'amount',
       valueCents: 5000,
       classId: undefined,
@@ -204,12 +214,13 @@ describe('purchaseGiftCard', () => {
       squarePaymentId: 'pay-1',
     });
     // The record never holds the full code.
+    expect(madeCode()).toMatch(/^MAPLE\d{7}$/);
     expect(JSON.stringify(repos.GiftCardPurchaseRepository.create.mock.calls)).not.toContain(
-      CODE
+      madeCode()
     );
   });
 
-  it('emails the code to the recipient and only the last 4 to the buyer', async () => {
+  it('emails the code to the recipient and none of it to the buyer', async () => {
     happySquare();
     await purchaseGiftCard(amountRequest, {}, secrets, strings);
 
@@ -225,14 +236,14 @@ describe('purchaseGiftCard', () => {
         buyerName: 'Robin Ashfield',
         description: '$50',
         isClass: false,
-        code: '7783 3200 0000 4242',
+        code: expect.stringMatching(/^MAPLE \d{4} \d{3}$/),
         message: 'Happy birthday!',
       },
     });
     expect(confirmation).toMatchObject({
       to: 'robin@example.com',
       templateName: 'gift-card-purchase-confirmation',
-      data: { last4: '4242', recipientEmail: 'olive@example.com' },
+      data: { last4: '', recipientEmail: 'olive@example.com' },
     });
     expect(JSON.stringify(confirmation)).not.toContain('7783');
   });
@@ -259,7 +270,7 @@ describe('purchaseGiftCard', () => {
     happySquare();
     await purchaseGiftCard(amountRequest, {}, secrets, strings);
     expect(logs.join('\n')).toContain('gift_card_purchased');
-    expect(logs.join('\n')).not.toContain(CODE);
+    expect(logs.join('\n')).not.toContain(madeCode());
   });
 
   it('prices a class certificate from its type and records the type (#309)', async () => {
@@ -472,7 +483,7 @@ describe('purchaseGiftCard', () => {
     expect(repos.GiftCardPurchaseRepository.create).not.toHaveBeenCalled();
     expect(queueMail).not.toHaveBeenCalled();
     expect(logs.join('\n')).toContain('gift_card_purchase_refunded');
-    expect(logs.join('\n')).not.toContain(CODE);
+    expect(logs.join('\n')).not.toContain(madeCode());
   });
 
   it('refunds the payment when the card cannot be created', async () => {
@@ -524,11 +535,70 @@ describe('purchaseGiftCard', () => {
 
     const result = await purchaseGiftCard(amountRequest, {}, secrets, strings);
 
-    expect(result.last4).toBe('4242');
+    expect(result.last4).toBe('');
     const all = logs.join('\n');
     expect(all).toContain('gift_card_purchase_record_failed');
     expect(all).toContain('gift_card_email_failed');
     expect(all).toContain('gift_card_confirmation_email_failed');
-    expect(all).not.toContain(CODE);
+    expect(all).not.toContain(madeCode());
+  });
+
+  it('gives the card a MAPLE code, created with no money and loaded by the order', async () => {
+    happySquare();
+    const keys = giftCardPurchaseKeys(amountRequest.idempotencyKey);
+    await purchaseGiftCard(amountRequest, {}, secrets, strings);
+
+    const code = madeCode();
+    expect(square.giftCardsService.createDigitalGiftCard).toHaveBeenCalledWith({
+      locationId: 'LOC-1',
+      idempotencyKey: purchaseCardKey(keys.card, code),
+      gan: code,
+    });
+    expect(purchaseCardKey(keys.card, code)).not.toContain(code);
+  });
+
+  it('a retry tries the same code with the same key, so Square returns the same card', async () => {
+    happySquare();
+    await purchaseGiftCard(amountRequest, {}, secrets, strings);
+    const first = square.giftCardsService.createDigitalGiftCard.mock.calls[0][0];
+
+    await purchaseGiftCard(amountRequest, {}, secrets, strings);
+    const second = square.giftCardsService.createDigitalGiftCard.mock.calls[1][0];
+
+    expect(second).toEqual(first);
+  });
+
+  it('draws another code when Square already has a card with the first', async () => {
+    happySquare();
+    const taken = Object.assign(new Error('GAN already exists'), {
+      errors: [{ code: 'GIFT_CARD_GAN_ALREADY_EXISTS' }],
+    });
+    vi.mocked(isGiftCardCodeTakenError).mockImplementation((e) => e === taken);
+    square.giftCardsService.createDigitalGiftCard
+      .mockRejectedValueOnce(taken)
+      .mockImplementation(async ({ gan }: { gan: string }) => ({ id: 'gc-1', gan, last4: '' }));
+
+    const result = await purchaseGiftCard(amountRequest, {}, secrets, strings);
+
+    const calls = square.giftCardsService.createDigitalGiftCard.mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[1][0].gan).not.toBe(calls[0][0].gan);
+    expect(calls[1][0].idempotencyKey).not.toBe(calls[0][0].idempotencyKey);
+    expect(result.giftCardId).toBe('gc-1');
+    expect(square.paymentsService.refundPayment).not.toHaveBeenCalled();
+  });
+});
+
+describe('purchaseCodeRandom', () => {
+  it('draws the same digits for the same key, and different ones for another key', () => {
+    const draws = (key: string) => {
+      const random = purchaseCodeRandom(key);
+      return [random(1000), random(1000), random(1000)];
+    };
+    expect(draws('client-key-0001')).toEqual(draws('client-key-0001'));
+    expect(draws('client-key-0001')).not.toEqual(draws('client-key-0002'));
+    for (const n of draws('client-key-0003')) {
+      expect(Number.isInteger(n) && n >= 0 && n < 1000).toBe(true);
+    }
   });
 });

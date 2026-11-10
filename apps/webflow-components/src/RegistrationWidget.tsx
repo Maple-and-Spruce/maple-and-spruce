@@ -52,6 +52,7 @@ import {
   freeCancellationUntil,
   isRegistrationWindowOpen,
   type ClassCalendarEntry,
+  giftCardEndingText,
 } from '@maple/ts/domain';
 import { getWidgetFunctions, routeCallable } from './firebase-init';
 import {
@@ -841,7 +842,8 @@ export function RegistrationWidget({
                 <Box sx={{ mt: 0.5 }} data-testid="gift-card-paid">
                   {state.giftCard.giftCardPaidCents ? (
                     <Typography variant="body2" color="textSecondary">
-                      Paid with gift card ending {state.giftCard.giftCardLast4}:{' '}
+                      Paid with gift card
+                      {giftCardEndingText(state.giftCard.giftCardLast4)}:{' '}
                       {formatCentsAsDollars(state.giftCard.giftCardPaidCents)}
                     </Typography>
                   ) : null}

@@ -76,16 +76,17 @@ export function certificateBatchKeys(idempotencyKey: string) {
 const cryptoRandomInt: RandomInt = (maxExclusive) => randomInt(maxExclusive);
 
 /**
- * Make one certificate's card in Square with a fresh random code, drawing
- * again when Square already has a card with that code. Gives up after
- * `GIFT_CERTIFICATE_CODE_ATTEMPTS` clashes with a clear error.
+ * Make one card in Square with a MAPLE code, drawing again when Square
+ * already has a card with that code. Gives up after
+ * `GIFT_CERTIFICATE_CODE_ATTEMPTS` clashes with a clear error. Used for
+ * printed certificates and for cards bought online.
  */
-export async function createCertificateCard(input: {
-  create: (gan: string, idempotencyKey: string) => Promise<{ id: string; last4: string }>;
+export async function createCertificateCard<T>(input: {
+  create: (gan: string, idempotencyKey: string) => Promise<T>;
   keyFor: (code: string) => string;
   now: Date;
   random: RandomInt;
-}): Promise<{ id: string; last4: string }> {
+}): Promise<T> {
   for (let attempt = 1; attempt <= GIFT_CERTIFICATE_CODE_ATTEMPTS; attempt++) {
     const code = makeGiftCertificateCode(input.now, input.random);
     try {

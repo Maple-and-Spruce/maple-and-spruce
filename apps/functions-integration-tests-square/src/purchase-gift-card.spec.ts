@@ -135,9 +135,9 @@ describe('giftCards/purchaseGiftCard', () => {
       deliverTo: 'recipient',
       sentTo: 'olive@example.com',
     });
-    expect(result.data?.last4).toMatch(/^\d{4}$/);
-    // The browser only ever gets the last 4.
-    expect(JSON.stringify(result.raw)).not.toMatch(/\d{16}/);
+    // The card has a MAPLE code, whose last 4 would be the whole code, so the
+    // browser gets none of it.
+    expect(result.data?.last4).toBe('');
 
     const requests = await squareRequests();
     const order = requests.find((r) => r.method === 'POST' && r.path === '/v2/orders');
@@ -178,9 +178,12 @@ describe('giftCards/purchaseGiftCard', () => {
       balance_money: { amount: 5000, currency: 'USD' },
     });
     const gan = card['gan'] as string;
-    expect(gan.slice(-4)).toBe(result.data?.last4);
+    const year = new Date().getFullYear();
+    expect(gan).toMatch(new RegExp(`^MAPLE(${year}|${year + 1})\\d{3}$`));
+    expect(card['gan_source']).toBe('OTHER');
+    expect(JSON.stringify(result.raw)).not.toContain(gan);
 
-    // The record keeps who it was for and the last 4, never the code.
+    // The record keeps who it was for, never the code.
     const record = await getFirestoreDoc('giftCardPurchases', result.data!.giftCardId);
     expect(record).toMatchObject({
       last4: result.data?.last4,
@@ -204,15 +207,16 @@ describe('giftCards/purchaseGiftCard', () => {
         description: '$50',
         buyerName: 'Robin Ashfield',
         message: 'Happy birthday!',
-        code: gan.replace(/(.{4})/g, '$1 ').trim(),
+        code: `MAPLE ${gan.slice(5, 9)} ${gan.slice(9)}`,
       },
     });
     const [confirmation] = await mailTo('robin@example.com');
     expect(confirmation['template']).toMatchObject({
       name: 'gift-card-purchase-confirmation',
-      data: { last4: result.data?.last4, recipientEmail: 'olive@example.com' },
+      data: { last4: '', recipientEmail: 'olive@example.com' },
     });
     expect(JSON.stringify(confirmation)).not.toContain(gan);
+    expect(JSON.stringify(confirmation)).not.toContain(`MAPLE ${gan.slice(5, 9)}`);
   });
 
   it("sells a class certificate for a class type at the type's certificate price (#309)", async () => {

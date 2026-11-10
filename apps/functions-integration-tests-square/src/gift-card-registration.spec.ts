@@ -384,4 +384,35 @@ describe('createRegistration with a gift card (#301)', () => {
     const stored = await getFirestoreDoc('registrations', registration.id);
     expect(stored?.['status']).toBe('refunded');
   });
+
+  // Last in the file: the wrong numbers it counts stay counted for the hour
+  // (afterAll clears them with the rest of Firestore).
+  it('refuses a visitor who has typed too many numbers that match no card', async () => {
+    await seedGiftCard({ nonce: 'gftok:real', id: 'gc-real', balanceCents: 4000 });
+    // As Google's front end does in production: it appends the address it
+    // received the connection from. The emulator sends none of its own.
+    const preview = (giftCardNonce: string, ip = '192.0.2.50') =>
+      callFunction<PreviewGiftCardForClassRequest, PreviewGiftCardForClassResponse>({
+        functionName: 'giftCards/previewGiftCardForClass',
+        data: { giftCardNonce, classId: POTTERY_CLASS_ID, quantity: 1 },
+        headers: { 'x-forwarded-for': ip },
+      });
+
+    for (let i = 0; i < 5; i++) {
+      const wrong = await preview(`gftok:wrong-${i}`);
+      expect(JSON.stringify(wrong.raw)).toContain("couldn't find that gift card");
+    }
+
+    // Even a real card is refused now, and Square is not asked.
+    const before = (await squareRequests('/v2/gift-cards')).length;
+    const locked = await preview('gftok:real');
+    expect(JSON.stringify(locked.raw)).toContain("Too many gift card numbers didn't match");
+    expect((await squareRequests('/v2/gift-cards')).length).toBe(before);
+
+    // Another visitor is not affected.
+    const other = await preview('gftok:real', '192.0.2.51');
+    expect(other.status).toBe(200);
+    expect(other.data?.balanceCents).toBe(4000);
+  });
 });
+

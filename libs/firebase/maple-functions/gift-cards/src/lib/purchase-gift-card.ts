@@ -18,9 +18,15 @@
  * derived from the browser's idempotency key, so a retried request returns the
  * same order, payment and card instead of charging twice.
  *
+ * The card gets a MAPLE code (`MAPLE 2026 482`), like a printed certificate.
+ * The codes it tries are drawn from the browser's idempotency key, so a retry
+ * tries the same codes in the same order with the same Square keys, and
+ * Square hands back the card it already made instead of making a second one.
+ *
  * The full card code is emailed and returned to no one else: it is never
  * logged, never stored in `giftCardPurchases`, and never sent back to the
- * browser (which only gets the last 4 digits).
+ * browser. Nor are its last 4 characters, which for a MAPLE code are the
+ * whole code (see `giftCardLast4`).
  */
 import { createHash } from 'crypto';
 import {
@@ -47,12 +53,15 @@ import {
   formatGiftCardDollars,
   type OnlineGiftCardPurchase,
   isGiftCertificateCategory,
+  type RandomInt,
+  redactGiftCertificateCodes,
 } from '@maple/ts/domain';
 import type {
   PurchaseGiftCardRequest,
   PurchaseGiftCardResponse,
 } from '@maple/ts/firebase/api-types';
 import { giftCardPurchaseValidation } from '@maple/ts/validation';
+import { createCertificateCard } from './print-gift-certificates';
 
 /** The studio's phone number, for the "call us" line on a failure. */
 const STUDIO_PHONE = '304-314-4506';
@@ -83,6 +92,27 @@ export function giftCardPurchaseKeys(clientKey: string): {
     activate: `gca-${h}`,
     refund: `gcr-${h}`,
   };
+}
+
+/**
+ * The codes one purchase tries, in order, fixed by the browser's key. A retry
+ * of the same purchase draws the same codes, so it reaches the card already
+ * made rather than a new one. The key never leaves the browser and our
+ * server, and is hashed here with a counter for each draw.
+ */
+export function purchaseCodeRandom(clientKey: string): RandomInt {
+  let draw = 0;
+  return (maxExclusive) => {
+    const digest = createHash('sha256')
+      .update(`gift-card-code:${clientKey}:${draw++}`)
+      .digest();
+    return digest.readUInt32BE(0) % maxExclusive;
+  };
+}
+
+/** The Square create key for one code tried, so each code is its own request. */
+export function purchaseCardKey(cardKey: string, code: string): string {
+  return `${cardKey}-${createHash('sha256').update(code).digest('hex').slice(0, 12)}`;
 }
 
 interface Priced {
@@ -245,9 +275,12 @@ export async function purchaseGiftCard(
   // has paid for nothing, so the payment is refunded.
   let card: { id: string; gan: string; last4: string };
   try {
-    card = await square.giftCardsService.createDigitalGiftCard({
-      locationId,
-      idempotencyKey: keys.card,
+    card = await createCertificateCard({
+      create: (gan, idempotencyKey) =>
+        square.giftCardsService.createDigitalGiftCard({ locationId, idempotencyKey, gan }),
+      keyFor: (code) => purchaseCardKey(keys.card, code),
+      now: new Date(),
+      random: purchaseCodeRandom(data.idempotencyKey),
     });
     await square.giftCardsService.activateGiftCard({
       giftCardId: card.id,
@@ -360,7 +393,9 @@ async function refundAfterCardFailure(input: {
 }): Promise<void> {
   const { square, paymentId, orderId, keys, logBase, cause } = input;
   const amountCents = Number(logBase['valueCents']);
-  const causeMessage = cause instanceof Error ? cause.message : String(cause);
+  const causeMessage = redactGiftCertificateCodes(
+    cause instanceof Error ? cause.message : String(cause)
+  );
   try {
     const refund = await square.paymentsService.refundPayment({
       paymentId,

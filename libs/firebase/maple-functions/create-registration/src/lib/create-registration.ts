@@ -101,7 +101,10 @@ export const createRegistration = Functions.endpoint
       // charged until the order exists.
       const giftCardNonce = data.giftCardNonce?.trim() || undefined;
       const giftCard: UsableGiftCard | undefined = giftCardNonce
-        ? await readUsableGiftCard(square, giftCardNonce)
+        ? await readUsableGiftCard(square, giftCardNonce, {
+            clientIp: context.trustedIp,
+            email: data.customerEmail,
+          })
         : undefined;
 
       // 1-5. Validate, price, and atomically reserve a `pending` spot. Shared

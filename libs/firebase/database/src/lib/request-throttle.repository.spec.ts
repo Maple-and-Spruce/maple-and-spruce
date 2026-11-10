@@ -19,7 +19,13 @@ vi.mock('./utilities/database.config', () => {
     collection: (name: string) => ({
       doc: (id: string) => {
         state.refs.push(`${name}/${id}`);
-        return { id };
+        return {
+          id,
+          get: async () => ({
+            exists: state.docs.has(id),
+            data: () => state.docs.get(id),
+          }),
+        };
       },
     }),
     runTransaction: async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx),
@@ -80,5 +86,27 @@ describe('RequestThrottleRepository.hit', () => {
       now + 3_600_000
     );
     expect(next).toEqual({ allowed: true, count: 1 });
+  });
+});
+
+describe('RequestThrottleRepository.count', () => {
+  const now = 10 * 3_600_000 + 123;
+
+  beforeEach(() => {
+    state.docs.clear();
+    state.refs = [];
+  });
+
+  it('reads the current window without counting', async () => {
+    expect(await RequestThrottleRepository.count('b', 3600, now)).toBe(0);
+    await RequestThrottleRepository.hit('b', 5, 3600, now);
+    await RequestThrottleRepository.hit('b', 5, 3600, now);
+    expect(await RequestThrottleRepository.count('b', 3600, now)).toBe(2);
+    expect(await RequestThrottleRepository.count('b', 3600, now)).toBe(2);
+  });
+
+  it('starts again in the next window', async () => {
+    await RequestThrottleRepository.hit('b', 5, 3600, now);
+    expect(await RequestThrottleRepository.count('b', 3600, now + 3_600_000)).toBe(0);
   });
 });

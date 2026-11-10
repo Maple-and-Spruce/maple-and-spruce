@@ -47,7 +47,10 @@ export {
   paymentThrottles,
   emailLinkThrottles,
   codeLookupThrottles,
+  GiftCardWrongCodeLockout,
+  GIFT_CARD_LOCKED_OUT_MESSAGE,
   type ThrottleRule,
+  type WrongCodeKeys,
 } from './throttle.utility';
 
 // Route resolution — its own module so a spec can reach it without loading
