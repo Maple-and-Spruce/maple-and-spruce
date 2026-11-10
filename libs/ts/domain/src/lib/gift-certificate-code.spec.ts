@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatGiftCertificateCode,
+  giftCardEndingText,
+  giftCardLast4,
+  giftCardName,
+  giftCardShortLabel,
   GIFT_CERTIFICATE_CODES_PER_YEAR,
   isGiftCertificateCode,
   makeGiftCertificateCode,
@@ -74,5 +78,27 @@ describe('redactGiftCertificateCodes', () => {
     expect(
       redactGiftCertificateCodes('GAN MAPLE2099482 already exists; MAPLE 2099 017 too')
     ).toBe('GAN MAPLE•••••••• already exists; MAPLE•••••••• too');
+  });
+});
+
+describe('what may be shown of a code', () => {
+  it('gives the last 4 of a Square number', () => {
+    expect(giftCardLast4('7783320000004821')).toBe('4821');
+    expect(giftCardLast4('7783 3200 0000 4821')).toBe('4821');
+  });
+  it('gives nothing for a MAPLE code, whose last 4 are the whole code', () => {
+    expect(giftCardLast4('MAPLE2099482')).toBe('');
+    expect(giftCardLast4('MAPLE 2099 482')).toBe('');
+  });
+  it('words the ending only when there is one', () => {
+    expect(`Gift card${giftCardEndingText('4821')}`).toBe('Gift card ending 4821');
+    expect(`Gift card${giftCardEndingText('')}`).toBe('Gift card');
+    expect(`Gift card${giftCardEndingText(undefined)}`).toBe('Gift card');
+  });
+  it('labels a card for the admin', () => {
+    expect(giftCardShortLabel('4821')).toBe('•••• 4821');
+    expect(giftCardShortLabel('')).toBe('MAPLE ••••');
+    expect(giftCardName('4821')).toBe('Gift card ending 4821');
+    expect(giftCardName('')).toBe('Gift card with a MAPLE code');
   });
 });

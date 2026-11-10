@@ -20,6 +20,10 @@
  * @see https://developer.squareup.com/docs/web-payments/gift-card-walkthrough
  */
 import { GiftCardPurchaseRepository } from '@maple/firebase/database';
+import {
+  GiftCardWrongCodeLockout,
+  type WrongCodeKeys,
+} from '@maple/firebase/functions';
 import { PaymentError, type Square } from '@maple/firebase/square';
 import {
   certificateClassPriceCents,
@@ -40,17 +44,25 @@ export interface UsableGiftCard {
 }
 
 /**
- * Read the card behind a gift card token and check it can pay. Throws an
- * Error with a plain-language message for an unknown, inactive or empty card.
+ * Read the card a gift card token names, and refuse one that cannot pay.
+ *
+ * Wrong numbers are limited (`GiftCardWrongCodeLockout`): a visitor who has
+ * typed too many numbers that matched no card is refused before Square is
+ * asked, and each number that matches no card is counted against them. Only
+ * a number that matches nothing counts; a real card that is empty or turned
+ * off does not.
  */
 export async function readUsableGiftCard(
   square: Pick<Square, 'giftCardsService'>,
-  giftCardNonce: string
+  giftCardNonce: string,
+  who: WrongCodeKeys
 ): Promise<UsableGiftCard> {
   if (!giftCardNonce?.trim()) {
     throw new Error('Gift card is required');
   }
+  await GiftCardWrongCodeLockout.assertAllowed(who);
   const card = await square.giftCardsService.getGiftCardFromNonce(giftCardNonce);
+  if (!card) await GiftCardWrongCodeLockout.recordWrongCode(who);
   const rejection = giftCardRejectionMessage(card);
   if (rejection || !card) {
     throw new Error(rejection);

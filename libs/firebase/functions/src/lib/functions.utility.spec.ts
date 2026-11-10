@@ -904,7 +904,7 @@ describe('FunctionContext request metadata (ad-attribution signal)', () => {
       return { ok: true };
     });
     await invoke(endpoint, req);
-    return captured as { ip?: string; userAgent?: string };
+    return captured as { ip?: string; trustedIp?: string; userAgent?: string };
   }
 
   it('takes the left-most x-forwarded-for entry (the real client)', async () => {
@@ -916,6 +916,8 @@ describe('FunctionContext request metadata (ad-attribution signal)', () => {
       })
     );
     expect(context.ip).toBe('203.0.113.7');
+    // For counting, the entry Google's front end wrote: the right-most one.
+    expect(context.trustedIp).toBe('192.0.2.9');
   });
 
   it('falls back to req.ip when there is no forwarding header', async () => {

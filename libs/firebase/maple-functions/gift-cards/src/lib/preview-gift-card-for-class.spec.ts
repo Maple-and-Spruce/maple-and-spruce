@@ -62,6 +62,20 @@ vi.mock('@maple/ts/domain', async (importOriginal) => {
 });
 
 describe('previewGiftCardForClass', () => {
+  it('counts wrong numbers against the visitor the front end vouches for', async () => {
+    await previewGiftCardForClass(
+      request,
+      { ip: '198.51.100.1', trustedIp: '192.0.2.10' },
+      secrets,
+      strings
+    );
+    expect(mocks.readUsableGiftCard).toHaveBeenCalledWith(
+      expect.anything(),
+      request.giftCardNonce,
+      { clientIp: '192.0.2.10' }
+    );
+  });
+
   it('shows the certificate cover, the gift card share and what is left', async () => {
     const result = await previewGiftCardForClass(request, {}, secrets, strings);
 

@@ -1,10 +1,11 @@
 /**
- * Codes for printed gift certificates (#332).
+ * Codes for the studio's own gift cards (#332): printed certificates and
+ * cards bought on our gift card page.
  *
- * A printed certificate's code is `MAPLE`, the 4-digit year, and 3 digits
- * drawn at random, e.g. `MAPLE2026482`, printed as `MAPLE 2026 482`. It is
- * short enough to type at the register and to read over the phone. The
- * barcode on the certificate encodes the same 12 characters.
+ * The code is `MAPLE`, the 4-digit year, and 3 digits drawn at random, e.g.
+ * `MAPLE2026482`, printed as `MAPLE 2026 482`. It is short enough to type at
+ * the register and to read over the phone. A printed certificate's barcode
+ * encodes the same 12 characters.
  *
  * The 3 digits are never sequential: a run of certificates must not let
  * someone holding one guess the next. When Square already has a card with
@@ -13,11 +14,13 @@
  * capacity.
  *
  * The tradeoff: 1,000 codes a year are easy to guess compared with Square's
- * 16-digit numbers. That is fine at the register, where a person reads the
- * certificate, but online gift card checkout needs a lockout after repeated
- * wrong codes before it is switched on (see docs/guides/gift-cards.md).
+ * 16-digit numbers. So online lookups are limited (wrong codes lock a visitor
+ * out for a while, see `giftCardWrongCodeLockout`), and the end of a MAPLE
+ * code is never shown as "ending in": with the prefix and year fixed, its
+ * last 4 characters are the whole code. Use `giftCardLast4`.
  *
- * Every other card keeps Square's own number.
+ * Cards Square numbers itself (eGift cards sold at the register, free cards,
+ * replacements) keep Square's 16-digit number.
  */
 
 export const GIFT_CERTIFICATE_CODE_PREFIX = 'MAPLE';
@@ -70,4 +73,32 @@ export function formatGiftCertificateCode(code: string): string | undefined {
  */
 export function redactGiftCertificateCodes(text: string): string {
   return text.replace(/MAPLE\s?\d{4}\s?\d{3}/gi, 'MAPLE••••••••');
+}
+
+/**
+ * What may be shown of a card's code: the last 4 digits of a Square number,
+ * or an empty string for a MAPLE code, whose last 4 characters would give the
+ * whole code away (the prefix and year are fixed).
+ */
+export function giftCardLast4(code: string): string {
+  if (isGiftCertificateCode(code)) return '';
+  return code.replace(/\s+/g, '').slice(-4);
+}
+
+/**
+ * ` ending 1234` to follow "Gift card", or an empty string when the card's
+ * last 4 are not shown (a MAPLE code).
+ */
+export function giftCardEndingText(last4: string | undefined): string {
+  return last4 ? ` ending ${last4}` : '';
+}
+
+/** The admin's short name for a card: `•••• 1234`, or `MAPLE ••••` for a MAPLE code. */
+export function giftCardShortLabel(last4: string | undefined): string {
+  return last4 ? `•••• ${last4}` : `${GIFT_CERTIFICATE_CODE_PREFIX} ••••`;
+}
+
+/** `Gift card ending 1234`, or `Gift card with a MAPLE code` when its last 4 are not shown. */
+export function giftCardName(last4: string | undefined): string {
+  return last4 ? `Gift card ending ${last4}` : `Gift card with a ${GIFT_CERTIFICATE_CODE_PREFIX} code`;
 }

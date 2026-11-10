@@ -12,6 +12,8 @@ import {
   paymentThrottles,
   emailLinkThrottles,
   codeLookupThrottles,
+  GiftCardWrongCodeLockout,
+  GIFT_CARD_LOCKED_OUT_MESSAGE,
   type ThrottleHitFn,
 } from './throttle.utility';
 
@@ -187,5 +189,88 @@ describe('rule presets', () => {
   it('limits leave room for a family retrying a declined card', () => {
     expect(THROTTLE_LIMITS.payment.perAccount.limit).toBeGreaterThanOrEqual(10);
     expect(THROTTLE_LIMITS.emailLink.perAccount.limit).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('GiftCardWrongCodeLockout', () => {
+  const { perIp, perAccount, everyone } = THROTTLE_LIMITS.giftCardWrongCode;
+  const visitor = { clientIp: '192.0.2.10', email: 'robin@example.com' };
+
+  /** A counter shared by record and check, as Firestore is. */
+  function store() {
+    const hit = memoryHit();
+    const count = async (bucketId: string) => hit.buckets.get(bucketId) ?? 0;
+    return { hit, count };
+  }
+
+  async function wrong(times: number, keys: object, hit: ThrottleHitFn) {
+    for (let i = 0; i < times; i++) {
+      await GiftCardWrongCodeLockout.recordWrongCode(keys, hit);
+    }
+  }
+
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  it('lets a visitor through after a mistyped number or two', async () => {
+    const { hit, count } = store();
+    await wrong(perIp.limit - 1, visitor, hit);
+    await expect(GiftCardWrongCodeLockout.assertAllowed(visitor, count)).resolves.toBeUndefined();
+  });
+
+  it('refuses a visitor once their wrong numbers reach the limit', async () => {
+    const { hit, count } = store();
+    await wrong(perIp.limit, { clientIp: visitor.clientIp }, hit);
+    await expect(
+      GiftCardWrongCodeLockout.assertAllowed({ clientIp: visitor.clientIp }, count)
+    ).rejects.toMatchObject({ code: 'resource-exhausted', message: GIFT_CARD_LOCKED_OUT_MESSAGE });
+    // Another visitor is not affected.
+    await expect(
+      GiftCardWrongCodeLockout.assertAllowed({ clientIp: '192.0.2.99' }, count)
+    ).resolves.toBeUndefined();
+  });
+
+  it('counts per email too, wherever the visitor is', async () => {
+    const { hit, count } = store();
+    for (let i = 0; i < perAccount.limit; i++) {
+      await GiftCardWrongCodeLockout.recordWrongCode(
+        { clientIp: `192.0.2.${i}`, email: visitor.email },
+        hit
+      );
+    }
+    await expect(
+      GiftCardWrongCodeLockout.assertAllowed({ clientIp: '192.0.2.200', email: visitor.email }, count)
+    ).rejects.toMatchObject({ code: 'resource-exhausted' });
+  });
+
+  it('pauses lookups for everyone once wrong numbers site-wide reach the cap', async () => {
+    const { hit, count } = store();
+    for (let i = 0; i < everyone.limit; i++) {
+      await GiftCardWrongCodeLockout.recordWrongCode({ clientIp: `198.51.100.${i}` }, hit);
+    }
+    await expect(
+      GiftCardWrongCodeLockout.assertAllowed({ clientIp: '203.0.113.1' }, count)
+    ).rejects.toMatchObject({ code: 'resource-exhausted' });
+  });
+
+  it('stores no address or email, only hashes', async () => {
+    const { hit } = store();
+    await wrong(1, visitor, hit);
+    const ids = [...hit.buckets.keys()].join(' ');
+    expect(ids).not.toContain(visitor.clientIp);
+    expect(ids).not.toContain(visitor.email);
+    expect(ids).toContain(hashThrottleKey(visitor.clientIp));
+  });
+
+  it('fails open when the counters are down', async () => {
+    const down = async () => {
+      throw new Error('firestore down');
+    };
+    await expect(GiftCardWrongCodeLockout.assertAllowed(visitor, down)).resolves.toBeUndefined();
+    await expect(
+      GiftCardWrongCodeLockout.recordWrongCode(visitor, down as unknown as ThrottleHitFn)
+    ).resolves.toBeUndefined();
   });
 });

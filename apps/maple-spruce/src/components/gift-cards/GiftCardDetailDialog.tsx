@@ -28,6 +28,7 @@ import {
   type GiftCardActivityEntry,
   type GiftCardSummary,
   type RequestState,
+  giftCardName,
 } from '@maple/ts/domain';
 import type {
   GetGiftCardBuyerResponse,
@@ -143,7 +144,7 @@ export function GiftCardDetailDialog({
   return (
     <Dialog open={card !== null} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>
-        Gift card {shown ? `ending ${shown.last4}` : ''}
+        {shown ? giftCardName(shown.last4) : 'Gift card'}
       </DialogTitle>
       <DialogContent dividers>
         {shown && (

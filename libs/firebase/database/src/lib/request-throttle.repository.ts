@@ -64,4 +64,21 @@ export const RequestThrottleRepository = {
       return { allowed: count <= limit, count };
     });
   },
+
+  /**
+   * How many times `bucketId` has been counted in the current window, without
+   * counting this read. A document-id `get`; no index needed.
+   */
+  async count(
+    bucketId: string,
+    windowSeconds: number,
+    now: number = Date.now()
+  ): Promise<number> {
+    const windowStart = throttleWindowStart(now, windowSeconds);
+    const snap = await getDb()
+      .collection(COLLECTION)
+      .doc(`${bucketId}:${windowStart}`)
+      .get();
+    return snap.exists ? Number(snap.data()?.['count'] ?? 0) : 0;
+  },
 };

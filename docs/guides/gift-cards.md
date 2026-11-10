@@ -27,14 +27,16 @@ buyer, who it was for and the message.
    (up to 300 characters).
 3. Chooses **Send it to: Them, by email** or **Me, so I can print it**.
 4. Pays by card (Square card field, same as class registration).
-5. Sees "Your gift card is on its way" (or "is ready") with the last 4 digits.
+5. Sees "Your gift card is on its way" (or "is ready"). No part of the code is shown: the
+   card has a MAPLE code (see "The code" below), whose last 4 characters would be the whole
+   code.
 
 Emails (templates in `tools/seed-email-templates.ts`):
 
 | Template | To | Has the full code |
 |---|---|---|
-| `gift-card` | whoever "Send it to" names | yes, in groups of four |
-| `gift-card-purchase-confirmation` | the buyer, only when it went to the recipient | no, last 4 only |
+| `gift-card` | whoever "Send it to" names | yes, as `MAPLE 2026 ###` |
+| `gift-card-purchase-confirmation` | the buyer, only when it went to the recipient | no, and no last 4 for a MAPLE code |
 | `gift-card-refund-needed` | `ADMIN_ALERT_EMAIL`, only if a refund failed | no |
 
 **The templates must be seeded before the page goes live:**
@@ -91,6 +93,11 @@ taxed when spent, not when sold). The buyer's card pays that order; then the car
 and activated against the order line, so Square records the sale as a gift card sale and the
 balance appears on the card. The order's `referenceId` starts with `giftcard-`. The POS
 capture worker ignores it because the line has no catalog item.
+
+The card is made with a MAPLE code, the same kind a printed certificate has. The codes a
+purchase tries are drawn from the browser's request key, so a retried request tries the same
+codes with the same Square keys and gets back the card already made, never a second one. When
+Square already has a card with a code, the next one is drawn (up to 10).
 
 If the payment succeeds but Square cannot create or activate the card, the payment is
 refunded in full and the buyer is told so. If that refund also fails, Katie gets the
@@ -154,17 +161,24 @@ it at the sale, so a certificate that walks out of the drawer unsold is worth no
 
 ### The code
 
-A printed certificate's code is `MAPLE`, the year, and three digits drawn at random, for
-example `MAPLE 2026 ###`. It is printed with spaces for reading and as a barcode of the same
-12 characters for scanning. The three digits are never in order, so one certificate does not
-give away the next. If Square already has a card with the code drawn, another is drawn (up to
-10 tries; then the dialog says this year's codes may be nearly used up). That allows up to
-1,000 certificates a year. Every other card (online, eGift at the register, free cards,
-replacements) keeps Square's own 16-digit number.
+A printed certificate's code, and a card bought on our gift card page, is `MAPLE`, the year,
+and three digits drawn at random, for example `MAPLE 2026 ###`. A certificate prints it with
+spaces for reading and as a barcode of the same 12 characters for scanning. The three digits
+are never in order, so one card does not give away the next. If Square already has a card
+with the code drawn, another is drawn (up to 10 tries; then this year's codes may be nearly
+used up). Printed and online cards share the pool of up to 1,000 codes a year. Cards Square
+numbers itself (eGift cards sold at the register, free cards, replacements) keep Square's own
+16-digit number.
+
+**Never show "ending in" for a MAPLE code.** The prefix and year are fixed, so its last 4
+characters are the whole code. The pages, emails and admin show a MAPLE card without them
+(`MAPLE ••••` in the admin list); use `giftCardLast4` and its helpers in
+`@maple/ts/domain` wherever a card is named. A MAPLE card cannot be found by the last-4
+search; find it by its customer.
 
 **The tradeoff:** 1,000 codes a year are far easier to guess than Square's numbers. That is
 fine at the register, where a person reads the certificate and an unsold one holds nothing.
-It matters online: see "Before switching on online gift card checkout" below.
+Online, wrong numbers are limited (see "Wrong gift card numbers" below).
 
 ### Printing a batch
 
@@ -279,15 +293,23 @@ balance moved. The move is not a sale: it is left out of "Sold this month".
 - **Given free this month:** free cards' first load.
 - **Printed, not sold yet:** printed certificates still pending (a count).
 
-## Before switching on online gift card checkout
+## Wrong gift card numbers
 
-Paying for a class online with a gift card (#301) is built but switched off. Before it is
-switched on:
+Paying for a class online with a gift card (#301) is built but switched off (the Registration
+widget's Gift Cards setting in Webflow). Wherever the public types a gift card number
+(`previewGiftCardForClass` and `createRegistration`), numbers that match no card are counted,
+on top of App Check and the per-IP request throttle:
 
-- **Add a lockout after repeated wrong codes.** A printed certificate's code is one of 1,000
-  per year, so guessing is cheap without one. Limit wrong tries per visitor and per card, on
-  top of the existing App Check and per-IP throttle on `previewGiftCardForClass`. (Not built
-  yet.)
+| Counted against | Allowed per hour | Then |
+|---|---|---|
+| the visitor's address | 5 wrong numbers | that visitor is refused for the rest of the hour |
+| the registration's email | 5 wrong numbers | refused for that email |
+| everyone | 40 wrong numbers | gift card lookups pause for everyone for the rest of the hour |
+
+A refused visitor is told: "Too many gift card numbers didn't match. Please try again in an
+hour, or pay by card." Paying by card always still works. A real card that is empty or turned
+off is not counted. Counters are in `requestThrottles` (hashed, doc-id reads only) and fail
+open. Limits: `THROTTLE_LIMITS.giftCardWrongCode`; logic: `GiftCardWrongCodeLockout`.
 
 ## Logs
 

@@ -16,7 +16,7 @@ import type {
   GiftCardState,
   GiftCardSummary,
 } from '@maple/ts/domain';
-import { giftCardActivityDirection } from '@maple/ts/domain';
+import { giftCardActivityDirection, giftCardLast4 } from '@maple/ts/domain';
 
 export interface ListGiftCardActivitiesInput {
   /** One card's history. Omit for every card's. */
@@ -195,7 +195,7 @@ export class GiftCardsService {
     if (!card?.id || !card.gan) {
       throw new Error('Square gift card create returned no id or code');
     }
-    return { id: card.id, gan: card.gan, last4: card.gan.slice(-4) };
+    return { id: card.id, gan: card.gan, last4: giftCardLast4(card.gan) };
   }
 
   /**
@@ -399,7 +399,7 @@ export function toGiftCardSummary(
   const kind: GiftCardKind = card.type === 'PHYSICAL' ? 'plastic' : 'egift';
   return {
     id: card.id,
-    last4: (card.gan ?? '').slice(-4),
+    last4: giftCardLast4(card.gan ?? ''),
     kind,
     state: STATES[card.state ?? ''] ?? 'pending',
     balanceCents: cents(card.balanceMoney) ?? 0,

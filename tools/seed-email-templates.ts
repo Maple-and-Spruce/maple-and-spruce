@@ -108,7 +108,7 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
       </tr>
       {{#if giftCardPaid}}
       <tr>
-        <td class="label">Gift card ending {{giftCardLast4}}</td>
+        <td class="label">Gift card{{#if giftCardLast4}} ending {{giftCardLast4}}{{/if}}</td>
         <td>{{giftCardPaid}}</td>
       </tr>
       {{/if}}
@@ -1561,10 +1561,12 @@ const giftCardPurchaseConfirmationHtml = `<!DOCTYPE html>
         <td class="label">Gift card for</td>
         <td>{{description}}</td>
       </tr>
+      {{#if last4}}
       <tr>
         <td class="label">Card ending in</td>
         <td>{{last4}}</td>
       </tr>
+      {{/if}}
     </table>
 
     {{#if message}}

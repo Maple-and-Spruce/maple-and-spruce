@@ -5,7 +5,8 @@
  * Public (the family is not signed in). Prices the order with the same
  * function the checkout reserves with (`priceClassOrder`) and the same
  * certificate rule `createRegistration` charges with, so the preview and the
- * charge agree. Nothing is charged or held here.
+ * charge agree. Nothing is charged or held here. Numbers that match no card
+ * are limited per visitor (see `readUsableGiftCard`).
  */
 import {
   type FunctionContext,
@@ -33,7 +34,7 @@ import type {
 
 export async function previewGiftCardForClass(
   data: PreviewGiftCardForClassRequest,
-  _context: FunctionContext,
+  context: FunctionContext,
   secrets: SquareSecrets,
   strings: SquareStrings
 ): Promise<PreviewGiftCardForClassResponse> {
@@ -50,7 +51,9 @@ export async function previewGiftCardForClass(
   }
 
   const square = new Square(secrets, strings);
-  const giftCard = await readUsableGiftCard(square, data.giftCardNonce);
+  const giftCard = await readUsableGiftCard(square, data.giftCardNonce, {
+    clientIp: context.trustedIp,
+  });
 
   // An unknown code is left off, as the cost summary does; the checkout
   // itself refuses it.

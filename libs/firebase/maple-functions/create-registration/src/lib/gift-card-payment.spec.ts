@@ -6,6 +6,12 @@ vi.mock('@maple/firebase/database', () => ({
   GiftCardPurchaseRepository: { findByGiftCardId },
 }));
 
+const lockout = vi.hoisted(() => ({
+  assertAllowed: vi.fn(),
+  recordWrongCode: vi.fn(),
+}));
+vi.mock('@maple/firebase/functions', () => ({ GiftCardWrongCodeLockout: lockout }));
+
 vi.mock('@maple/firebase/square', () => {
   class PaymentError extends Error {
     constructor(
@@ -26,6 +32,8 @@ import {
   readUsableGiftCard,
   type UsableGiftCard,
 } from './gift-card-payment';
+
+const WHO = { clientIp: '192.0.2.10', email: 'robin@example.com' };
 
 const activeCard = {
   id: 'gc-1',
@@ -57,6 +65,8 @@ function payment(id: string, amountCents: number, receiptUrl?: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  lockout.assertAllowed.mockResolvedValue(undefined);
+  lockout.recordWrongCode.mockResolvedValue(undefined);
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
 
@@ -66,7 +76,7 @@ describe('readUsableGiftCard', () => {
     square.giftCardsService.getGiftCardFromNonce.mockResolvedValue(activeCard);
     findByGiftCardId.mockResolvedValue({ kind: 'class', valueCents: 5000 });
 
-    const result = await readUsableGiftCard(square as never, 'gftok:abc');
+    const result = await readUsableGiftCard(square as never, 'gftok:abc', WHO);
 
     expect(square.giftCardsService.getGiftCardFromNonce).toHaveBeenCalledWith('gftok:abc');
     expect(findByGiftCardId).toHaveBeenCalledWith('gc-1');
@@ -77,7 +87,7 @@ describe('readUsableGiftCard', () => {
   it('refuses an unknown card in plain words', async () => {
     const square = makeSquare();
     square.giftCardsService.getGiftCardFromNonce.mockResolvedValue(undefined);
-    await expect(readUsableGiftCard(square as never, 'x')).rejects.toThrow(
+    await expect(readUsableGiftCard(square as never, 'x', WHO)).rejects.toThrow(
       "couldn't find that gift card"
     );
     expect(findByGiftCardId).not.toHaveBeenCalled();
@@ -89,7 +99,7 @@ describe('readUsableGiftCard', () => {
       ...activeCard,
       balanceCents: 0,
     });
-    await expect(readUsableGiftCard(square as never, 'x')).rejects.toThrow(
+    await expect(readUsableGiftCard(square as never, 'x', WHO)).rejects.toThrow(
       'no money left'
     );
   });
@@ -100,14 +110,46 @@ describe('readUsableGiftCard', () => {
       ...activeCard,
       state: 'deactivated',
     });
-    await expect(readUsableGiftCard(square as never, 'x')).rejects.toThrow(
+    await expect(readUsableGiftCard(square as never, 'x', WHO)).rejects.toThrow(
       'turned off'
     );
   });
 
+  it('counts a number that matches no card against the visitor', async () => {
+    const square = makeSquare();
+    square.giftCardsService.getGiftCardFromNonce.mockResolvedValue(undefined);
+    await expect(readUsableGiftCard(square as never, 'x', WHO)).rejects.toThrow();
+    expect(lockout.assertAllowed).toHaveBeenCalledWith(WHO);
+    expect(lockout.recordWrongCode).toHaveBeenCalledWith(WHO);
+  });
+
+  it('does not count a real card, even one that cannot pay', async () => {
+    const square = makeSquare();
+    square.giftCardsService.getGiftCardFromNonce.mockResolvedValue({
+      ...activeCard,
+      balanceCents: 0,
+    });
+    await expect(readUsableGiftCard(square as never, 'x', WHO)).rejects.toThrow();
+    square.giftCardsService.getGiftCardFromNonce.mockResolvedValue(activeCard);
+    await readUsableGiftCard(square as never, 'x', WHO);
+    expect(lockout.recordWrongCode).not.toHaveBeenCalled();
+  });
+
+  it('refuses a locked-out visitor before asking Square', async () => {
+    const square = makeSquare();
+    lockout.assertAllowed.mockRejectedValue(
+      Object.assign(new Error('Too many gift card numbers'), { code: 'resource-exhausted' })
+    );
+    await expect(readUsableGiftCard(square as never, 'x', WHO)).rejects.toThrow(
+      'Too many gift card numbers'
+    );
+    expect(square.giftCardsService.getGiftCardFromNonce).not.toHaveBeenCalled();
+    expect(lockout.recordWrongCode).not.toHaveBeenCalled();
+  });
+
   it('refuses a blank token without calling Square', async () => {
     const square = makeSquare();
-    await expect(readUsableGiftCard(square as never, '  ')).rejects.toThrow(
+    await expect(readUsableGiftCard(square as never, '  ', WHO)).rejects.toThrow(
       'Gift card is required'
     );
     expect(square.giftCardsService.getGiftCardFromNonce).not.toHaveBeenCalled();

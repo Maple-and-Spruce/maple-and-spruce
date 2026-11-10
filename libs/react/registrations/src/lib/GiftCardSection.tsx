@@ -2,7 +2,7 @@
 
 import type { CSSProperties, ReactNode } from 'react';
 import { brandColors, borders, colors, fonts, text } from '@maple/react/theme';
-import { formatCentsAsDollars } from '@maple/ts/domain';
+import { formatCentsAsDollars, giftCardEndingText } from '@maple/ts/domain';
 import type { PreviewGiftCardForClassResponse } from '@maple/ts/firebase/api-types';
 
 /**
@@ -155,7 +155,7 @@ export function GiftCardBreakdown({
         </>
       )}
       <Line
-        label={`Gift card ending ${preview.last4}`}
+        label={`Gift card${giftCardEndingText(preview.last4)}`}
         value={`−${formatCentsAsDollars(preview.giftCardAmountCents)}`}
       />
       <div

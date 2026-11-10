@@ -27,6 +27,8 @@ import {
   type GiftCardListItem,
   type GiftCardSummary,
   type RequestState,
+  giftCardName,
+  giftCardShortLabel,
 } from '@maple/ts/domain';
 import type {
   GiftCardCustomer,
@@ -100,9 +102,9 @@ function CardRow({
       }}
       tabIndex={0}
       sx={{ cursor: 'pointer' }}
-      aria-label={`Gift card ending ${card.last4}`}
+      aria-label={giftCardName(card.last4)}
     >
-      <TableCell sx={{ fontFamily: fonts.mono }}>•••• {card.last4}</TableCell>
+      <TableCell sx={{ fontFamily: fonts.mono }}>{giftCardShortLabel(card.last4)}</TableCell>
       <TableCell>
         {giftCardKindLabel(card.kind)}
         {origin && (
