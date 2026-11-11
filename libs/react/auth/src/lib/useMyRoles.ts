@@ -9,6 +9,7 @@ import type {
   GetMyRolesResponse,
 } from '@maple/ts/firebase/api-types';
 import { useAuth } from './useAuth';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for fetching every role the current user holds (admin + scoped).
@@ -43,7 +44,7 @@ export function useMyRoles() {
       setRolesState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch roles',
+          errorMessageFor(error, 'Failed to fetch roles'),
       });
     }
   }, []);

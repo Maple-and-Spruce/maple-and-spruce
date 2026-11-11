@@ -20,6 +20,7 @@ import type {
   ResendAgreementRequestResponse,
 } from '@maple/ts/firebase/api-types';
 import type { AgreementDeliveryMethod } from '@maple/ts/domain';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface UseAgreementRequestsFilters {
   status?: AgreementRequestStatus;
@@ -52,7 +53,7 @@ export function useAgreementRequests(filters?: UseAgreementRequestsFilters) {
       setRequestsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch requests',
+          errorMessageFor(error, 'Failed to fetch requests'),
       });
     }
   }, [filters?.status, filters?.signerEmail, filters?.instructorId]);

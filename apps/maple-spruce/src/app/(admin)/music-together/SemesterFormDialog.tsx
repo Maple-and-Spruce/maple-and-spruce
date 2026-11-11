@@ -26,6 +26,7 @@ import {
   type MusicTogetherSemester,
   type MusicTogetherSeason,
   type CreateMusicTogetherSemesterInput,
+  errorMessageFor,
 } from '@maple/ts/domain';
 
 /** Date <-> <input type="date"> string (local, day granularity). */
@@ -154,7 +155,7 @@ export function SemesterFormDialog({
       };
       await onSubmit(input);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save semester');
+      setError(errorMessageFor(e, 'Failed to save semester'));
     }
   };
 

@@ -7,6 +7,7 @@ import type {
   GetSyncConflictSummaryRequest,
   GetSyncConflictSummaryResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Lightweight hook for fetching sync conflict summary
@@ -47,9 +48,7 @@ export function useSyncConflictSummary(enabled = true) {
       setSummaryState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch sync conflict summary',
+          errorMessageFor(error, 'Failed to fetch sync conflict summary'),
       });
     }
   }, []);

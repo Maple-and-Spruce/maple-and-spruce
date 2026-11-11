@@ -20,7 +20,7 @@ import type {
   MarkClassCertificateRequest,
   MarkClassCertificateResponse,
 } from '@maple/ts/firebase/api-types';
-import { giftCardEndingText } from '@maple/ts/domain';
+import { giftCardEndingText, errorMessageFor } from '@maple/ts/domain';
 import { markClassCertificateValidation } from '@maple/ts/validation';
 import { ClassTypeField } from './ClassTypeField';
 import {
@@ -98,7 +98,7 @@ export function MarkClassCertificateDialog({
     } catch (error) {
       setSubmitState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Could not save it',
+        error: errorMessageFor(error, 'Could not save it'),
       });
     }
   };

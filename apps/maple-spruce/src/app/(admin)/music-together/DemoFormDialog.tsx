@@ -18,6 +18,7 @@ import {
   MT_CLASS_DURATION_MINUTES,
   type MusicTogetherDemo,
   type CreateMusicTogetherDemoInput,
+  errorMessageFor,
 } from '@maple/ts/domain';
 
 const DEFAULT_CAPACITY_FAMILIES = 8;
@@ -92,7 +93,7 @@ export function DemoFormDialog({
       };
       await onSubmit(input);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save demo');
+      setError(errorMessageFor(e, 'Failed to save demo'));
     }
   };
 

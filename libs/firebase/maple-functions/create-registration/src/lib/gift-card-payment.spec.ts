@@ -172,6 +172,7 @@ describe('classCertificateCoverCents', () => {
         giftCard: certificate(5000),
         classEntity: { categoryId: 'pottery', priceCents: 5300 },
         subtotalCents: 5300,
+        taxRatePercent: 0,
       })
     ).toBe(300);
     expect(
@@ -179,6 +180,7 @@ describe('classCertificateCoverCents', () => {
         giftCard: certificate(5000),
         classEntity: { categoryId: 'pottery', priceCents: 6500 },
         subtotalCents: 6500,
+        taxRatePercent: 0,
       })
     ).toBe(500);
   });
@@ -189,6 +191,7 @@ describe('classCertificateCoverCents', () => {
         giftCard: certificate(5000),
         classEntity: { categoryId: 'weaving', priceCents: 5300 },
         subtotalCents: 5300,
+        taxRatePercent: 0,
       })
     ).toBe(0);
   });
@@ -199,8 +202,20 @@ describe('classCertificateCoverCents', () => {
         giftCard: { card: activeCard },
         classEntity: { categoryId: 'pottery', priceCents: 9000 },
         subtotalCents: 9000,
+        taxRatePercent: 0,
       })
     ).toBe(0);
+  });
+
+  it('covers the tax on a class the certificate holds the price of', () => {
+    expect(
+      classCertificateCoverCents({
+        giftCard: certificate(5000),
+        classEntity: { categoryId: 'pottery', priceCents: 5000 },
+        subtotalCents: 5000,
+        taxRatePercent: 6,
+      })
+    ).toBe(283);
   });
 
   it('measures one seat, not every seat on the order', () => {
@@ -209,6 +224,7 @@ describe('classCertificateCoverCents', () => {
         giftCard: certificate(5000),
         classEntity: { categoryId: 'pottery', priceCents: 5000 },
         subtotalCents: 10000,
+        taxRatePercent: 0,
       })
     ).toBe(0);
   });

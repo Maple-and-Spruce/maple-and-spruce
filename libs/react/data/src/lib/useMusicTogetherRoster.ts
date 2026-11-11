@@ -15,6 +15,7 @@ import type {
   WaiveMusicTogetherInstallmentRequest,
   WaiveMusicTogetherInstallmentResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /** Hydrate ISO date strings in a roster entry back into Dates. */
 function hydrateEntry(entry: MusicTogetherRosterEntry): MusicTogetherRosterEntry {
@@ -78,7 +79,7 @@ export function useMusicTogetherRoster(sectionId: string | undefined) {
       setRosterState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch roster',
+          errorMessageFor(error, 'Failed to fetch roster'),
       });
     }
   }, [sectionId]);

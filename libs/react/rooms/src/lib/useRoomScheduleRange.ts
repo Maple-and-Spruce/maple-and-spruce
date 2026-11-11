@@ -11,6 +11,7 @@ import type {
   GetRoomScheduleRequest,
   GetRoomScheduleResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Fetch a room's busy windows across an arbitrary date range.
@@ -66,9 +67,7 @@ export function useRoomScheduleRange(room: Room, start: Date, end: Date) {
       setRoomScheduleState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch room schedule',
+          errorMessageFor(error, 'Failed to fetch room schedule'),
       });
     }
     // startKey/endKey stand in for the Date objects; room is primitive.

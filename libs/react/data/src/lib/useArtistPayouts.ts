@@ -15,6 +15,7 @@ import type {
   MarkPayoutPaidRequest,
   MarkPayoutPaidResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface UseArtistPayoutsOptions {
   /** Filter by artist ID */
@@ -70,7 +71,7 @@ export function useArtistPayouts({
       setPayoutsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch payouts',
+          errorMessageFor(error, 'Failed to fetch payouts'),
       });
     }
   }, [artistId, status]);

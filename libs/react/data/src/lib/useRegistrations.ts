@@ -19,6 +19,7 @@ import type {
   CancelRegistrationRequest,
   CancelRegistrationResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Filters for fetching registrations
@@ -62,9 +63,7 @@ export function useRegistrations(filters?: UseRegistrationsFilters) {
       setRegistrationsState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch registrations',
+          errorMessageFor(error, 'Failed to fetch registrations'),
       });
     }
   }, [

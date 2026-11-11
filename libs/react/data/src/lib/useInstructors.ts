@@ -21,6 +21,7 @@ import type {
   DeleteInstructorRequest,
   DeleteInstructorResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for managing instructor CRUD operations
@@ -54,9 +55,7 @@ export function useInstructors() {
       setInstructorsState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch instructors',
+          errorMessageFor(error, 'Failed to fetch instructors'),
       });
     }
   }, []);

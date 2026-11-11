@@ -22,6 +22,7 @@ import type {
   DeleteStudentRequest,
   DeleteStudentResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for managing music lesson student CRUD operations.
@@ -54,7 +55,7 @@ export function useStudents() {
       setStudentsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch students',
+          errorMessageFor(error, 'Failed to fetch students'),
       });
     }
   }, []);

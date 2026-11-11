@@ -11,7 +11,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { giftCardEndingText, type GiftCardSummary } from '@maple/ts/domain';
+import { giftCardEndingText, type GiftCardSummary, errorMessageFor } from '@maple/ts/domain';
 import type {
   ReplaceGiftCardRequest,
   ReplaceGiftCardResponse,
@@ -77,7 +77,7 @@ export function ReplaceGiftCardDialog({
     } catch (error) {
       setSubmitState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Could not replace the card',
+        error: errorMessageFor(error, 'Could not replace the card'),
       });
     }
   };

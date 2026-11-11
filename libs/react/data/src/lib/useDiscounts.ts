@@ -24,6 +24,7 @@ import type {
   DeleteDiscountRequest,
   DeleteDiscountResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Filters for fetching discounts
@@ -72,9 +73,7 @@ export function useDiscounts(filters?: UseDiscountsFilters) {
       setDiscountsState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch discounts',
+          errorMessageFor(error, 'Failed to fetch discounts'),
       });
     }
   }, [filters?.status, filters?.program]);

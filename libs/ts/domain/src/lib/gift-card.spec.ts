@@ -291,6 +291,54 @@ describe('classCertificateCushionCents', () => {
     ).toBe(0);
   });
 
+  describe('with sales tax', () => {
+    const macrame = { kind: 'class' as const, valueCents: 4000, classCategoryId: 'cat-macrame' };
+    const base = { purchase: macrame, classCategoryId: 'cat-macrame', taxRatePercent: 6 };
+
+    it('covers the tax when the card holds exactly the class price', () => {
+      // $40 class, 6% tax, $40 on the card: the card pays $37.74 + $2.26 tax.
+      const cover = classCertificateCushionCents({ ...base, classPriceCents: 4000, balanceCents: 4000 });
+      expect(cover).toBe(226);
+      const after = 4000 - cover;
+      expect(after + Math.round(after * 0.06)).toBe(4000);
+    });
+
+    it('covers nothing when the card already holds the class and its tax', () => {
+      expect(
+        classCertificateCushionCents({ ...base, classPriceCents: 4000, balanceCents: 4240 })
+      ).toBe(0);
+    });
+
+    it('covers a dearer class and its tax within 10% of the value', () => {
+      // $41 class + tax = $43.46, $40 on the card, cap $4.00.
+      const cover = classCertificateCushionCents({ ...base, classPriceCents: 4100, balanceCents: 4000 });
+      expect(cover).toBe(326);
+      const after = 4100 - cover;
+      expect(after + Math.round(after * 0.06)).toBe(4000);
+    });
+
+    it('stops at 10% of the value and leaves the rest to pay', () => {
+      // $50 class: covering the class and its tax would take more than $4.00.
+      expect(
+        classCertificateCushionCents({ ...base, classPriceCents: 5000, balanceCents: 4000 })
+      ).toBe(400);
+    });
+
+    it('never picks a price whose tax lands on half a cent', () => {
+      // 25 * 6% = 1.5: a tie Square might round either way.
+      const cover = classCertificateCushionCents({
+        purchase: { kind: 'class', valueCents: 1000, classCategoryId: 'c' },
+        classCategoryId: 'c',
+        classPriceCents: 30,
+        balanceCents: 26,
+        taxRatePercent: 6,
+      });
+      const after = 30 - cover;
+      expect(after * 0.06 % 1).not.toBeCloseTo(0.5, 9);
+      expect(after + Math.ceil(after * 0.06)).toBeLessThanOrEqual(26);
+    });
+  });
+
   it('caps at 10% of the value even after the card was partly spent', () => {
     expect(
       classCertificateCushionCents({

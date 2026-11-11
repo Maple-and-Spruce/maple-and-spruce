@@ -44,7 +44,7 @@ import type {
   LessonBlock,
   Room,
 } from '@maple/ts/domain';
-import { ROOMS, getRoomLabel, lessonFitsBlock } from '@maple/ts/domain';
+import { ROOMS, getRoomLabel, lessonFitsBlock, errorMessageFor } from '@maple/ts/domain';
 import { lessonSeriesValidation, lessonValidation } from '@maple/ts/validation';
 import {
   batch,
@@ -302,7 +302,7 @@ export function ScheduleLessonDialog({
       onClose();
     } catch (error: unknown) {
       submitError.value =
-        error instanceof Error ? error.message : 'Failed to schedule lessons';
+        errorMessageFor(error, 'Failed to schedule lessons');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSubmitting, studentId, onCreateSingle, onCreateSeries, onClose]);

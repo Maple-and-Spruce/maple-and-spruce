@@ -425,7 +425,34 @@ export interface GiftCardPurchase {
   design?: string;
   /** Replacement only: the lost card whose balance was moved onto this one. */
   replacesGiftCardId?: string;
+  /**
+   * Set when Katie refunded the card or turned it off from the admin. Written
+   * before any money moves, so a retry knows the amount after the card is
+   * empty.
+   */
+  closure?: GiftCardClosure;
   createdAt: Date;
+}
+
+/**
+ * A card refunded or turned off from the admin.
+ *
+ * `refund`: bought online; what was left on it went back to the buyer's card
+ * and the card was turned off. `deactivate`: any other card; what was left on
+ * it was taken off and the card turned off, with no money returned by us.
+ */
+export interface GiftCardClosure {
+  kind: 'refund' | 'deactivate';
+  /** What was on the card and taken off, in cents. */
+  amountCents: number;
+  /** Refund only: Square's refund id, once Square has made it. */
+  squareRefundId?: string;
+  /** ISO 8601. */
+  startedAt: string;
+  /** ISO 8601, once the card is turned off. */
+  completedAt?: string;
+  /** The admin who did it. */
+  byUid?: string;
 }
 
 /** A card bought on our own buy page: every buyer field is there. */
@@ -444,6 +471,21 @@ export function giftCardPurchaseSource(
   return purchase.source ?? 'online';
 }
 
+/**
+ * Whether the admin can refund this card itself: bought on our own buy page,
+ * with the Square payment that paid for it. Any other card can only be turned
+ * off from the admin; it is refunded at the register or in Square.
+ */
+export function isRefundableOnline(
+  record: Pick<GiftCardPurchase, 'source' | 'squarePaymentId'> | undefined
+): boolean {
+  return (
+    !!record &&
+    giftCardPurchaseSource(record) === 'online' &&
+    !!record.squarePaymentId
+  );
+}
+
 /** The studio covers up to this share of a class certificate's value. */
 export const CLASS_CERTIFICATE_CUSHION_RATE = 0.1;
 
@@ -451,29 +493,59 @@ export const CLASS_CERTIFICATE_CUSHION_RATE = 0.1;
  * How much the studio covers when a class certificate pays for a class.
  *
  * A class certificate is a normal Square gift card that was bought "for a
- * class". When it pays for a class of the same type (category) and the class
- * costs more than what is on the card, the studio covers the difference up to
+ * class". When it pays for a class of the same type (category), it should pay
+ * for the whole class, sales tax included. When what is on the card falls
+ * short of the class plus its tax, the studio covers the difference, up to
  * 10% of the certificate's value. Beyond that the customer pays the rest. A
  * cheaper class leaves money on the card, which spends like any gift card.
  *
+ * The cover is a discount taken before tax (that is how Square applies an
+ * order discount), so it is sized to bring the class *and its tax* down to
+ * what is on the card: the largest pre-tax price whose price plus tax still
+ * fits on the card is what the card pays for, and the cover is the rest.
+ *
  * Zero for a dollar gift card, a class of another type, or a class the card
- * already covers.
+ * already covers with its tax.
  */
 export function classCertificateCushionCents(input: {
   purchase: Pick<GiftCardPurchase, 'kind' | 'valueCents' | 'classCategoryId'> | undefined;
   /** Category of the class being booked. */
   classCategoryId: string | undefined;
-  /** What the class costs after any discount code, in cents. */
+  /** What the class costs after any discount code, before tax, in cents. */
   classPriceCents: number;
   /** What is on the card right now, in cents. */
   balanceCents: number;
+  /** Sales tax on the class, as a percentage (6 for 6%). Missing means none. */
+  taxRatePercent?: number;
 }): number {
-  const { purchase, classCategoryId, classPriceCents, balanceCents } = input;
+  const { purchase, classCategoryId, classPriceCents } = input;
   if (!purchase || purchase.kind !== 'class') return 0;
   if (!purchase.classCategoryId || purchase.classCategoryId !== classCategoryId) {
     return 0;
   }
-  const shortfall = Math.max(0, classPriceCents - Math.max(0, balanceCents));
+  const balanceCents = Math.max(0, input.balanceCents);
+  const rate = Math.max(0, input.taxRatePercent ?? 0) / 100;
+  const coveredPriceCents = largestPriceThatFits(classPriceCents, balanceCents, rate);
+  const shortfall = Math.max(0, classPriceCents - coveredPriceCents);
   const cap = Math.floor(purchase.valueCents * CLASS_CERTIFICATE_CUSHION_RATE);
   return Math.min(shortfall, cap);
+}
+
+/**
+ * The largest pre-tax price, at most `priceCents`, whose price plus tax is no
+ * more than `balanceCents`. Tax is rounded to the cent half up, as
+ * `calculateTax` does; a price whose tax lands exactly on half a cent is
+ * skipped, so the answer holds whichever way Square rounds a tie.
+ */
+function largestPriceThatFits(priceCents: number, balanceCents: number, rate: number): number {
+  const fits = (p: number): boolean => {
+    const exact = p * rate;
+    const isTie = Math.abs(exact - Math.floor(exact) - 0.5) < 1e-9;
+    return !isTie && p + Math.round(exact) <= balanceCents;
+  };
+  if (priceCents <= 0) return 0;
+  if (fits(priceCents)) return priceCents;
+  let p = Math.min(priceCents, Math.floor(balanceCents / (1 + rate)) + 1);
+  while (p > 0 && !fits(p)) p -= 1;
+  return p;
 }

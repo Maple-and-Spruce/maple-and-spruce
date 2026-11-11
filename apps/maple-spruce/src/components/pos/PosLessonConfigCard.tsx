@@ -14,6 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import { usePosLessonConfig } from '@maple/react/data';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Settings card to manage which Square catalog items count as music lessons
@@ -57,7 +58,7 @@ export function PosLessonConfigCard() {
       await saveConfig(ids);
       setDirty(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save');
+      setError(errorMessageFor(e, 'Failed to save'));
     } finally {
       setSaving(false);
     }

@@ -28,6 +28,7 @@ import type {
   RescheduleLessonWithCreditRequest,
   RescheduleLessonWithCreditResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface UseLessonsOptions {
   /** If provided, scopes the list to a single student. */
@@ -83,7 +84,7 @@ export function useLessons({
       setLessonsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch lessons',
+          errorMessageFor(error, 'Failed to fetch lessons'),
       });
     }
   }, [studentId]);

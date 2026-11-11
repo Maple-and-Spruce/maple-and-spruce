@@ -44,6 +44,7 @@ import {
   MT_MAX_CHILDREN,
   computeMusicTogetherFamilyPrice,
   mtApplyDiscount,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type { Discount } from '@maple/ts/domain';
 import type {
@@ -201,9 +202,7 @@ function WaitlistPanel({
       setState({
         status: 'error',
         message:
-          err instanceof Error
-            ? err.message
-            : 'Something went wrong. Please try again.',
+          errorMessageFor(err, 'Something went wrong. Please try again.'),
       });
     }
   };
@@ -315,9 +314,7 @@ function ComingSoonPanel({
       setState({
         status: 'error',
         message:
-          err instanceof Error
-            ? err.message
-            : 'Something went wrong. Please try again.',
+          errorMessageFor(err, 'Something went wrong. Please try again.'),
       });
     }
   };
@@ -689,9 +686,7 @@ export function MusicTogetherRegistrationWidget({
       });
     } catch (err) {
       setPayError(
-        err instanceof Error
-          ? err.message
-          : 'We could not complete your registration. Please try again.'
+        errorMessageFor(err, 'We could not complete your registration. Please try again.')
       );
     } finally {
       setBusy(false);

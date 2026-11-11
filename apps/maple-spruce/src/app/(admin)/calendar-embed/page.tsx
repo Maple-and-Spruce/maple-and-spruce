@@ -40,6 +40,7 @@ import type {
 } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import { useCalendarEmbedConfig } from '@maple/react/data';
+import { errorMessageFor } from '@maple/ts/domain';
 
 function AddSourceDialog({
   open,
@@ -70,7 +71,7 @@ function AddSourceDialog({
       setColor('5C8A97');
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add source');
+      setError(errorMessageFor(err, 'Failed to add source'));
     }
   };
 

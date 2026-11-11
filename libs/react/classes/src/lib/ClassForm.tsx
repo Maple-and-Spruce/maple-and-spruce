@@ -61,6 +61,7 @@ import {
   privateHourDatesShareStartTimes,
   getRoomLabel,
   instructorReadiness,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import { RoomAvailability } from '@maple/react/rooms';
 import type {
@@ -850,9 +851,7 @@ export function ClassForm({
           imageUploadState.value = { status: 'success', url: currentImageUrl };
         } catch (uploadError) {
           const errorMessage =
-            uploadError instanceof Error
-              ? uploadError.message
-              : 'Failed to upload image';
+            errorMessageFor(uploadError, 'Failed to upload image');
           imageUploadState.value = {
             status: 'error',
             error: errorMessage,

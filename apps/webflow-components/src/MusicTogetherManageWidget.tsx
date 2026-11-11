@@ -40,6 +40,7 @@ import type {
   MusicTogetherManageView,
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
+import { errorMessageFor } from '@maple/ts/domain';
 
 type Mode = 'request' | 'loading' | 'manage' | 'linkSent' | 'done' | 'error';
 
@@ -101,9 +102,7 @@ export function MusicTogetherManageWidget({
       } catch (err) {
         if (cancelled) return;
         setError(
-          err instanceof Error
-            ? err.message
-            : 'This link is invalid or has expired.'
+          errorMessageFor(err, 'This link is invalid or has expired.')
         );
         setMode('error');
       }
@@ -126,7 +125,7 @@ export function MusicTogetherManageWidget({
         await call({ email: email.trim() });
         setMode('linkSent');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Something went wrong.');
+        setError(errorMessageFor(err, 'Something went wrong.'));
       } finally {
         setBusy(false);
       }
@@ -154,9 +153,7 @@ export function MusicTogetherManageWidget({
       setMode('done');
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : 'Could not update your payment method.'
+        errorMessageFor(err, 'Could not update your payment method.')
       );
     } finally {
       setBusy(false);

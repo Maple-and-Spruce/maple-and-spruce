@@ -53,6 +53,7 @@ import {
   isRegistrationWindowOpen,
   type ClassCalendarEntry,
   giftCardEndingText,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import { getWidgetFunctions, routeCallable } from './firebase-init';
 import {
@@ -197,9 +198,7 @@ function SoldOutPanel({
       });
     } catch (err) {
       const message =
-        err instanceof Error
-          ? err.message
-          : 'Something went wrong. Please try again.';
+        errorMessageFor(err, 'Something went wrong. Please try again.');
       setWaitlistState({ status: 'error', message });
     }
   };

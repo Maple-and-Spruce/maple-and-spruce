@@ -33,6 +33,7 @@ import {
   getCalendarEventTypeLabel,
   getRoomLabel,
   ROOMS,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import { calendarEventValidation } from '@maple/ts/validation';
 import { RoomAvailability } from '@maple/react/rooms';
@@ -218,7 +219,7 @@ export function CalendarEventForm({
       });
     } catch (error) {
       submitError.value =
-        error instanceof Error ? error.message : 'Failed to save event';
+        errorMessageFor(error, 'Failed to save event');
     }
   }, [onSubmit, calendarEvent]);
 

@@ -22,6 +22,7 @@ import type {
   DeleteArtistRequest,
   DeleteArtistResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for managing artist CRUD operations
@@ -53,7 +54,7 @@ export function useArtists() {
       setArtistsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch artists',
+          errorMessageFor(error, 'Failed to fetch artists'),
       });
     }
   }, []);

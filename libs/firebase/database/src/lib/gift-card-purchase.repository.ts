@@ -15,6 +15,7 @@
  */
 import { getDb, toDate } from './utilities/database.config';
 import type {
+  GiftCardClosure,
   GiftCardPurchase,
   GiftCardPurchaseSource,
 } from '@maple/ts/domain';
@@ -50,6 +51,7 @@ function docToGiftCardPurchase(
     batchIndex: data.batchIndex ?? undefined,
     design: data.design ?? undefined,
     replacesGiftCardId: data.replacesGiftCardId ?? undefined,
+    closure: data.closure ?? undefined,
     createdAt: toDate(data.createdAt),
   };
 }
@@ -129,5 +131,39 @@ export const GiftCardPurchaseRepository = {
       .limit(1)
       .get();
     return snapshot.docs.length > 0 ? docToGiftCardPurchase(snapshot.docs[0]) : undefined;
+  },
+
+  /**
+   * Start refunding or turning off a card from the admin. Written in a
+   * transaction, before any money moves: if a closure was already started
+   * (a second click, or a retry after a failure) it is returned unchanged and
+   * nothing is written, so the amount is fixed by the first try.
+   */
+  async startClosure(
+    giftCardId: string,
+    closure: GiftCardClosure
+  ): Promise<GiftCardClosure> {
+    const db = getDb();
+    const ref = db.collection(COLLECTION).doc(giftCardId);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new Error(`No gift card record: ${giftCardId}`);
+      const existing = snap.data()?.closure as GiftCardClosure | undefined;
+      if (existing) return existing;
+      tx.update(ref, { closure: withoutUndefined(closure) });
+      return closure;
+    });
+  },
+
+  /** Record how a closure finished: Square's refund id, and when the card was turned off. */
+  async updateClosure(
+    giftCardId: string,
+    fields: Pick<GiftCardClosure, 'squareRefundId' | 'completedAt'>
+  ): Promise<void> {
+    const updates: Record<string, string> = {};
+    if (fields.squareRefundId) updates['closure.squareRefundId'] = fields.squareRefundId;
+    if (fields.completedAt) updates['closure.completedAt'] = fields.completedAt;
+    if (Object.keys(updates).length === 0) return;
+    await getDb().collection(COLLECTION).doc(giftCardId).update(updates);
   },
 };

@@ -7,6 +7,7 @@ import type {
   GetPosLessonAttributionSummaryRequest,
   GetPosLessonAttributionSummaryResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Lightweight POS-lesson-attribution summary for the nav badge (pending
@@ -32,7 +33,7 @@ export function usePosLessonAttributionSummary(enabled = true) {
       console.error('Failed to fetch POS lesson summary:', error);
       setSummaryState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch summary',
+        error: errorMessageFor(error, 'Failed to fetch summary'),
       });
     }
   }, []);

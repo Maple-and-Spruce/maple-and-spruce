@@ -42,6 +42,7 @@ import {
   batch,
   useSignals,
 } from '@maple/react/signals';
+import { errorMessageFor } from '@maple/ts/domain';
 
 interface SectionFormData {
   id: string;
@@ -221,7 +222,7 @@ export function AgreementTemplateForm({
       });
     } catch (error: unknown) {
       submitError.value =
-        error instanceof Error ? error.message : 'Failed to save template';
+        errorMessageFor(error, 'Failed to save template');
     }
   }, [onSubmit, name, description, sections, classCategoryIds, autoAttach, supportsMinor, validationErrors]);
 

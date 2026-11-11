@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Box, Typography, Button, Alert, Snackbar } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import type { Class, CreateClassInput } from '@maple/ts/domain';
-import { getBookableCapacity } from '@maple/ts/domain';
+import { getBookableCapacity, errorMessageFor } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import {
   ClassTable,
@@ -181,7 +181,7 @@ export default function ClassesPage() {
         setIsFormOpen(true);
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Failed to copy class';
+          errorMessageFor(error, 'Failed to copy class');
         setDuplicateError(message);
       } finally {
         setDuplicatingClassId(undefined);

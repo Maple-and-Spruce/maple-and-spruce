@@ -42,6 +42,7 @@ import {
   INSTRUCTOR_PROGRAMS,
   INSTRUCTOR_PROGRAM_LABELS,
   type InstructorProgram,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type {
   Instructor,
@@ -356,9 +357,7 @@ export function InstructorForm({
           imageUploadState.value = { status: 'success', url: currentPhotoUrl };
         } catch (uploadError) {
           const errorMessage =
-            uploadError instanceof Error
-              ? uploadError.message
-              : 'Failed to upload image';
+            errorMessageFor(uploadError, 'Failed to upload image');
           imageUploadState.value = {
             status: 'error',
             error: errorMessage,

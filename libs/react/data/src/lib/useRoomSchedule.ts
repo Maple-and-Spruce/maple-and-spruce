@@ -7,6 +7,7 @@ import type {
   GetRoomScheduleRequest,
   GetRoomScheduleResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for fetching a room's busy windows for the rest of today.
@@ -62,9 +63,7 @@ export function useRoomSchedule(room: Room) {
       setRoomScheduleState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch room schedule',
+          errorMessageFor(error, 'Failed to fetch room schedule'),
       });
     }
   }, [room]);

@@ -47,7 +47,7 @@ import type {
   Artist,
   Category,
 } from '@maple/ts/domain';
-import { toCents } from '@maple/ts/domain';
+import { toCents, errorMessageFor } from '@maple/ts/domain';
 import type {
   UploadProductImageRequest,
   UploadProductImageResponse,
@@ -462,9 +462,7 @@ export function ProductForm({
           imageUploadState.value = { status: 'success', url: imageUrl };
         } catch (uploadError) {
           const errorMessage =
-            uploadError instanceof Error
-              ? uploadError.message
-              : 'Failed to upload image';
+            errorMessageFor(uploadError, 'Failed to upload image');
           imageUploadState.value = {
             status: 'error',
             error: errorMessage,
@@ -494,9 +492,7 @@ export function ProductForm({
           // Image upload failed, but product was created
           // Show error but still close - user can add image later
           const errorMessage =
-            uploadError instanceof Error
-              ? uploadError.message
-              : 'Failed to upload image';
+            errorMessageFor(uploadError, 'Failed to upload image');
           console.error('Image upload failed after product creation:', errorMessage);
           // Don't block - product was created successfully
         }

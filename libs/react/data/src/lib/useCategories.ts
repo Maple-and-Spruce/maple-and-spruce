@@ -24,6 +24,7 @@ import type {
   ReorderCategoriesRequest,
   ReorderCategoriesResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for managing category CRUD operations
@@ -57,9 +58,7 @@ export function useCategories() {
       setCategoriesState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch categories',
+          errorMessageFor(error, 'Failed to fetch categories'),
       });
     }
   }, []);

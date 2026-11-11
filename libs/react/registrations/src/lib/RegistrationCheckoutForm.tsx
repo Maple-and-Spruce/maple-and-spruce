@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useEffect } from 'react';
+import { useCallback, useMemo, useReducer, useRef, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -407,6 +407,19 @@ export function RegistrationCheckoutForm({
   // when the card form fails, e.g. the hosted-checkout fallback) none is shown.
   const giftCardAvailable = useSignal(false);
   const giftCardStatus = useSignal<GiftCardStatus>({ kind: 'closed' });
+  // Every change to the gift card status also bumps React state. The status
+  // changes after awaiting Square and the server, and on the live widget
+  // (portaled out of Webflow's Shadow DOM) the signal alone once failed to
+  // redraw: the card was applied but the page showed the Apply button until a
+  // second click. A state update always schedules a render.
+  const [, redrawGiftCard] = useReducer((n: number) => n + 1, 0);
+  const setGiftCardStatus = useCallback(
+    (next: GiftCardStatus) => {
+      giftCardStatus.value = next;
+      redrawGiftCard();
+    },
+    [giftCardStatus]
+  );
   const giftCardFieldEl = useSignal<HTMLDivElement | null>(null);
   const appliedGiftCard = useComputed(() =>
     giftCardStatus.value.kind === 'applied' ? giftCardStatus.value.preview : null
@@ -446,11 +459,11 @@ export function RegistrationCheckoutForm({
     if (!giftCardOpen || !el || !api) return;
     api.attach(el).catch((error: unknown) => {
       console.error('[RegistrationCheckoutForm] gift card field failed', error);
-      giftCardStatus.value = {
+      setGiftCardStatus({
         kind: 'error',
         message:
           "We couldn't load the gift card field. Please refresh the page and try again.",
-      };
+      });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [giftCardOpen, giftCardFieldEl.value]);
@@ -464,7 +477,7 @@ export function RegistrationCheckoutForm({
     async (qty: number, code: string) => {
       const api = giftCardApiRef.current;
       if (!onPreviewGiftCard || !api) return;
-      giftCardStatus.value = { kind: 'applying' };
+      setGiftCardStatus({ kind: 'applying' });
       try {
         const giftCardNonce = await api.tokenize();
         const preview = await onPreviewGiftCard({
@@ -473,23 +486,23 @@ export function RegistrationCheckoutForm({
           quantity: qty,
           discountCode: code.trim() || undefined,
         });
-        giftCardStatus.value = { kind: 'applied', preview };
+        setGiftCardStatus({ kind: 'applied', preview });
       } catch (error) {
-        giftCardStatus.value = {
+        setGiftCardStatus({
           kind: 'error',
           message: extractGiftCardErrorMessage(error),
-        };
+        });
       }
     },
-    [onPreviewGiftCard, publicClass.id, giftCardStatus]
+    [onPreviewGiftCard, publicClass.id, setGiftCardStatus]
   );
   const applyGiftCardRef = useRef(applyGiftCard);
   applyGiftCardRef.current = applyGiftCard;
 
   const handleRemoveGiftCard = useCallback(() => {
-    giftCardStatus.value = { kind: 'closed' };
+    setGiftCardStatus({ kind: 'closed' });
     giftCardApiRef.current?.destroy().catch(console.error);
-  }, [giftCardStatus]);
+  }, [setGiftCardStatus]);
 
   const calculateCost = useCallback(
     async (qty: number, code: string) => {
@@ -1426,7 +1439,7 @@ export function RegistrationCheckoutForm({
               {giftCardsOffered && giftCardAvailable.value && (
                 <GiftCardSection
                   status={giftCardStatus.value}
-                  onOpen={() => (giftCardStatus.value = { kind: 'open' })}
+                  onOpen={() => setGiftCardStatus({ kind: 'open' })}
                   onApply={() =>
                     applyGiftCard(quantity.value, discountCode.value)
                   }

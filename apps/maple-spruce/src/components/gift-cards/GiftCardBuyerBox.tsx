@@ -8,6 +8,7 @@ import type {
   GiftCardCustomer,
 } from '@maple/ts/firebase/api-types';
 import { formatGiftCardDate } from './format';
+import { errorMessageFor } from '@maple/ts/domain';
 
 interface GiftCardBuyerBoxProps {
   giftCardId: string;
@@ -46,7 +47,7 @@ export function GiftCardBuyerBox({ giftCardId, onLoadBuyer }: GiftCardBuyerBoxPr
         if (current) {
           setBuyerState({
             status: 'error',
-            error: error instanceof Error ? error.message : 'Could not read the sale',
+            error: errorMessageFor(error, 'Could not read the sale'),
           });
         }
       }

@@ -23,6 +23,7 @@ import type {
   DuplicateClassRequest,
   DuplicateClassResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Filters for fetching classes
@@ -66,7 +67,7 @@ export function useClasses(filters?: UseClassesFilters) {
       setClassesState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch classes',
+          errorMessageFor(error, 'Failed to fetch classes'),
       });
     }
   }, [filters?.status, filters?.categoryId, filters?.instructorId, filters?.upcoming]);

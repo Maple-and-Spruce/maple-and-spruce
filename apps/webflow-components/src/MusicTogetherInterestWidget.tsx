@@ -43,6 +43,7 @@ import {
   ensureMusicTogetherPixel,
   trackMusicTogetherInterest,
 } from './lib/music-together-analytics';
+import { errorMessageFor } from '@maple/ts/domain';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const WIDGET_MAX_WIDTH = 560;
@@ -124,9 +125,7 @@ export function MusicTogetherInterestWidget({
           setLoadState({
             status: 'error',
             message:
-              err instanceof Error
-                ? err.message
-                : 'Could not load class times. Please try again.',
+              errorMessageFor(err, 'Could not load class times. Please try again.'),
           });
         }
       }
@@ -200,9 +199,7 @@ export function MusicTogetherInterestWidget({
       setSubmitState({
         status: 'error',
         message:
-          err instanceof Error
-            ? err.message
-            : 'Something went wrong. Please try again.',
+          errorMessageFor(err, 'Something went wrong. Please try again.'),
       });
     }
   };

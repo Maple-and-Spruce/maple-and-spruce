@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatGiftCardChange,
   formatGiftCardCode,
+  formatGiftCardCount,
   formatGiftCardDate,
   formatGiftCardMoney,
   newGiftCardRequestKey,
@@ -14,6 +15,19 @@ describe('gift card formatting', () => {
     expect(formatGiftCardChange(2500)).toBe('+$25.00');
     expect(formatGiftCardChange(-3750)).toBe('−$37.50');
     expect(formatGiftCardChange(0)).toBe('$0.00');
+  });
+
+  it('never shows undefined or NaN for a missing number', () => {
+    expect(formatGiftCardMoney(undefined)).toBe('—');
+    expect(formatGiftCardMoney(Number.NaN)).toBe('—');
+    expect(formatGiftCardChange(undefined)).toBe('—');
+    expect(formatGiftCardCount(undefined, 'certificate', 'certificates')).toBe('—');
+    expect(formatGiftCardDate('not a date')).toBe('—');
+  });
+
+  it('counts with the right word', () => {
+    expect(formatGiftCardCount(0, 'certificate', 'certificates')).toBe('0 certificates');
+    expect(formatGiftCardCount(1, 'certificate', 'certificates')).toBe('1 certificate');
   });
 
   it('shows dates in Eastern time', () => {

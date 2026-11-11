@@ -13,6 +13,7 @@ import {
   SCHEDULE_TIME_ZONE,
   newLessonKey,
   resolvePrivatePayLessonRateCents,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type {
   BlockStrategy,
@@ -75,7 +76,7 @@ export function formatDateList(dates: Date[]): string {
 }
 
 function errorMessage(err: unknown, fallback: string): string {
-  return err instanceof Error ? err.message : fallback;
+  return errorMessageFor(err, fallback);
 }
 
 export async function bookAndPay(

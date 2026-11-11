@@ -7,6 +7,7 @@ import type {
   GetMusicTogetherInterestRequest,
   GetMusicTogetherInterestResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /** Hydrate ISO date strings (callable serialization) back into Dates. */
 function hydrateEntry(entry: MusicTogetherInterest): MusicTogetherInterest {
@@ -46,9 +47,7 @@ export function useMusicTogetherInterest() {
       setInterestState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch interest list',
+          errorMessageFor(error, 'Failed to fetch interest list'),
       });
     }
   }, []);

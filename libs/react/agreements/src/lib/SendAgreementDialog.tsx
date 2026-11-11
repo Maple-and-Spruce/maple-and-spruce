@@ -19,6 +19,7 @@ import {
   useSignals,
 } from '@maple/react/signals';
 import type { AgreementTemplate } from '@maple/ts/domain';
+import { errorMessageFor } from '@maple/ts/domain';
 
 interface SendAgreementDialogProps {
   open: boolean;
@@ -82,7 +83,7 @@ export function SendAgreementDialog({
       handleClose();
     } catch (err) {
       error.value =
-        err instanceof Error ? err.message : 'Failed to send waiver';
+        errorMessageFor(err, 'Failed to send waiver');
     }
   };
 

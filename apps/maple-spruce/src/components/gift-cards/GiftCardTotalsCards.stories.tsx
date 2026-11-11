@@ -43,6 +43,25 @@ export const OneCertificateNotSold: Story = {
   },
 };
 
+/**
+ * An older server that does not send a number yet (the admin can deploy
+ * before the functions do): the tile shows a dash, never "undefined".
+ */
+export const MissingNumber: Story = {
+  args: {
+    totalsState: {
+      status: 'success',
+      data: { ...mockGiftCardTotals, printedNotSoldCount: undefined as unknown as number },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Printed, not sold yet')).toBeVisible();
+    await expect(canvas.queryByText(/undefined|NaN/)).toBeNull();
+    await expect(canvas.getByText('—')).toBeVisible();
+  },
+};
+
 export const Loading: Story = {
   args: { totalsState: { status: 'loading' } },
   play: async ({ canvasElement }) => {

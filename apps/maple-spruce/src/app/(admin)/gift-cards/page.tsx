@@ -21,9 +21,12 @@ import {
   MarkClassCertificateDialog,
   PrintGiftCertificatesDialog,
   ReplaceGiftCardDialog,
+  CloseGiftCardDialog,
+  type CloseGiftCardMode,
   type GiftCardDetail,
 } from '../../../components/gift-cards';
 import { useClassCategories, useGiftCards } from '../../../hooks';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Gift Cards (#297): balances, history and codes, read live from Square.
@@ -31,7 +34,8 @@ import { useClassCategories, useGiftCards } from '../../../hooks';
  * and mark a register card as a class certificate (#310), print a batch of
  * certificates with no money on them, which the register loads when it sells
  * one (#314, #332), see who bought a card at the register, find cards by the
- * customer, and replace a lost card (#332).
+ * customer, and replace a lost card (#332). A card bought online can be
+ * refunded and turned off, and any card turned off.
  */
 export default function GiftCardsPage() {
   const {
@@ -45,6 +49,7 @@ export default function GiftCardsPage() {
     fetchGiftCardBuyer,
     searchGiftCardsByCustomer,
     replaceGiftCard,
+    closeGiftCard,
   } = useGiftCards();
   const router = useRouter();
   const { categoriesState } = useClassCategories();
@@ -56,6 +61,11 @@ export default function GiftCardsPage() {
   const [printOpen, setPrintOpen] = useState(false);
   const [certificateCard, setCertificateCard] = useState<GiftCardSummary | null>(null);
   const [replaceCard, setReplaceCard] = useState<GiftCardSummary | null>(null);
+  const [closeTarget, setCloseTarget] = useState<{
+    card: GiftCardSummary;
+    mode: CloseGiftCardMode;
+    amountCents?: number;
+  } | null>(null);
 
   const totalsState = useMemo<RequestState<GiftCardTotals>>(
     () =>
@@ -80,7 +90,7 @@ export default function GiftCardsPage() {
     } catch (error) {
       setDetailState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to load card',
+        error: errorMessageFor(error, 'Failed to load card'),
       });
     }
   };
@@ -149,6 +159,22 @@ export default function GiftCardsPage() {
         onMakeClassCertificate={setCertificateCard}
         onLoadBuyer={fetchGiftCardBuyer}
         onReplace={setReplaceCard}
+        onCloseCard={(card, mode, amountCents) => setCloseTarget({ card, mode, amountCents })}
+      />
+
+      <CloseGiftCardDialog
+        card={closeTarget?.card ?? null}
+        mode={closeTarget?.mode ?? 'deactivate'}
+        amountCents={closeTarget?.amountCents}
+        onClose={() => setCloseTarget(null)}
+        onCloseCard={closeGiftCard}
+        onDone={() => {
+          const card = closeTarget?.card;
+          setCloseTarget(null);
+          fetchGiftCards();
+          // Show the card again, now turned off.
+          if (card) void openCard(card);
+        }}
       />
 
       <ReplaceGiftCardDialog

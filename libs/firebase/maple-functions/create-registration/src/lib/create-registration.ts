@@ -155,6 +155,7 @@ export const createRegistration = Functions.endpoint
             giftCard,
             classEntity,
             subtotalCents,
+            taxRatePercent,
           });
           const discounts = [
             ...(discountAmountCents > 0

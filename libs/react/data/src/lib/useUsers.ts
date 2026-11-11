@@ -23,6 +23,7 @@ import type {
   RevokeRoleRequest,
   RevokeRoleResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * httpsCallable serializes the response to JSON, so server-side `Date`
@@ -103,7 +104,7 @@ export function useUsers() {
       console.error('Failed to fetch users:', error);
       setUsersState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch users',
+        error: errorMessageFor(error, 'Failed to fetch users'),
       });
     }
   }, []);

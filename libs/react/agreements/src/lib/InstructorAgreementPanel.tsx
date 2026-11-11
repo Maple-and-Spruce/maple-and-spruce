@@ -25,6 +25,7 @@ import {
   type AgreementRequest,
   type AgreementTemplate,
   type RequestState,
+  errorMessageFor,
 } from '@maple/ts/domain';
 
 export interface InstructorAgreementPanelProps {
@@ -67,7 +68,7 @@ function defaultSigningUrl(token: string): string {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong';
+  return errorMessageFor(error, 'Something went wrong');
 }
 
 export function InstructorAgreementPanel({

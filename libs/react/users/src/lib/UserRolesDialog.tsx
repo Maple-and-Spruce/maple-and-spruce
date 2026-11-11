@@ -15,7 +15,7 @@ import {
   Typography,
 } from '@mui/material';
 import type { AppUser, ScopedUserRole } from '@maple/ts/domain';
-import { SCOPED_USER_ROLES, USER_ROLE_LABELS } from '@maple/ts/domain';
+import { SCOPED_USER_ROLES, USER_ROLE_LABELS, errorMessageFor } from '@maple/ts/domain';
 
 export interface UserRolesDialogProps {
   open: boolean;
@@ -74,7 +74,7 @@ export function UserRolesDialog({
     try {
       await action();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Action failed');
+      setError(errorMessageFor(e, 'Action failed'));
     } finally {
       setBusy(false);
     }

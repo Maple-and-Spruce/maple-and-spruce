@@ -48,6 +48,7 @@ import {
   lessonBillingState,
   SCHEDULE_TIME_ZONE,
   newInvoiceLineId,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import { invoiceValidation } from '@maple/ts/validation';
 import { formatCents } from '@maple/react/lessons';
@@ -247,7 +248,7 @@ export function InvoiceBuilderDialog({
       onClose();
     } catch (error: unknown) {
       submitError.value =
-        error instanceof Error ? error.message : 'Failed to save invoice';
+        errorMessageFor(error, 'Failed to save invoice');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoice, isSubmitting, onCreate, onUpdate, onClose, studentId]);

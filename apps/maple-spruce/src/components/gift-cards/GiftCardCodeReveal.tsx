@@ -5,6 +5,7 @@ import { Alert, Box, Button, Stack, Typography } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { fonts } from '@maple/react/theme';
 import { formatGiftCardCode } from './format';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface GiftCardCodeRevealProps {
   /** The card whose code to show. Null while there is no card yet. */
@@ -44,7 +45,7 @@ export function GiftCardCodeReveal({
     } catch (error) {
       setCodeState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Could not get the code',
+        error: errorMessageFor(error, 'Could not get the code'),
       });
       return;
     }

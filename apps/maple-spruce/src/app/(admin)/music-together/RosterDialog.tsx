@@ -29,6 +29,7 @@ import {
   mtSectionFirstSessionAt,
   type RequestState,
   type MusicTogetherSection,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type {
   GetMusicTogetherRosterResponse,
@@ -237,7 +238,7 @@ export function RosterDialog({
       closeCancel();
     } catch (error) {
       setCancelError(
-        error instanceof Error ? error.message : 'Failed to cancel'
+        errorMessageFor(error, 'Failed to cancel')
       );
     } finally {
       setIsCancelling(false);
@@ -288,7 +289,7 @@ export function RosterDialog({
       );
       closeWaive();
     } catch (error) {
-      setWaiveError(error instanceof Error ? error.message : 'Failed to waive');
+      setWaiveError(errorMessageFor(error, 'Failed to waive'));
     } finally {
       setIsWaiving(false);
     }

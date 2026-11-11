@@ -11,6 +11,7 @@ import type {
   GetSignedAgreementRequest,
   GetSignedAgreementResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface SignedAgreementDetail {
   agreement: SignedAgreement;
@@ -38,9 +39,7 @@ export function useSignedAgreement() {
       setDetailState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch signed agreement',
+          errorMessageFor(error, 'Failed to fetch signed agreement'),
       });
     }
   }, []);

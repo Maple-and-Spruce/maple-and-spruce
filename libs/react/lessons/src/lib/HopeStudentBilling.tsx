@@ -48,7 +48,7 @@ import type {
   HopeQueueEntry,
   SaveHopeOrderInput,
 } from '@maple/ts/domain';
-import { SCHEDULE_TIME_ZONE, formatHopePrice } from '@maple/ts/domain';
+import { SCHEDULE_TIME_ZONE, formatHopePrice, errorMessageFor } from '@maple/ts/domain';
 import { hopeOrderValidation } from '@maple/ts/validation';
 
 export interface HopeOrderRow extends HopeOrder {
@@ -135,7 +135,7 @@ function OrderDialog({
       await onSave(input);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save the order');
+      setError(errorMessageFor(err, 'Could not save the order'));
     }
   };
 
@@ -265,7 +265,7 @@ export function HopeStudentBilling({
       setPicked([]);
       setReference('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not mark them invoiced');
+      setError(errorMessageFor(err, 'Could not mark them invoiced'));
     }
   };
 

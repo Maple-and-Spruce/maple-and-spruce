@@ -15,7 +15,7 @@ import {
   Typography,
 } from '@mui/material';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { describeMissingReadiness, type RequestState } from '@maple/ts/domain';
+import { describeMissingReadiness, type RequestState, errorMessageFor } from '@maple/ts/domain';
 import type {
   ClassInstructorPayoutPreview as Preview,
   PreviewClassInstructorPayoutsResponse,
@@ -95,7 +95,7 @@ function PreviewCard({
     try {
       await onGenerate(preview.instructorId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to generate statement');
+      setError(errorMessageFor(e, 'Failed to generate statement'));
     } finally {
       setGenerating(false);
     }

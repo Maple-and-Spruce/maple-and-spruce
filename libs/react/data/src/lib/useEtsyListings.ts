@@ -9,6 +9,7 @@ import type {
   ListEtsyListingsResponse,
   EtsyListingWithSyncInfo,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface UseEtsyListingsOptions {
   /** Listing state to fetch (default: 'active'). */
@@ -52,9 +53,7 @@ export function useEtsyListings({
       setListingsState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch Etsy listings',
+          errorMessageFor(error, 'Failed to fetch Etsy listings'),
       });
     }
   }, [state, limit]);

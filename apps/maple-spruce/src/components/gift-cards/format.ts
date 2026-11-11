@@ -1,7 +1,11 @@
 import { formatGiftCardCode as formatDomainGiftCardCode } from '@maple/ts/domain';
 
-/** Cents as dollars, e.g. 1250 → "$12.50". */
-export function formatGiftCardMoney(cents: number): string {
+/** What a number shows when it is missing, so a page never says "undefined" or "NaN". */
+export const MISSING_NUMBER = '—';
+
+/** Cents as dollars, e.g. 1250 → "$12.50". A missing amount shows as "—". */
+export function formatGiftCardMoney(cents: number | undefined | null): string {
+  if (typeof cents !== 'number' || !Number.isFinite(cents)) return MISSING_NUMBER;
   return (cents / 100).toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -9,21 +13,32 @@ export function formatGiftCardMoney(cents: number): string {
 }
 
 /** A signed amount for the history, e.g. "+$25.00" / "−$37.50". */
-export function formatGiftCardChange(cents: number): string {
+export function formatGiftCardChange(cents: number | undefined | null): string {
+  if (typeof cents !== 'number' || !Number.isFinite(cents)) return MISSING_NUMBER;
   if (cents === 0) return formatGiftCardMoney(0);
   const sign = cents > 0 ? '+' : '−';
   return `${sign}${formatGiftCardMoney(Math.abs(cents))}`;
 }
 
 /** A Square timestamp as a date in Eastern time, e.g. "Nov 14, 2026". */
-export function formatGiftCardDate(iso: string): string {
-  if (!iso) return '—';
+export function formatGiftCardDate(iso: string | undefined | null): string {
+  if (!iso || Number.isNaN(new Date(iso).getTime())) return MISSING_NUMBER;
   return new Date(iso).toLocaleDateString('en-US', {
     timeZone: 'America/New_York',
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
+}
+
+/** A count of something, e.g. "1 certificate" / "3 certificates". A missing count shows as "—". */
+export function formatGiftCardCount(
+  count: number | undefined | null,
+  one: string,
+  many: string
+): string {
+  if (typeof count !== 'number' || !Number.isFinite(count)) return MISSING_NUMBER;
+  return `${count} ${count === 1 ? one : many}`;
 }
 
 /**

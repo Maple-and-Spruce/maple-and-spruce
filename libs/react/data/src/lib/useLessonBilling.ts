@@ -30,6 +30,7 @@ import type {
   RunLessonBillingRequest,
   RunLessonBillingResult,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface LessonBillingData {
   rules: LessonBillingRule[];
@@ -75,9 +76,7 @@ export function useLessonBilling(studentId?: string) {
       setBillingState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Could not load the billing schedule',
+          errorMessageFor(error, 'Could not load the billing schedule'),
       });
     }
   }, [studentId]);
@@ -103,7 +102,7 @@ export function useLessonBilling(studentId?: string) {
         await fetchBilling();
       } catch (error) {
         setActionError(
-          error instanceof Error ? error.message : 'Could not stop that charge'
+          errorMessageFor(error, 'Could not stop that charge')
         );
       } finally {
         setPendingId(null);
@@ -151,7 +150,7 @@ export function useLessonBilling(studentId?: string) {
         return null;
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Could not take that payment';
+          errorMessageFor(error, 'Could not take that payment');
         setActionError(message);
         return message;
       } finally {
@@ -182,7 +181,7 @@ export function useLessonBilling(studentId?: string) {
         return null;
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Could not save that rule';
+          errorMessageFor(error, 'Could not save that rule');
         setActionError(message);
         return message;
       } finally {
@@ -214,7 +213,7 @@ export function useLessonBilling(studentId?: string) {
         return result.data;
       } catch (error) {
         setActionError(
-          error instanceof Error ? error.message : 'Could not run the billing job'
+          errorMessageFor(error, 'Could not run the billing job')
         );
         return null;
       } finally {

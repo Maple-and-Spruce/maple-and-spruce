@@ -29,6 +29,7 @@ import {
   type RequestState,
   giftCardName,
   giftCardShortLabel,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type {
   GiftCardCustomer,
@@ -224,7 +225,7 @@ export function GiftCardsTable({
     } catch (error) {
       setCustomerSearch({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Could not search customers',
+        error: errorMessageFor(error, 'Could not search customers'),
         query,
       });
     }

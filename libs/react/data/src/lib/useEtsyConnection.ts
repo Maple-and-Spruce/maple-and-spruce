@@ -14,6 +14,7 @@ import type {
   RefreshEtsyShopIdRequest,
   RefreshEtsyShopIdResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for managing the Etsy OAuth connection.
@@ -53,9 +54,7 @@ export function useEtsyConnection() {
       setConnectionState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch Etsy connection status',
+          errorMessageFor(error, 'Failed to fetch Etsy connection status'),
       });
     }
   }, []);
@@ -77,9 +76,7 @@ export function useEtsyConnection() {
       setAuthUrlState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to generate auth URL',
+          errorMessageFor(error, 'Failed to generate auth URL'),
       });
       return null;
     }
@@ -107,9 +104,7 @@ export function useEtsyConnection() {
         setCallbackState({
           status: 'error',
           error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to complete Etsy authorization',
+            errorMessageFor(error, 'Failed to complete Etsy authorization'),
         });
         return null;
       }
@@ -139,9 +134,7 @@ export function useEtsyConnection() {
       setRefreshShopIdState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to refresh Etsy shop ID',
+          errorMessageFor(error, 'Failed to refresh Etsy shop ID'),
       });
       return null;
     }

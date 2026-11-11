@@ -21,6 +21,7 @@ import type {
   DeleteAgreementTemplateRequest,
   DeleteAgreementTemplateResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface UseAgreementTemplatesFilters {
   status?: AgreementTemplateStatus;
@@ -46,7 +47,7 @@ export function useAgreementTemplates(filters?: UseAgreementTemplatesFilters) {
       setTemplatesState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch templates',
+          errorMessageFor(error, 'Failed to fetch templates'),
       });
     }
   }, [filters?.status]);

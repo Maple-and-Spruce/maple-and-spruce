@@ -19,6 +19,7 @@ import type {
   UpdateStudentLessonScheduleRequest,
   UpdateStudentLessonScheduleResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /** Callables serialise Dates to ISO strings; bring them back. */
 function hydrate(s: StudentLessonSchedule): StudentLessonSchedule {
@@ -60,9 +61,7 @@ export function useStudentLessonSchedules(studentId?: string) {
       setSchedulesState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Could not load the standing schedule',
+          errorMessageFor(error, 'Could not load the standing schedule'),
       });
     }
   }, [studentId]);
@@ -145,9 +144,7 @@ export function useAllStudentLessonSchedules(teacherId?: string) {
       setSchedulesState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Could not load standing schedules',
+          errorMessageFor(error, 'Could not load standing schedules'),
       });
     }
   }, [teacherId]);

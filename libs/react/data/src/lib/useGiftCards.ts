@@ -23,12 +23,15 @@ import type {
   PrintGiftCertificatesRequest,
   PrintGiftCertificatesResponse,
   ReplaceGiftCardRequest,
+  CloseGiftCardRequest,
+  CloseGiftCardResponse,
   ReplaceGiftCardResponse,
   RevealGiftCardCodeRequest,
   RevealGiftCardCodeResponse,
   SearchGiftCardsByCustomerRequest,
   SearchGiftCardsByCustomerResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * The admin Gift Cards page (#297), served by the `giftCards` router. Square
@@ -53,7 +56,7 @@ export function useGiftCards() {
       setGiftCardsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to load gift cards',
+          errorMessageFor(error, 'Failed to load gift cards'),
       });
     }
   }, []);
@@ -175,6 +178,22 @@ export function useGiftCards() {
     []
   );
 
+  /**
+   * Refund a card bought online and turn it off, or turn any card off.
+   * Retrying finishes a half-done one; the server keys every step by the card.
+   */
+  const closeGiftCard = useCallback(
+    async (request: CloseGiftCardRequest): Promise<CloseGiftCardResponse> => {
+      const fn = httpsCallableFromURL<CloseGiftCardRequest, CloseGiftCardResponse>(
+        getMapleFunctions(),
+        routerCallableUrl('giftCards', 'closeGiftCard')
+      );
+      const result = await fn(request);
+      return result.data;
+    },
+    []
+  );
+
   useEffect(() => {
     fetchGiftCards();
   }, [fetchGiftCards]);
@@ -183,6 +202,7 @@ export function useGiftCards() {
     fetchGiftCardBuyer,
     searchGiftCardsByCustomer,
     replaceGiftCard,
+    closeGiftCard,
     giftCardsState,
     fetchGiftCards,
     fetchGiftCard,
@@ -215,7 +235,7 @@ export function useCertificateBatch(batchId: string) {
       console.error('Failed to load certificate batch:', error);
       setBatchState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to load the certificates',
+        error: errorMessageFor(error, 'Failed to load the certificates'),
       });
     }
   }, [batchId]);

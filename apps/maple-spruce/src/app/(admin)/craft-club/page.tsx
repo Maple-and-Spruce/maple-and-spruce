@@ -25,7 +25,7 @@ import type {
   CraftClubMember,
   CraftClubMemberStatus,
 } from '@maple/ts/domain';
-import { CRAFT_CLUB_MONTHLY_PRICE_CENTS } from '@maple/ts/domain';
+import { CRAFT_CLUB_MONTHLY_PRICE_CENTS, errorMessageFor } from '@maple/ts/domain';
 import { useCraftClubMembers } from '../../../hooks';
 
 const STATUS_LABELS: Record<CraftClubMemberStatus, string> = {
@@ -90,7 +90,7 @@ export default function CraftClubPage() {
         setName('');
       } catch (err) {
         setFormError(
-          err instanceof Error ? err.message : 'Failed to approve email'
+          errorMessageFor(err, 'Failed to approve email')
         );
       } finally {
         setSubmitting(false);

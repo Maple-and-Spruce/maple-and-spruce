@@ -30,6 +30,7 @@ import {
   type CreateMusicTogetherSectionInput,
   ROOMS,
   getRoomLabel,
+  errorMessageFor,
 } from '@maple/ts/domain';
 
 /** Date <-> <input type="datetime-local"> string (local time). */
@@ -167,7 +168,7 @@ export function SectionFormDialog({
       };
       await onSubmit(input);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save section');
+      setError(errorMessageFor(e, 'Failed to save section'));
     }
   };
 

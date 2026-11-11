@@ -13,6 +13,7 @@ import type {
   SaveInstrumentsRequest,
   SaveInstrumentsResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * The instruments the studio teaches (#161), from the `settings` router.
@@ -36,7 +37,7 @@ export function useInstruments() {
       setInstrumentsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Could not load instruments',
+          errorMessageFor(error, 'Could not load instruments'),
       });
     }
   }, []);

@@ -272,6 +272,57 @@ export const ClassCertificate: Story = {
 };
 
 /**
+ * A class certificate holding exactly the class price: it pays the class and
+ * its sales tax, so nothing is left to pay (the studio covers the tax).
+ */
+export const CertificateCoversTax: Story = {
+  args: {
+    onPreviewGiftCard: fn(async () => ({
+      last4: '',
+      balanceCents: 5000,
+      classCertificateCoverCents: 283,
+      subtotalCents: 5000,
+      taxAmountCents: 283,
+      totalCents: 5000,
+      giftCardAmountCents: 5000,
+      leftToPayCents: 0,
+    })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await openAndApply(canvasElement);
+    await expect(await canvas.findByText('Nothing left to pay')).toBeInTheDocument();
+    await expect(canvas.getByText('Class certificate covers:')).toBeInTheDocument();
+    await expect(canvas.getByText('−$2.83')).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Register with gift card' })
+    ).toBeInTheDocument();
+  },
+};
+
+/**
+ * One click is enough, even when the server takes a moment: the applied card
+ * shows without pressing Apply again (seen once on the live widget).
+ */
+export const AppliesOnFirstClick: Story = {
+  args: {
+    onPreviewGiftCard: fn(
+      () => new Promise<PreviewGiftCardForClassResponse>((resolve) => setTimeout(() => resolve(partlyCovers), 600))
+    ),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = await openAndApply(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: /Checking card/ })
+    ).toBeDisabled();
+    await expect(
+      await canvas.findByText('Gift card ending 4821:', undefined, { timeout: 3000 })
+    ).toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: 'Apply gift card' })).toBeNull();
+    await expect(args.onPreviewGiftCard).toHaveBeenCalledTimes(1);
+  },
+};
+
+/**
  * A card with a MAPLE code: its last 4 would be the whole code, so the server
  * sends none and the summary names it plainly.
  */

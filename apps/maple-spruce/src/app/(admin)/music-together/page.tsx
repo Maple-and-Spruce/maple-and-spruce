@@ -36,6 +36,7 @@ import {
   type CreateMusicTogetherSectionInput,
   type CreateMusicTogetherSemesterInput,
   type CreateMusicTogetherDemoInput,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import {
   useMusicTogetherSections,
@@ -195,7 +196,7 @@ export default function MusicTogetherPage() {
         await duplicateSection(sectionId);
       } catch (e) {
         setActionError(
-          e instanceof Error ? e.message : 'Failed to duplicate section'
+          errorMessageFor(e, 'Failed to duplicate section')
         );
       } finally {
         setDuplicatingId(null);
@@ -274,7 +275,7 @@ export default function MusicTogetherPage() {
         await deleteDemo(demo.id);
       } catch (e) {
         setActionError(
-          e instanceof Error ? e.message : 'Failed to delete demo'
+          errorMessageFor(e, 'Failed to delete demo')
         );
       }
     },

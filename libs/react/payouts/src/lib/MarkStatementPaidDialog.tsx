@@ -21,6 +21,7 @@ import {
   CLASS_INSTRUCTOR_PAYMENT_METHOD_LABELS,
   type ClassInstructorPaymentMethod,
   type ClassInstructorStatement,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type { MarkClassInstructorStatementPaidRequest } from '@maple/ts/firebase/api-types';
 import { markClassInstructorStatementPaidValidation } from '@maple/ts/validation';
@@ -89,7 +90,7 @@ export function MarkStatementPaidDialog({ statement, onClose, onSubmit }: MarkSt
       onClose();
     } catch (e) {
       submitting.value = false;
-      submitError.value = e instanceof Error ? e.message : 'Failed to mark paid';
+      submitError.value = errorMessageFor(e, 'Failed to mark paid');
     }
   };
 

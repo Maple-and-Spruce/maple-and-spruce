@@ -21,6 +21,7 @@ import type {
   DeleteMusicTogetherDemoRequest,
   DeleteMusicTogetherDemoResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /** Hydrate ISO date strings (callable serialization) back into Dates. */
 function hydrateDemo(demo: MusicTogetherDemo): MusicTogetherDemo {
@@ -64,7 +65,7 @@ export function useMusicTogetherDemos() {
       console.error('Failed to fetch Music Together demos:', error);
       setDemosState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch demos',
+        error: errorMessageFor(error, 'Failed to fetch demos'),
       });
     }
   }, []);

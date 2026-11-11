@@ -87,8 +87,12 @@ describe('useInstructors', () => {
 
     const { result } = renderHook(() => useInstructors());
 
+    // A bare "internal" says nothing to Katie, so the hook's own wording is shown.
     await waitFor(() =>
-      expect(result.current.instructorsState).toEqual({ status: 'error', error: 'internal' })
+      expect(result.current.instructorsState).toEqual({
+        status: 'error',
+        error: 'Failed to fetch instructors',
+      })
     );
   });
 });

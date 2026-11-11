@@ -69,8 +69,9 @@ at all, it says so and offers dollar amounts. Old links keep working the same wa
 
 The certificate's value is the type's certificate price at the moment of purchase. The card
 records the class type (`classCategoryId`, with the type's name as `className`, plus the
-`classId` when it came from a class link), so class checkout (#301) can cover up to 10% extra
-when it pays for a class of that type. Emails describe it as "One Pottery class at Maple &
+`classId` when it came from a class link), so class checkout (#301) can cover the class and
+its sales tax when it pays for a class of that type (see "A class certificate at class
+checkout" below). Emails describe it as "One Pottery class at Maple &
 Spruce".
 
 After changing the component code, the library has to be re-shared to Webflow and the site
@@ -128,7 +129,7 @@ For an eGift card sold at the register as a gift for a class.
 **What changes:** only our record. The card, its balance and its code stay exactly as
 they are in Square. The certificate is worth what was put on the card when it was sold
 (read from the card's Square history), not what is left on it. That is the value class
-checkout will use for the 10% cushion (#301).
+checkout measures its cover against (#301).
 
 ### Give a free card
 
@@ -284,6 +285,54 @@ balance moved. The move is not a sale: it is left out of "Sold this month".
 **Logged:** `gift_card_replaced {oldId, newId, balanceCents, uid}` and
 `gift_card_replace_failed {step, …}`. Never a code.
 
+## Refunding or turning off a card
+
+On a card's dialog, under **Refund or turn off** (admin only, `giftCards/closeGiftCard`):
+
+- **Refund and turn off**: a card bought on the website (our record has its Square payment)
+  with money on it. What is left goes back to the card that paid, and the card stops working.
+  A card that was partly spent is refunded only what is left: that is the unspent money; what
+  was spent paid for something. A card holding more than was paid online (topped up at the
+  register) is refused: refund the top-up in Square first.
+- **Turn off card**: any other active card. What is left is taken off and the card stops
+  working. **No money is returned from here**: a card paid for at the register is refunded at
+  the register or in the Square Dashboard.
+
+The steps, in the order that keeps the money safe:
+
+1. Record the closure on the card's record (`closure`: kind, amount, who, when), before any
+   money moves. A second click or a retry uses the same amount, even once the card is empty.
+2. Take what is left off the card (`ADJUST_DECREMENT`, reason `SUPPORT_ISSUE`).
+3. Refund only: refund that amount on the original payment.
+4. Turn the card off (`DEACTIVATE`).
+
+| Fails at | Where the money is | What to do |
+|---|---|---|
+| 1 or 2 | on the card, as before | try again |
+| 3 | off the card, not yet refunded; the record holds the amount | **Finish refund** on the card |
+| 4 | handled; the card holds $0 but is not turned off | try again to turn it off |
+
+Every Square call is keyed by the card, so trying again never refunds or takes money twice.
+A refund stopped part way shows **Finish refund** on the card. A finished one shows "Refunded
+$X and turned off on <date>". Printed certificates that were never sold hold nothing and are
+not offered: throw them away.
+
+**Logged:** `gift_card_closed {giftCardId, mode, amountCents, refundedCents, uid}` and
+`gift_card_close_failed {step, …}`. Never a code.
+
+## A class certificate at class checkout
+
+A class certificate pays for a class of its type **including the sales tax**. When what is on
+the card falls short of the class plus its tax, the studio covers the difference up to 10% of
+the certificate's value, as a "Class certificate" discount on the Square order. Beyond that,
+the family pays the rest by card.
+
+The discount is taken before tax (that is how Square applies an order discount), so it is
+sized to bring the class *and its tax* down to what is on the card. Example: a $40
+certificate on a $40 class at 6% covers $2.26, so $37.74 plus $2.26 tax is exactly $40 and
+nothing is left to pay. A price whose tax would land on exactly half a cent is skipped, so the
+total is right however Square rounds. Logic: `classCertificateCushionCents`.
+
 ## How it is counted
 
 - **Owed to customers:** every active card's balance. Printed certificates are pending until
@@ -317,5 +366,6 @@ open. Limits: `THROTTLE_LIMITS.giftCardWrongCode`; logic: `GiftCardWrongCodeLock
 (batch id, place in batch, step), `gift_certificate_batch_revealed` (batch id, count, who),
 `gift_certificate_batch_reveal_failed`, `gift_card_buyer_viewed` (card id, whether a sale and
 customer were found, who), `gift_card_customer_search` (how it searched, counts, who),
-`gift_card_replaced` and `gift_card_replace_failed`. None contain a code or a customer's
+`gift_card_replaced` and `gift_card_replace_failed`, `gift_card_closed` and
+`gift_card_close_failed`. None contain a code or a customer's
 details.

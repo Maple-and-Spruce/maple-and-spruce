@@ -8,6 +8,7 @@ import type {
   ImportEtsyListingsRequest,
   ImportEtsyListingsResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Calls the bulk importEtsyListings Cloud Function. Tracks an in-flight
@@ -37,9 +38,7 @@ export function useEtsyImport() {
         return result.data;
       } catch (error) {
         const message =
-          error instanceof Error
-            ? error.message
-            : 'Failed to import Etsy listings';
+          errorMessageFor(error, 'Failed to import Etsy listings');
         setImportState({ status: 'error', error: message });
         throw error;
       }

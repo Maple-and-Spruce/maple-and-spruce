@@ -10,6 +10,7 @@ import type {
   UpdateEtsyListingRequest,
   UpdateEtsyListingResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Push a Firestore product to Etsy as a (draft) listing, or update an
@@ -41,7 +42,7 @@ export function useEtsyPush() {
         return result.data;
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Failed to push to Etsy';
+          errorMessageFor(error, 'Failed to push to Etsy');
         setPushState({ status: 'error', error: message });
         throw error;
       }
@@ -63,9 +64,7 @@ export function useEtsyPush() {
         return result.data;
       } catch (error) {
         const message =
-          error instanceof Error
-            ? error.message
-            : 'Failed to update Etsy listing';
+          errorMessageFor(error, 'Failed to update Etsy listing');
         setUpdateState({ status: 'error', error: message });
         throw error;
       }

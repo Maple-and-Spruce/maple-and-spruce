@@ -573,3 +573,106 @@ export const ReplacementCard: Story = {
     await expect(canvas.queryByRole('region', { name: 'Buyer' })).toBeNull();
   },
 };
+
+const onlinePurchase = {
+  giftCardId: card.id,
+  last4: card.last4,
+  kind: 'amount' as const,
+  valueCents: 5000,
+  buyerName: 'Robin Ashfield',
+  buyerEmail: 'robin@example.com',
+  deliverTo: 'buyer' as const,
+  squareOrderId: 'order-1',
+  squarePaymentId: 'pay-1',
+  createdAt: '2026-11-02T15:00:00.000Z',
+};
+
+/** A card bought online with money on it can be refunded and turned off. */
+export const RefundOnlineCard: Story = {
+  args: {
+    onCloseCard: fn(),
+    detailState: {
+      status: 'success',
+      data: { card, activities: mockGiftCardActivities, purchase: onlinePurchase },
+    },
+  },
+  play: async ({ args }) => {
+    const canvas = await openDialog();
+    const section = within(canvas.getByRole('region', { name: 'Refund or turn off' }));
+    await expect(section.getByText(/Refund what is left to the card that paid/)).toBeVisible();
+    await userEvent.click(section.getByRole('button', { name: 'Refund and turn off' }));
+    await expect(args.onCloseCard).toHaveBeenCalledWith(card, 'refund', undefined);
+  },
+};
+
+/** A card sold any other way can only be turned off from here. */
+export const TurnOffRegisterCard: Story = {
+  args: { onCloseCard: fn() },
+  play: async ({ args }) => {
+    const canvas = await openDialog();
+    const section = within(canvas.getByRole('region', { name: 'Refund or turn off' }));
+    await expect(section.getByText(/No money is returned from here/)).toBeVisible();
+    await expect(section.queryByRole('button', { name: 'Refund and turn off' })).toBeNull();
+    await userEvent.click(section.getByRole('button', { name: 'Turn off card' }));
+    await expect(args.onCloseCard).toHaveBeenCalledWith(card, 'deactivate', undefined);
+  },
+};
+
+/** A refund stopped part way is offered to finish, with the amount it started with. */
+export const FinishRefund: Story = {
+  args: {
+    onCloseCard: fn(),
+    detailState: {
+      status: 'success',
+      data: {
+        card: { ...card, balanceCents: 0 },
+        activities: mockGiftCardActivities,
+        purchase: {
+          ...onlinePurchase,
+          closure: { kind: 'refund', amountCents: 5000, startedAt: '2026-11-10T15:00:00.000Z' },
+        },
+      },
+    },
+  },
+  play: async ({ args }) => {
+    const canvas = await openDialog();
+    const section = within(canvas.getByRole('region', { name: 'Refund or turn off' }));
+    await expect(section.getByText(/was started but did not finish/)).toBeVisible();
+    await userEvent.click(section.getByRole('button', { name: 'Finish refund' }));
+    await expect(args.onCloseCard).toHaveBeenCalledWith(
+      { ...card, balanceCents: 0 },
+      'refund',
+      5000
+    );
+  },
+};
+
+/** A refunded card says so, and offers nothing more. */
+export const Refunded: Story = {
+  args: {
+    onCloseCard: fn(),
+    detailState: {
+      status: 'success',
+      data: {
+        card: { ...card, state: 'deactivated', balanceCents: 0 },
+        activities: mockGiftCardActivities,
+        purchase: {
+          ...onlinePurchase,
+          closure: {
+            kind: 'refund',
+            amountCents: 5000,
+            startedAt: '2026-11-10T15:00:00.000Z',
+            completedAt: '2026-11-10T15:00:05.000Z',
+          },
+        },
+      },
+    },
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    await expect(
+      canvas.getByText('Refunded $50.00 and turned off on Nov 10, 2026.')
+    ).toBeVisible();
+    await expect(canvas.queryByRole('region', { name: 'Refund or turn off' })).toBeNull();
+  },
+};

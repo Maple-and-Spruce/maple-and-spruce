@@ -23,6 +23,7 @@ import type {
   DeleteCalendarEventRequest,
   DeleteCalendarEventResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Filters for fetching calendar events
@@ -65,9 +66,7 @@ export function useCalendarEvents(filters?: UseCalendarEventsFilters) {
       setCalendarEventsState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch calendar events',
+          errorMessageFor(error, 'Failed to fetch calendar events'),
       });
     }
   }, [filters?.type, filters?.publicOnly]);

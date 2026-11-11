@@ -13,6 +13,7 @@ import type {
   UpdatePosLessonConfigRequest,
   UpdatePosLessonConfigResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for the "POS lesson catalog items" config manager (legacy #628): which Square
@@ -40,7 +41,7 @@ export function usePosLessonConfig() {
       console.error('Failed to fetch POS lesson config:', error);
       setConfigState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch config',
+        error: errorMessageFor(error, 'Failed to fetch config'),
       });
     }
   }, []);

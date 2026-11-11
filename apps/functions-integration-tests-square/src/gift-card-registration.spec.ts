@@ -39,6 +39,7 @@ function futureDate(): string {
 /** A $45 pottery class: $47.70 with 6% tax. */
 const POTTERY_CLASS_ID = 'gc-pottery-class';
 const WEAVING_CLASS_ID = 'gc-weaving-class';
+const POTTERY_40_CLASS_ID = 'gc-pottery-40-class';
 const baseClass = {
   description: 'A class for testing gift card checkout.',
   dateTime: futureDate(),
@@ -276,6 +277,30 @@ describe('createRegistration with a gift card (#301)', () => {
         squarePaymentId: 'sq-pay-cert',
         createdAt: new Date().toISOString(),
       });
+      // A $40 pottery class: the certificate's own price.
+      await setFirestoreDoc('classes', POTTERY_40_CLASS_ID, {
+        ...baseClass,
+        priceCents: 4000,
+        name: 'Gift Card Pottery at $40',
+        categoryId: 'cat-pottery',
+      });
+    });
+
+    it('pays for a class it holds the price of, sales tax included', async () => {
+      await seedGiftCard({ nonce: 'gftok:cert40', id: 'gc-cert', balanceCents: 4000 });
+
+      // No card: the certificate covers the class and its tax on its own.
+      const result = await register({ classId: POTTERY_40_CLASS_ID, giftCardNonce: 'gftok:cert40' });
+
+      expect(result.status).toBe(200);
+      const registration = result.data!.registration;
+      // $40 class, $40 on the card: the studio covers $2.26 before tax, so
+      // $37.74 + $2.26 tax comes to exactly $40.
+      expect(registration.classCertificateCoverCents).toBe(226);
+      expect(registration.taxAmountCents).toBe(226);
+      expect(registration.pricePaidCents).toBe(4000);
+      expect(registration.giftCardPaidCents).toBe(4000);
+      expect(registration.cardPaidCents).toBe(0);
     });
 
     it('covers up to 10% of the certificate when the class costs more', async () => {
