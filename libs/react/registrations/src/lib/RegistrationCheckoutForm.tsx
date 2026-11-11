@@ -49,6 +49,7 @@ import { freeCancellationUntil, groupPrivateHoursByDay } from '@maple/ts/domain'
 import { FreeCancellationNote } from './FreeCancellationNote';
 import { PrivateHourPicker } from './PrivateHourPicker';
 import { HourWaitlistForm, type HourWaitlistStatus } from './HourWaitlistForm';
+import { EmailTypoHint } from './EmailTypoHint';
 import { formatPhoneNumber } from './formatPhoneNumber';
 import { customerFacingMessage } from './customer-facing-message';
 
@@ -992,19 +993,25 @@ export function RegistrationCheckoutForm({
             required
             fullWidth
           />
-          <TextField
-            label="Email Address"
-            type="email"
-            value={customerEmail.value}
-            onChange={(e) => (customerEmail.value = e.target.value)}
-            error={!!getFieldError('customerEmail')}
-            helperText={
-              getFieldError('customerEmail') ||
-              'Confirmation will be sent to this address'
-            }
-            required
-            fullWidth
-          />
+          <Box>
+            <TextField
+              label="Email Address"
+              type="email"
+              value={customerEmail.value}
+              onChange={(e) => (customerEmail.value = e.target.value)}
+              error={!!getFieldError('customerEmail')}
+              helperText={
+                getFieldError('customerEmail') ||
+                'Confirmation will be sent to this address'
+              }
+              required
+              fullWidth
+            />
+            <EmailTypoHint
+              email={customerEmail.value}
+              onAccept={(corrected) => (customerEmail.value = corrected)}
+            />
+          </Box>
           <TextField
             label="Phone Number (optional)"
             type="tel"
