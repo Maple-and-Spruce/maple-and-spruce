@@ -42,20 +42,20 @@ type Story = StoryObj<typeof CloseGiftCardDialog>;
 export const ConfirmRefund: Story = {
   play: async ({ args }) => {
     const canvas = await openDialog();
-    await expect(canvas.getByText('Refund and turn off card ending 4821')).toBeVisible();
+    await expect(canvas.getByText('Refund card ending 4821')).toBeVisible();
     await expect(
-      canvas.getByText(
-        'Refund the $50.00 left on this card to the card that bought it, and turn the gift card off?'
-      )
+      canvas.getByText('Refund the $50.00 left on this card to the card that bought it?')
     ).toBeVisible();
+    await expect(canvas.getByText(/left at \$0/)).toBeVisible();
     await expect(canvas.getByText(/only what is left is refunded/)).toBeVisible();
+    await expect(canvas.queryByText(/stops working/)).toBeNull();
     await userEvent.click(canvas.getByRole('button', { name: 'Cancel' }));
     await expect(args.onClose).toHaveBeenCalled();
     await expect(args.onCloseCard).not.toHaveBeenCalled();
   },
 };
 
-/** Refunded: says how much went back and that the card no longer works. */
+/** Refunded: says how much went back and that the card now holds $0. */
 export const Refunded: Story = {
   play: async ({ args }) => {
     const canvas = await openDialog();
@@ -66,9 +66,10 @@ export const Refunded: Story = {
     });
     await expect(
       await canvas.findByText(
-        'Refunded $50.00 to the card that paid for it. The gift card no longer works.'
+        'Refunded $50.00 to the card that paid for it. The gift card now holds $0.'
       )
     ).toBeVisible();
+    await expect(canvas.queryByText(/no longer works/)).toBeNull();
     await userEvent.click(canvas.getByRole('button', { name: 'Done' }));
     await expect(args.onDone).toHaveBeenCalled();
   },
@@ -120,21 +121,60 @@ export const Failed: Story = {
   },
 };
 
-/** The card turned off but Square's last step lagged: a warning to try again. */
-export const RefundedWithWarning: Story = {
+/**
+ * The money came off but Square did not turn the card off: a warning to try
+ * again, and no claim that the card no longer works.
+ */
+export const TurnOffWithWarning: Story = {
   args: {
+    mode: 'deactivate',
     onCloseCard: fn(async () => ({
       giftCardId: onlineCard.id,
-      mode: 'refund' as const,
+      mode: 'deactivate' as const,
       amountCents: 5000,
-      refundedCents: 5000,
+      refundedCents: 0,
       warning:
-        'The money is handled, but Square did not turn the card off. It holds nothing, so nothing can be spent from it. Try again to turn it off.',
+        'Square did not turn the card off. It holds nothing, so nothing can be spent from it. Try again to turn it off.',
     })),
   },
   play: async () => {
     const canvas = await openDialog();
-    await userEvent.click(canvas.getByRole('button', { name: 'Refund $50.00' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Turn off card' }));
     await expect(await canvas.findByText(/Square did not turn the card off/)).toBeVisible();
+    await expect(canvas.getByText('Took $50.00 off. The gift card holds $0.')).toBeVisible();
+    await expect(canvas.queryByText(/no longer works/)).toBeNull();
+  },
+};
+
+/** Retrying a turn-off whose money already came off: it asks only to turn it off. */
+export const RetryTurnOff: Story = {
+  args: {
+    mode: 'deactivate',
+    card: { ...onlineCard, balanceCents: 0 },
+    amountCents: 5000,
+  },
+  play: async () => {
+    const canvas = await openDialog();
+    await expect(canvas.getByText('Turn this card off?')).toBeVisible();
+    await expect(canvas.queryByText(/take the/)).toBeNull();
+  },
+};
+
+/** Finishing a refund Square already made: no "Refund $50.00", nothing moves twice. */
+export const FinishRefundAlreadyMade: Story = {
+  args: {
+    card: { ...onlineCard, balanceCents: 0 },
+    amountCents: 5000,
+    refundMade: true,
+  },
+  play: async ({ args }) => {
+    const canvas = await openDialog();
+    await expect(canvas.getByText('The $50.00 refund was already made. Finish it?')).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Refund $50.00' })).toBeNull();
+    await userEvent.click(canvas.getByRole('button', { name: 'Finish' }));
+    await expect(args.onCloseCard).toHaveBeenCalledWith({
+      giftCardId: onlineCard.id,
+      mode: 'refund',
+    });
   },
 };

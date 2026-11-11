@@ -18,7 +18,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 import { formatGiftCardMoney } from './format';
 
-/** What to do with the card: refund it (bought online) or just turn it off. */
+/** What to do with the card: refund it (bought online) or turn it off. */
 export type CloseGiftCardMode = CloseGiftCardRequest['mode'];
 
 interface CloseGiftCardDialogProps {
@@ -30,6 +30,11 @@ interface CloseGiftCardDialogProps {
    * the card may already be empty. Defaults to the card's balance.
    */
   amountCents?: number;
+  /**
+   * Refund only: Square already made the refund on an earlier try, which
+   * stopped before it was recorded done. Finishing moves no money.
+   */
+  refundMade?: boolean;
   onClose: () => void;
   onCloseCard: (request: CloseGiftCardRequest) => Promise<CloseGiftCardResponse>;
   /** After it is done: refresh the list and the card. */
@@ -43,14 +48,17 @@ type SubmitState =
   | { status: 'success'; data: CloseGiftCardResponse };
 
 /**
- * Refund a card bought online and turn it off, or turn any card off.
- * Katie confirms first. "Try again" after a failure finishes the same refund:
- * the server keys every step by the card, so no money moves twice.
+ * Refund a card bought online, or turn any card off. Katie confirms first.
+ * A refund leaves the card at $0 rather than turning it off: Square lets an
+ * app turn a card off only as "suspicious activity". "Try again" after a
+ * failure finishes the same refund: the server keys every step by the card,
+ * so no money moves twice.
  */
 export function CloseGiftCardDialog({
   card,
   mode,
   amountCents,
+  refundMade = false,
   onClose,
   onCloseCard,
   onDone,
@@ -66,6 +74,8 @@ export function CloseGiftCardDialog({
   const ending = giftCardEndingText(card?.last4);
   const amount = formatGiftCardMoney(amountCents ?? card?.balanceCents ?? 0);
   const refund = mode === 'refund';
+  /** Deactivate: what is still on the card to take off. A retry may find it empty. */
+  const onCard = card?.balanceCents ?? 0;
 
   const submit = async () => {
     if (!card) return;
@@ -90,17 +100,13 @@ export function CloseGiftCardDialog({
   return (
     <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
       <DialogTitle>
-        {refund ? 'Refund and turn off' : 'Turn off'} card{ending}
+        {refund ? 'Refund' : 'Turn off'} card{ending}
       </DialogTitle>
       <DialogContent dividers>
         {submitState.status === 'success' ? (
           <Stack spacing={2}>
             <Alert severity="success">
-              {submitState.data.refundedCents > 0
-                ? `Refunded ${formatGiftCardMoney(submitState.data.refundedCents)} to the card that paid for it. The gift card no longer works.`
-                : submitState.data.amountCents > 0
-                  ? `Took ${formatGiftCardMoney(submitState.data.amountCents)} off. The gift card no longer works.`
-                  : 'The gift card no longer works.'}
+              {successText(submitState.data)}
             </Alert>
             {submitState.data.warning && (
               <Alert severity="warning">{submitState.data.warning}</Alert>
@@ -113,19 +119,18 @@ export function CloseGiftCardDialog({
           </Stack>
         ) : (
           <Stack spacing={2}>
-            {refund ? (
-              <Typography>
-                Refund the {amount} left on this card to the card that bought it, and
-                turn the gift card off?
-              </Typography>
-            ) : (
-              <Typography>
-                Turn this card off{amount !== '$0.00' ? ` and take the ${amount} off it` : ''}?
-              </Typography>
-            )}
-            <Alert severity="warning">
+            <Typography>
               {refund
-                ? 'The gift card stops working for good. If some of it was spent, only what is left is refunded.'
+                ? refundMade
+                  ? `The ${amount} refund was already made. Finish it?`
+                  : `Refund the ${amount} left on this card to the card that bought it?`
+                : onCard > 0
+                  ? `Turn this card off and take the ${formatGiftCardMoney(onCard)} off it?`
+                  : 'Turn this card off?'}
+            </Typography>
+            <Alert severity={refund ? 'info' : 'warning'}>
+              {refund
+                ? 'The gift card is left at $0, so nothing more can be spent from it. If some of it was spent, only what is left is refunded.'
                 : 'The gift card stops working for good. No money goes back to anyone from here: if it was paid for at the register, refund it there or in Square.'}
             </Alert>
             {submitState.status === 'error' && (
@@ -152,11 +157,23 @@ export function CloseGiftCardDialog({
               {!busy && submitState.status === 'error' && 'Try again'}
               {!busy &&
                 submitState.status !== 'error' &&
-                (refund ? `Refund ${amount}` : 'Turn off card')}
+                (refund ? (refundMade ? 'Finish' : `Refund ${amount}`) : 'Turn off card')}
             </Button>
           </>
         )}
       </DialogActions>
     </Dialog>
   );
+}
+
+/** What the success message says. "No longer works" only once Square turned it off. */
+function successText(result: CloseGiftCardResponse): string {
+  if (result.mode === 'refund') {
+    return `Refunded ${formatGiftCardMoney(result.refundedCents)} to the card that paid for it. The gift card now holds $0.`;
+  }
+  const tookOff =
+    result.amountCents > 0 ? `Took ${formatGiftCardMoney(result.amountCents)} off. ` : '';
+  return result.warning
+    ? `${tookOff}The gift card holds $0.`
+    : `${tookOff}The gift card no longer works.`;
 }

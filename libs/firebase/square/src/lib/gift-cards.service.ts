@@ -286,6 +286,11 @@ export class GiftCardsService {
     locationId: string;
     amountCents: number;
     idempotencyKey: string;
+    /**
+     * Why, shown in the card's Square history. `PURCHASE_WAS_REFUNDED` when
+     * the money goes back to the buyer; `SUPPORT_ISSUE` otherwise.
+     */
+    reason?: 'SUPPORT_ISSUE' | 'PURCHASE_WAS_REFUNDED';
   }): Promise<{ balanceCents: number }> {
     if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) {
       throw new Error('Gift card amount must be a positive whole number of cents');
@@ -298,7 +303,7 @@ export class GiftCardsService {
         giftCardId: input.giftCardId,
         adjustDecrementActivityDetails: {
           amountMoney: { amount: BigInt(input.amountCents), currency: 'USD' },
-          reason: 'SUPPORT_ISSUE',
+          reason: input.reason ?? 'SUPPORT_ISSUE',
         },
       },
     });
@@ -311,6 +316,11 @@ export class GiftCardsService {
   /**
    * Turn a card off for good (#332): Square's `DEACTIVATE`. A turned-off card
    * cannot be spent, loaded or turned back on.
+   *
+   * Square accepts only `SUSPICIOUS_ACTIVITY` from an app: its other reasons
+   * (`UNKNOWN_REASON`, `CHARGEBACK_DEACTIVATE`) are read-only and are refused
+   * with "Reason is not valid". So a refund does not turn the card off; it
+   * leaves it at $0, as a refund in the Square Dashboard does.
    */
   async deactivate(input: {
     giftCardId: string;
@@ -323,7 +333,7 @@ export class GiftCardsService {
         type: 'DEACTIVATE',
         locationId: input.locationId,
         giftCardId: input.giftCardId,
-        deactivateActivityDetails: { reason: 'UNKNOWN_REASON' },
+        deactivateActivityDetails: { reason: 'SUSPICIOUS_ACTIVITY' },
       },
     });
     throwIfGiftCardErrors(response.errors, 'turn the gift card off');

@@ -192,7 +192,7 @@ export const giftCards = Functions.router('giftCards', {
     .asRoute<ReplaceGiftCardRequest, ReplaceGiftCardResponse>(replaceGiftCard),
 
   /**
-   * Refund a card bought online and turn it off, or turn any card off. Takes
+   * Refund a card bought online (left at $0), or turn any card off. Takes
    * what is left off the card before any refund (see close-gift-card.ts).
    */
   closeGiftCard: Functions.endpoint

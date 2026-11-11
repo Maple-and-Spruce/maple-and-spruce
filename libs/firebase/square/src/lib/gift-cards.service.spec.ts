@@ -558,6 +558,21 @@ describe('GiftCardsService #332 additions', () => {
     });
   });
 
+  it('labels a decrement for a refund as PURCHASE_WAS_REFUNDED', async () => {
+    client.giftCards.activities.create.mockResolvedValue({ giftCardActivity: {} });
+    await service.adjustDecrement({
+      giftCardId: 'gc',
+      locationId: 'L',
+      amountCents: 1800,
+      idempotencyKey: 'k',
+      reason: 'PURCHASE_WAS_REFUNDED',
+    });
+    expect(
+      client.giftCards.activities.create.mock.calls[0][0].giftCardActivity
+        .adjustDecrementActivityDetails.reason
+    ).toBe('PURCHASE_WAS_REFUNDED');
+  });
+
   it('refuses a non-positive decrement before calling Square', async () => {
     await expect(
       service.adjustDecrement({
@@ -583,7 +598,7 @@ describe('GiftCardsService #332 additions', () => {
       type: 'DEACTIVATE',
       locationId: 'L',
       giftCardId: 'gc',
-      deactivateActivityDetails: { reason: 'UNKNOWN_REASON' },
+      deactivateActivityDetails: { reason: 'SUSPICIOUS_ACTIVITY' },
     });
     client.giftCards.activities.create.mockResolvedValue({
       errors: [{ code: 'INVALID_GIFT_CARD_STATE', detail: 'already off' }],

@@ -179,7 +179,7 @@ export function useGiftCards() {
   );
 
   /**
-   * Refund a card bought online and turn it off, or turn any card off.
+   * Refund a card bought online (left at $0), or turn any card off.
    * Retrying finishes a half-done one; the server keys every step by the card.
    */
   const closeGiftCard = useCallback(

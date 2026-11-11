@@ -438,7 +438,8 @@ export interface GiftCardPurchase {
  * A card refunded or turned off from the admin.
  *
  * `refund`: bought online; what was left on it went back to the buyer's card
- * and the card was turned off. `deactivate`: any other card; what was left on
+ * and the card was left at $0, still active (Square lets an app turn a card
+ * off only as "suspicious activity"). `deactivate`: any other card; what was left on
  * it was taken off and the card turned off, with no money returned by us.
  */
 export interface GiftCardClosure {
@@ -449,7 +450,7 @@ export interface GiftCardClosure {
   squareRefundId?: string;
   /** ISO 8601. */
   startedAt: string;
-  /** ISO 8601, once the card is turned off. */
+  /** ISO 8601, once it is done: refunded, or the card turned off. */
   completedAt?: string;
   /** The admin who did it. */
   byUid?: string;
