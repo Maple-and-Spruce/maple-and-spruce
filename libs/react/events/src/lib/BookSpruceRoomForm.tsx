@@ -19,7 +19,7 @@ import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import type { CreateCalendarEventInput, Room } from '@maple/ts/domain';
-import { getRoomLabel } from '@maple/ts/domain';
+import { getRoomLabel, errorMessageFor } from '@maple/ts/domain';
 import { calendarEventValidation } from '@maple/ts/validation';
 import { useSignal, useComputed, batch, useSignals } from '@maple/react/signals';
 
@@ -128,7 +128,7 @@ export function BookSpruceRoomForm({
       });
     } catch (error) {
       submitError.value =
-        error instanceof Error ? error.message : 'Failed to book the room';
+        errorMessageFor(error, 'Failed to book the room');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onSubmit]);

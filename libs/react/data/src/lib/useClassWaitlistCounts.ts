@@ -7,6 +7,7 @@ import type {
   GetClassWaitlistCountsRequest,
   GetClassWaitlistCountsResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for reading waitlist counts for every class in one call (admin).
@@ -32,9 +33,7 @@ export function useClassWaitlistCounts() {
       setWaitlistCountsState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch class waitlist counts',
+          errorMessageFor(error, 'Failed to fetch class waitlist counts'),
       });
     }
   }, []);

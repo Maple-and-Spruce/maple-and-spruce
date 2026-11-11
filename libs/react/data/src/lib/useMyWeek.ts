@@ -6,7 +6,7 @@ import {
   getMapleFunctions,
   routerCallableUrl,
 } from '@maple/ts/firebase/firebase-config';
-import { addLocalDays, type RequestState } from '@maple/ts/domain';
+import { addLocalDays, type RequestState, errorMessageFor } from '@maple/ts/domain';
 import type {
   GetMyWeekRequest,
   GetMyWeekResponse,
@@ -39,7 +39,7 @@ export function useMyWeek(weekStart: Date) {
       console.error('Failed to fetch My Week:', error);
       setWeekState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch',
+        error: errorMessageFor(error, 'Failed to fetch'),
       });
     }
   }, [startMs]);

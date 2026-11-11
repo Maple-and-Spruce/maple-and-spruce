@@ -73,15 +73,19 @@ export async function readUsableGiftCard(
 
 /**
  * What the studio covers when this card is a class certificate for a class of
- * this kind. Measured against one seat after any discount code.
+ * this kind. Measured against one seat after any discount code, tax included:
+ * a certificate pays for the class and its sales tax (see
+ * `classCertificateCushionCents`).
  */
 export function classCertificateCoverCents(input: {
   giftCard: UsableGiftCard;
   classEntity: Pick<Class, 'categoryId' | 'priceCents'>;
   /** The order after any discount code, before tax. */
   subtotalCents: number;
+  /** The sales tax rate the order is charged at (6 for 6%). */
+  taxRatePercent: number;
 }): number {
-  const { giftCard, classEntity, subtotalCents } = input;
+  const { giftCard, classEntity, subtotalCents, taxRatePercent } = input;
   return classCertificateCushionCents({
     purchase: giftCard.purchase,
     classCategoryId: classEntity.categoryId,
@@ -90,6 +94,7 @@ export function classCertificateCoverCents(input: {
       subtotalCents,
     }),
     balanceCents: giftCard.card.balanceCents,
+    taxRatePercent,
   });
 }
 

@@ -17,6 +17,7 @@ import type {
   UpdateLessonInquiryStatusRequest,
   UpdateLessonInquiryStatusResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /** Callables serialise Dates to ISO strings; bring them back. */
 function hydrate(inquiry: LessonInquiry): LessonInquiry {
@@ -70,9 +71,7 @@ export function useLessonInquiries(options: UseLessonInquiriesOptions = {}) {
       setInquiriesState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Could not load lesson inquiries',
+          errorMessageFor(error, 'Could not load lesson inquiries'),
       });
     }
   }, [status]);

@@ -20,6 +20,7 @@ import type {
   UpdateStudentSquareCardRequest,
   UpdateStudentSquareCardResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface SquareCardCandidates {
   cards: SquareCardOnFile[];
@@ -52,9 +53,7 @@ export function useSquareCardCandidates() {
       setCardsState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Could not read the cards on file in Square',
+          errorMessageFor(error, 'Could not read the cards on file in Square'),
       });
     }
   }, []);
@@ -82,7 +81,7 @@ export function useSquareCardCandidates() {
         return result.data.student;
       } catch (error) {
         setLinkError(
-          error instanceof Error ? error.message : 'Could not link that card'
+          errorMessageFor(error, 'Could not link that card')
         );
         return undefined;
       } finally {

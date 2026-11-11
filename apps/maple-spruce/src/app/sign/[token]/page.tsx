@@ -19,6 +19,7 @@ import type {
   SubmitSignedAgreementResponse,
 } from '@maple/ts/firebase/api-types';
 import type { AgreementSection, MediaReleaseChoice } from '@maple/ts/domain';
+import { errorMessageFor } from '@maple/ts/domain';
 
 interface AgreementData {
   templateName: string;
@@ -58,7 +59,7 @@ export default function SignAgreementPage() {
       } catch (err) {
         console.error('Failed to fetch agreement:', err);
         const message =
-          err instanceof Error ? err.message : 'Unable to load agreement.';
+          errorMessageFor(err, 'Unable to load agreement.');
         setError(message);
       } finally {
         setIsLoading(false);

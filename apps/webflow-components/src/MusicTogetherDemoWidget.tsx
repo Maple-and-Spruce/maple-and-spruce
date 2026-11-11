@@ -45,6 +45,7 @@ import {
   ensureMusicTogetherPixel,
   trackMusicTogetherDemoRsvp,
 } from './lib/music-together-analytics';
+import { errorMessageFor } from '@maple/ts/domain';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const WIDGET_MAX_WIDTH = 480;
@@ -210,9 +211,7 @@ export function MusicTogetherDemoWidget({
       setState({
         status: 'error',
         message:
-          err instanceof Error
-            ? err.message
-            : 'Something went wrong. Please try again.',
+          errorMessageFor(err, 'Something went wrong. Please try again.'),
       });
     }
   };

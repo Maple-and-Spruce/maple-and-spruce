@@ -24,6 +24,7 @@ import {
   ISSUED_GIFT_CARD_REASON_MAX_LENGTH,
   type ClassCategory,
   type RequestState,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type {
   IssueGiftCardRequest,
@@ -154,7 +155,7 @@ export function IssueGiftCardDialog({
     } catch (error) {
       setSubmitState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Could not make the gift card',
+        error: errorMessageFor(error, 'Could not make the gift card'),
       });
     }
   };

@@ -10,6 +10,7 @@ import type {
   RecordProductSaleRequest,
   RecordProductSaleResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface UseSalesOptions {
   artistId?: string;
@@ -64,7 +65,7 @@ export function useSales({
       setSalesState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch sales',
+          errorMessageFor(error, 'Failed to fetch sales'),
       });
     }
   }, [artistId, source, from, to]);

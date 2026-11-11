@@ -26,6 +26,7 @@ import { PeriodPicker, monthRangeFor } from '@maple/react/payouts';
 import { useArtists } from '../../../../hooks';
 import { useArtistPayouts } from '@maple/react/data';
 import type { Payout, PayoutStatus } from '@maple/ts/domain';
+import { errorMessageFor } from '@maple/ts/domain';
 
 function formatDollars(amount: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -109,7 +110,7 @@ export default function ArtistPayoutsPage(): React.ReactNode {
       });
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Failed to generate payout';
+        errorMessageFor(error, 'Failed to generate payout');
       setSnackbar({ open: true, message, severity: 'error' });
     } finally {
       setGenerating(false);
@@ -137,7 +138,7 @@ export default function ArtistPayoutsPage(): React.ReactNode {
       });
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Failed to mark payout paid';
+        errorMessageFor(error, 'Failed to mark payout paid');
       setSnackbar({ open: true, message, severity: 'error' });
     } finally {
       setMarkingPaid(false);

@@ -31,7 +31,7 @@ import type {
   AmountDiscountData,
   AmountBeforeDateDiscountData,
 } from '@maple/ts/domain';
-import { DISCOUNT_TYPES, DISCOUNT_STATUSES } from '@maple/ts/domain';
+import { DISCOUNT_TYPES, DISCOUNT_STATUSES, errorMessageFor } from '@maple/ts/domain';
 import { discountValidation } from '@maple/ts/validation';
 import {
   useSignal,
@@ -237,7 +237,7 @@ export function DiscountForm({
       await onSubmit(input);
     } catch (error: unknown) {
       submitError.value =
-        error instanceof Error ? error.message : 'Failed to save discount';
+        errorMessageFor(error, 'Failed to save discount');
     }
   }, [
     onSubmit,

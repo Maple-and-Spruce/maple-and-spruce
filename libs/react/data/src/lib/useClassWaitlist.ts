@@ -7,6 +7,7 @@ import type {
   GetClassWaitlistRequest,
   GetClassWaitlistResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for reading a class's waitlist (admin). Returns the entries as a
@@ -40,9 +41,7 @@ export function useClassWaitlist(classId?: string) {
       setWaitlistState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch class waitlist',
+          errorMessageFor(error, 'Failed to fetch class waitlist'),
       });
     }
   }, [classId]);

@@ -11,6 +11,7 @@ import type {
   GetStudioDayRequest,
   GetStudioDayResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /** The wire carries dates as ISO strings; give the lessons real Dates back. */
 function hydrateStudioDay(data: GetStudioDayResponse): GetStudioDayResponse {
@@ -67,7 +68,7 @@ export function useStudioDay(enabled = true) {
       console.error('Failed to fetch the studio day:', error);
       setDayState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch',
+        error: errorMessageFor(error, 'Failed to fetch'),
       });
     }
   }, []);

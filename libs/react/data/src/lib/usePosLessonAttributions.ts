@@ -20,6 +20,7 @@ import type {
   ResolvePosLessonAttributionRequest,
   ResolvePosLessonAttributionResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for the POS lesson attribution review queue (legacy #628): list + resolve
@@ -50,7 +51,7 @@ export function usePosLessonAttributions() {
       setAttributionsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch attributions',
+          errorMessageFor(error, 'Failed to fetch attributions'),
       });
     }
   }, []);
@@ -68,7 +69,7 @@ export function usePosLessonAttributions() {
       console.error('Failed to fetch POS lesson summary:', error);
       setSummaryState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch summary',
+        error: errorMessageFor(error, 'Failed to fetch summary'),
       });
     }
   }, []);

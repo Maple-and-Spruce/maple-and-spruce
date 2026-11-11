@@ -27,6 +27,7 @@ import type { CardTokenizeResult } from '@maple/react/registrations';
 import {
   CRAFT_CLUB_MONTHLY_PRICE_CENTS,
   type CraftClubMemberPublicView,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type {
   RequestCraftClubManageLinkRequest,
@@ -103,9 +104,7 @@ export function CraftClubManageWidget({
       } catch (err) {
         if (cancelled) return;
         setError(
-          err instanceof Error
-            ? err.message
-            : 'This link is invalid or has expired.'
+          errorMessageFor(err, 'This link is invalid or has expired.')
         );
         setMode('error');
       }
@@ -128,7 +127,7 @@ export function CraftClubManageWidget({
         await call({ email: email.trim() });
         setMode('linkSent');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Something went wrong.');
+        setError(errorMessageFor(err, 'Something went wrong.'));
       } finally {
         setBusy(false);
       }
@@ -149,7 +148,7 @@ export function CraftClubManageWidget({
       setMember(res.data.member);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Could not cancel your membership.'
+        errorMessageFor(err, 'Could not cancel your membership.')
       );
     } finally {
       setBusy(false);
@@ -175,9 +174,7 @@ export function CraftClubManageWidget({
       setChangingCard(false);
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : 'Could not update your payment method.'
+        errorMessageFor(err, 'Could not update your payment method.')
       );
     } finally {
       setBusy(false);

@@ -7,10 +7,12 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   where: vi.fn(),
   queryGet: vi.fn(),
+  update: vi.fn(),
+  runTransaction: vi.fn(),
 }));
 
 vi.mock('./utilities/database.config', () => {
-  const docRef = { create: mocks.create, get: mocks.get };
+  const docRef = { create: mocks.create, get: mocks.get, update: mocks.update };
   const collectionRef = {
     doc: mocks.doc.mockReturnValue(docRef),
     where: mocks.where.mockReturnValue({
@@ -19,7 +21,10 @@ vi.mock('./utilities/database.config', () => {
     }),
   };
   return {
-    getDb: () => ({ collection: mocks.collection.mockReturnValue(collectionRef) }),
+    getDb: () => ({
+      collection: mocks.collection.mockReturnValue(collectionRef),
+      runTransaction: mocks.runTransaction,
+    }),
     toDate: (value: unknown): Date => (value instanceof Date ? value : new Date(String(value))),
   };
 });
@@ -237,5 +242,61 @@ describe('GiftCardPurchaseRepository', () => {
   it('finds no replacement for a card that was never replaced (#332)', async () => {
     mocks.queryGet.mockResolvedValue({ docs: [] });
     expect(await GiftCardPurchaseRepository.findByReplacesGiftCardId('x')).toBeUndefined();
+  });
+
+  describe('closure', () => {
+    const closure = {
+      kind: 'refund' as const,
+      amountCents: 4000,
+      startedAt: '2026-11-10T15:00:00.000Z',
+      byUid: 'admin-1',
+    };
+
+    function transactionOn(existing: Record<string, unknown> | undefined) {
+      const tx = {
+        get: vi.fn().mockResolvedValue({
+          exists: existing !== undefined,
+          data: () => existing,
+        }),
+        update: vi.fn(),
+      };
+      mocks.runTransaction.mockImplementation(async (work) => work(tx));
+      return tx;
+    }
+
+    it('records a new closure', async () => {
+      const tx = transactionOn({ kind: 'class' });
+      await expect(GiftCardPurchaseRepository.startClosure('gftc-1', closure)).resolves.toEqual(
+        closure
+      );
+      expect(tx.update).toHaveBeenCalledWith(expect.anything(), { closure });
+    });
+
+    it('keeps the first closure on a second try', async () => {
+      const first = { ...closure, amountCents: 2500 };
+      const tx = transactionOn({ kind: 'class', closure: first });
+      await expect(GiftCardPurchaseRepository.startClosure('gftc-1', closure)).resolves.toEqual(
+        first
+      );
+      expect(tx.update).not.toHaveBeenCalled();
+    });
+
+    it('updates only the fields given', async () => {
+      await GiftCardPurchaseRepository.updateClosure('gftc-1', { squareRefundId: 'refund-1' });
+      expect(mocks.update).toHaveBeenCalledWith({ 'closure.squareRefundId': 'refund-1' });
+      mocks.update.mockClear();
+      await GiftCardPurchaseRepository.updateClosure('gftc-1', {});
+      expect(mocks.update).not.toHaveBeenCalled();
+    });
+
+    it('reads the closure back', async () => {
+      mocks.get.mockResolvedValue({
+        exists: true,
+        id: 'gftc-1',
+        data: () => ({ ...purchase, createdAt: new Date(), closure }),
+      });
+      const found = await GiftCardPurchaseRepository.findByGiftCardId('gftc-1');
+      expect(found?.closure).toEqual(closure);
+    });
   });
 });

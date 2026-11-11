@@ -22,6 +22,7 @@ import type {
   DeleteInvoiceRequest,
   DeleteInvoiceResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface UseInvoicesOptions {
   /** Scope the list to a single student. */
@@ -80,7 +81,7 @@ export function useInvoices({
       setInvoicesState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch invoices',
+          errorMessageFor(error, 'Failed to fetch invoices'),
       });
     }
   }, [studentId]);

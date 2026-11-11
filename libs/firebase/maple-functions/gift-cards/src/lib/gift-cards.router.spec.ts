@@ -85,6 +85,8 @@ const customers = vi.hoisted(() => ({
 vi.mock('./gift-card-customers', () => customers);
 const replacing = vi.hoisted(() => ({ replaceGiftCard: vi.fn() }));
 vi.mock('./replace-gift-card', () => replacing);
+const closing = vi.hoisted(() => ({ closeGiftCard: vi.fn() }));
+vi.mock('./close-gift-card', () => closing);
 
 import { giftCards } from './gift-cards.router';
 
@@ -101,6 +103,7 @@ const routes = giftCards as unknown as Record<string, Route>;
 describe('giftCards router', () => {
   it('has the admin reads, the admin actions, the checkout preview and the public purchase', () => {
     expect(Object.keys(routes).sort()).toEqual([
+      'closeGiftCard',
       'getCertificateBatch',
       'getGiftCard',
       'getGiftCardBuyer',
@@ -154,6 +157,7 @@ describe('giftCards router', () => {
     'getGiftCardBuyer',
     'searchGiftCardsByCustomer',
     'replaceGiftCard',
+    'closeGiftCard',
   ])(
     '%s is admin only, with the Square credentials',
     (name) => {
@@ -179,6 +183,7 @@ describe('giftCards router', () => {
     );
     expect(customers.searchGiftCardsByCustomer).toHaveBeenCalledWith({ query: 'x' }, {}, {}, {});
     expect(routes['replaceGiftCard'].handler).toBe(replacing.replaceGiftCard);
+    expect(routes['closeGiftCard'].handler).toBe(closing.closeGiftCard);
   });
 
   it('the admin actions are not public: no App Check bypass, no throttle', () => {
@@ -190,6 +195,7 @@ describe('giftCards router', () => {
       'getGiftCardBuyer',
       'searchGiftCardsByCustomer',
       'replaceGiftCard',
+      'closeGiftCard',
     ]) {
       expect(routes[name].appCheck).toBeUndefined();
       expect(routes[name].throttle).toBeUndefined();

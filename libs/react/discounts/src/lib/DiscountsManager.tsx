@@ -13,6 +13,7 @@ import type {
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import { DiscountList } from './DiscountList';
 import { DiscountForm } from './DiscountForm';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface DiscountsManagerProps {
   /**
@@ -113,7 +114,7 @@ export function DiscountsManager({
       // The delete dialog has nowhere to show a failure, so surface it on the
       // page rather than closing as though it worked.
       setDeleteError(
-        error instanceof Error ? error.message : 'Failed to delete discount'
+        errorMessageFor(error, 'Failed to delete discount')
       );
     } finally {
       setIsDeleting(false);

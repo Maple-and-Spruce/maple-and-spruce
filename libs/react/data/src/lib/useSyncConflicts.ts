@@ -19,6 +19,7 @@ import type {
   DetectSyncConflictsRequest,
   DetectSyncConflictsResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for managing sync conflict detection and resolution
@@ -71,9 +72,7 @@ export function useSyncConflicts() {
         setConflictsState({
           status: 'error',
           error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to fetch sync conflicts',
+            errorMessageFor(error, 'Failed to fetch sync conflicts'),
         });
       }
     },
@@ -103,9 +102,7 @@ export function useSyncConflicts() {
       setSummaryState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch sync conflict summary',
+          errorMessageFor(error, 'Failed to fetch sync conflict summary'),
       });
     }
   }, []);
@@ -194,9 +191,7 @@ export function useSyncConflicts() {
         setDetectingState({
           status: 'error',
           error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to detect sync conflicts',
+            errorMessageFor(error, 'Failed to detect sync conflicts'),
         });
         throw error;
       }

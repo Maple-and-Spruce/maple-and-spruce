@@ -29,6 +29,7 @@ import {
   GIFT_CARD_SETTINGS_CEILING_CENTS,
   GIFT_CARD_SETTINGS_FLOOR_CENTS,
   formatGiftCardDollars,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type { GiftCardAmountSettings, RequestState } from '@maple/ts/domain';
 import { giftCardSettingsValidation } from '@maple/ts/validation';
@@ -109,7 +110,7 @@ export function GiftCardSettingsCard({
       setDirty(false);
       setSaved(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save');
+      setError(errorMessageFor(e, 'Could not save'));
     }
   };
 

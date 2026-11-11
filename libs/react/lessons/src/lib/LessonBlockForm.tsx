@@ -33,7 +33,7 @@ import type {
   Instructor,
   LessonBlock,
 } from '@maple/ts/domain';
-import { WEEKDAY_LONG } from '@maple/ts/domain';
+import { WEEKDAY_LONG, errorMessageFor } from '@maple/ts/domain';
 import { lessonBlockValidation } from '@maple/ts/validation';
 import {
   useSignal,
@@ -133,7 +133,7 @@ export function LessonBlockForm({
       onClose();
     } catch (error) {
       submitError.value =
-        error instanceof Error ? error.message : 'Failed to save block';
+        errorMessageFor(error, 'Failed to save block');
     }
   };
 

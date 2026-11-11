@@ -11,6 +11,7 @@ import type {
   GetRoomScheduleRequest,
   GetRoomScheduleResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Fetch a room's busy windows for the whole calendar day containing `date`.
@@ -76,9 +77,7 @@ export function useRoomScheduleForDate(room: Room, date: Date | null) {
       setRoomScheduleState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch room schedule',
+          errorMessageFor(error, 'Failed to fetch room schedule'),
       });
     }
     // dayKey stands in for `date`; room is primitive

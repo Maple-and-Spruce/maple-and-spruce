@@ -72,6 +72,7 @@ export async function previewGiftCardForClass(
       giftCard,
       classEntity,
       subtotalCents: price.subtotalCents,
+      taxRatePercent: square.taxRatePercent,
     }),
   });
 

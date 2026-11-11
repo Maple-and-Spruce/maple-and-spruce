@@ -13,6 +13,7 @@ import type {
   RecordInvoicePaymentRequest,
   RecordInvoicePaymentResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for the teacher "My Day" page (legacy #631): the signed-in teacher's lessons
@@ -55,7 +56,7 @@ export function useMyDay() {
       console.error('Failed to fetch My Day:', error);
       setDayState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch',
+        error: errorMessageFor(error, 'Failed to fetch'),
       });
     }
   }, []);

@@ -55,6 +55,9 @@ describe('useGiftCards', () => {
       'giftCards/replaceGiftCard': vi.fn().mockResolvedValue({
         data: { oldGiftCardId: 'gc', newGiftCardId: 'gc-2', last4: '0002', balanceCents: 1500 },
       }),
+      'giftCards/closeGiftCard': vi.fn().mockResolvedValue({
+        data: { giftCardId: 'gc', mode: 'refund', amountCents: 1500, refundedCents: 1500 },
+      }),
     };
   });
 
@@ -133,10 +136,12 @@ describe('useGiftCards', () => {
     await waitFor(() => expect(result.current.giftCardsState.status).toBe('success'));
 
     let replaced: { newGiftCardId: string } | undefined;
+    let closed: { refundedCents: number } | undefined;
     await act(async () => {
       await result.current.fetchGiftCardBuyer('gc');
       await result.current.searchGiftCardsByCustomer('Robin');
       replaced = await result.current.replaceGiftCard({ giftCardId: 'gc', idempotencyKey: 'k' });
+      closed = await result.current.closeGiftCard({ giftCardId: 'gc', mode: 'refund' });
     });
 
     expect(mocks.routes['giftCards/getGiftCardBuyer']).toHaveBeenCalledWith({ id: 'gc' });
@@ -148,6 +153,11 @@ describe('useGiftCards', () => {
       idempotencyKey: 'k',
     });
     expect(replaced?.newGiftCardId).toBe('gc-2');
+    expect(mocks.routes['giftCards/closeGiftCard']).toHaveBeenCalledWith({
+      giftCardId: 'gc',
+      mode: 'refund',
+    });
+    expect(closed?.refundedCents).toBe(1500);
   });
 });
 

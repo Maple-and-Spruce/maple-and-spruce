@@ -10,6 +10,7 @@ import {
   type CreateMusicTogetherSemesterInput,
   type UpdateMusicTogetherSemesterInput,
   type RequestState,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type {
   GetMusicTogetherSemestersRequest,
@@ -70,7 +71,7 @@ export function useMusicTogetherSemesters() {
       setSemestersState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch semesters',
+          errorMessageFor(error, 'Failed to fetch semesters'),
       });
     }
   }, []);

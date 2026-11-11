@@ -22,6 +22,7 @@ import {
   hasOpenRefundReview,
   refundedInSquareAmountCents,
   type Registration,
+  errorMessageFor,
 } from '@maple/ts/domain';
 
 interface RegistrationDetailDialogProps {
@@ -143,7 +144,7 @@ export function RegistrationDetailDialog({
     } catch (error) {
       setStaffNotesSave({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to save',
+        error: errorMessageFor(error, 'Failed to save'),
       });
     }
   };
@@ -169,7 +170,7 @@ export function RegistrationDetailDialog({
       setShowCancelConfirm(false);
     } catch (error) {
       setCancelError(
-        error instanceof Error ? error.message : 'Failed to cancel'
+        errorMessageFor(error, 'Failed to cancel')
       );
     } finally {
       setIsCancelling(false);

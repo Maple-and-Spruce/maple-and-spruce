@@ -235,7 +235,8 @@ the admin, pre-loaded (#314).
 | Admin: give a free card (`giftCards/issueGiftCard`), make a register card a class certificate (`giftCards/markClassCertificate`) | Done | #310 |
 | Amounts in Admin > Settings, gift certificates per class type, class-type picker on the buy page | Done | #309 |
 | Printed pre-loaded certificates (`giftCards/printGiftCertificates`, `getCertificateBatch`, print view after Katie's stained glass design), totals split (given free, printed not yet used), "Gift certificate" register item kept out of products and POS sales | Done | #314 |
-| Certificates printed with no money and sold at the register (MAPLE codes), "Printed, not sold yet" count, buyer from the register sale (`getGiftCardBuyer`), search by customer (`searchGiftCardsByCustomer`), replace a lost card (`replaceGiftCard`) | Done (PR open) | #332 |
+| Certificates printed with no money and sold at the register (MAPLE codes), "Printed, not sold yet" count, buyer from the register sale (`getGiftCardBuyer`), search by customer (`searchGiftCardsByCustomer`), replace a lost card (`replaceGiftCard`) | Done | #332 |
+| Follow-ups from the live test: class certificate covers sales tax (within its 10% cover), no status codes in customer messages, refund and turn off a card (`closeGiftCard`), shorter admin explainer, first Apply click shows the card | Done (PR open) | #295 |
 
 ## Phase 4: Music Lessons - legacy Epic #10
 

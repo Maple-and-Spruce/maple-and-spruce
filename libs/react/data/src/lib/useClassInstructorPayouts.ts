@@ -27,6 +27,7 @@ import type {
   VoidClassInstructorStatementRequest,
   VoidClassInstructorStatementResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 // Dates cross the wire as ISO strings; these put them back.
 
@@ -65,7 +66,7 @@ function route<Req, Res>(name: string) {
 }
 
 function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
+  return errorMessageFor(error, fallback);
 }
 
 /**

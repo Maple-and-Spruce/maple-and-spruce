@@ -18,7 +18,7 @@ import {
   TextField,
 } from '@mui/material';
 import type { Product, ProductVariant } from '@maple/ts/domain';
-import { isMultiVariant } from '@maple/ts/domain';
+import { isMultiVariant, errorMessageFor } from '@maple/ts/domain';
 import {
   batch,
   useComputed,
@@ -134,7 +134,7 @@ export function RecordSaleDialog({
       onClose();
     } catch (error: unknown) {
       submitError.value =
-        error instanceof Error ? error.message : 'Failed to record sale';
+        errorMessageFor(error, 'Failed to record sale');
     }
   };
 

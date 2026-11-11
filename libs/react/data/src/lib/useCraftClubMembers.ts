@@ -18,6 +18,7 @@ import type {
   AdminCraftClubSubscriptionActionRequest,
   AdminCraftClubSubscriptionActionResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export type CraftClubSubscriptionAction = 'pause' | 'resume' | 'cancel';
 
@@ -51,9 +52,7 @@ export function useCraftClubMembers(filters?: UseCraftClubMembersFilters) {
       setMembersState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch members',
+          errorMessageFor(error, 'Failed to fetch members'),
       });
     }
   }, [filters?.status]);

@@ -270,3 +270,32 @@ export interface ReplaceGiftCardResponse {
    */
   warning?: string;
 }
+
+export interface CloseGiftCardRequest {
+  giftCardId: string;
+  /**
+   * `refund`: a card bought on our buy page. What is left on it goes back to
+   * the card that paid, and the card is turned off. `deactivate`: any card.
+   * What is left on it is taken off and the card turned off; no money is
+   * returned by us. The server refuses a refund for a card it cannot refund.
+   */
+  mode: 'refund' | 'deactivate';
+}
+
+/**
+ * `giftCards/closeGiftCard`: refund a card bought online and turn it off, or
+ * turn any card off. Admin only.
+ */
+export interface CloseGiftCardResponse {
+  giftCardId: string;
+  mode: 'refund' | 'deactivate';
+  /** What was on the card and taken off, in cents. */
+  amountCents: number;
+  /** Refund only: what went back to the buyer's card, in cents. */
+  refundedCents: number;
+  /**
+   * Set when the money was handled but Square did not turn the card off. It
+   * holds nothing, so nothing can be spent from it; trying again turns it off.
+   */
+  warning?: string;
+}

@@ -11,6 +11,7 @@ import type {
   GetTeacherPayoutsRequest,
   GetTeacherPayoutsResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface UseTeacherPayoutsOptions {
   /** Inclusive start of the period. */
@@ -73,7 +74,7 @@ export function useTeacherPayouts({
       setPayoutsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch payouts',
+          errorMessageFor(error, 'Failed to fetch payouts'),
       });
     }
   }, [fromIso, toIso, teacherId]);

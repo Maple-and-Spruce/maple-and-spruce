@@ -12,6 +12,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useBusinessPaymentConfig } from '@maple/react/data';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Settings card to set the business Venmo handle (legacy #631) — rendered as a
@@ -38,7 +39,7 @@ export function BusinessVenmoConfigCard() {
       await saveVenmoHandle(handle.trim().replace(/^@/, ''));
       setDirty(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save');
+      setError(errorMessageFor(e, 'Failed to save'));
     } finally {
       setSaving(false);
     }

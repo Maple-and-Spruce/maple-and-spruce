@@ -2,16 +2,12 @@
 
 import { Alert, Box, Paper, Skeleton, Typography } from '@mui/material';
 import type { GiftCardTotals, RequestState } from '@maple/ts/domain';
-import { formatGiftCardMoney } from './format';
+import { MISSING_NUMBER, formatGiftCardCount, formatGiftCardMoney } from './format';
 
 interface Tile {
   label: string;
   value: string;
   explain: string;
-}
-
-function certificates(count: number): string {
-  return `${count} ${count === 1 ? 'certificate' : 'certificates'}`;
 }
 
 function tiles(totals: GiftCardTotals): Tile[] {
@@ -24,7 +20,7 @@ function tiles(totals: GiftCardTotals): Tile[] {
     },
     {
       label: 'Cards with money on them',
-      value: String(totals.cardsWithBalance),
+      value: Number.isFinite(totals.cardsWithBalance) ? String(totals.cardsWithBalance) : MISSING_NUMBER,
       explain: 'Active cards that still have a balance.',
     },
     {
@@ -45,7 +41,7 @@ function tiles(totals: GiftCardTotals): Tile[] {
     },
     {
       label: 'Printed, not sold yet',
-      value: certificates(totals.printedNotSoldCount),
+      value: formatGiftCardCount(totals.printedNotSoldCount, 'certificate', 'certificates'),
       explain:
         'Printed certificates with no money on them. Each one is loaded when it is sold at the register.',
     },

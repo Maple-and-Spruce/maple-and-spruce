@@ -29,6 +29,7 @@ import {
   type ClassCategory,
   type GiftCertificateDesignId,
   type RequestState,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type {
   PrintGiftCertificatesRequest,
@@ -206,7 +207,7 @@ export function PrintGiftCertificatesDialog({
     } catch (error) {
       setSubmitState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Could not make the certificates',
+        error: errorMessageFor(error, 'Could not make the certificates'),
       });
     }
   };

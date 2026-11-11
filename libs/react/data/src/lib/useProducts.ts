@@ -23,6 +23,7 @@ import type {
   DeleteProductRequest,
   DeleteProductResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for managing product CRUD operations
@@ -51,7 +52,7 @@ export function useProducts() {
       setProductsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch products',
+          errorMessageFor(error, 'Failed to fetch products'),
       });
     }
   }, []);

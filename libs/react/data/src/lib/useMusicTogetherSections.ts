@@ -22,6 +22,7 @@ import type {
   DuplicateMusicTogetherSectionRequest,
   DuplicateMusicTogetherSectionResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface UseMusicTogetherSectionsFilters {
   /** Optionally scope to a single semester. */
@@ -68,7 +69,7 @@ export function useMusicTogetherSections(
       setSectionsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch sections',
+          errorMessageFor(error, 'Failed to fetch sections'),
       });
     }
   }, [filters?.semesterId]);

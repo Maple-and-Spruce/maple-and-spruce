@@ -35,7 +35,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GALLERY_IMAGE_MAX, type GalleryImage } from '@maple/ts/domain';
+import { GALLERY_IMAGE_MAX, type GalleryImage, errorMessageFor } from '@maple/ts/domain';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
@@ -245,9 +245,7 @@ export function GalleryEditor({
           onChange([...(value ?? []), { url, alt: '' }]);
         } catch (uploadErr) {
           const message =
-            uploadErr instanceof Error
-              ? uploadErr.message
-              : 'Image upload failed';
+            errorMessageFor(uploadErr, 'Image upload failed');
           setUploadError(message);
         } finally {
           setIsUploading(false);

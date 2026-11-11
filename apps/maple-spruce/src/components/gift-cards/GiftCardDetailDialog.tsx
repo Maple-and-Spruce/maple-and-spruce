@@ -19,11 +19,13 @@ import {
 } from '@mui/material';
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import BlockIcon from '@mui/icons-material/Block';
 import {
   giftCardActivityLabel,
   giftCardKindLabel,
   giftCardPurchaseSource,
   giftCardStateLabel,
+  isRefundableOnline,
   isUnsoldPrintedCertificate,
   type GiftCardActivityEntry,
   type GiftCardSummary,
@@ -76,6 +78,38 @@ interface GiftCardDetailDialogProps {
    * card with money on it.
    */
   onReplace?: (card: GiftCardSummary) => void;
+  /**
+   * Opens "Refund and turn off" (a card bought online with money on it) or
+   * "Turn off" (any other active card). Also offered to finish one that was
+   * started and stopped part way. `amountCents` is what will come off, when
+   * a started one fixed it already.
+   */
+  onCloseCard?: (
+    card: GiftCardSummary,
+    mode: 'refund' | 'deactivate',
+    amountCents?: number
+  ) => void;
+}
+
+/**
+ * What the refund or turn-off section offers for a card, if anything: refund
+ * a card bought online that still holds money, turn off any other active
+ * card, or finish one that was started.
+ */
+export function closeOptionFor(
+  card: GiftCardSummary,
+  purchase: GiftCardPurchaseDetails | undefined,
+  unsold: boolean
+): { mode: 'refund' | 'deactivate'; amountCents?: number; finishing: boolean } | null {
+  const closure = purchase?.closure;
+  if (closure && !closure.completedAt) {
+    return { mode: closure.kind, amountCents: closure.amountCents, finishing: true };
+  }
+  if (card.state !== 'active' || unsold) return null;
+  if (isRefundableOnline(purchase) && card.balanceCents > 0) {
+    return { mode: 'refund', finishing: false };
+  }
+  return { mode: 'deactivate', finishing: false };
 }
 
 /**
@@ -114,6 +148,7 @@ export function GiftCardDetailDialog({
   onMakeClassCertificate,
   onLoadBuyer,
   onReplace,
+  onCloseCard,
 }: GiftCardDetailDialogProps) {
   const shown = detailState.status === 'success' ? detailState.data.card : card;
   const record =
@@ -140,6 +175,10 @@ export function GiftCardDetailDialog({
     loaded !== undefined &&
     loaded.card.state === 'active' &&
     loaded.card.balanceCents > 0;
+  const closeOption =
+    onCloseCard !== undefined && loaded !== undefined
+      ? closeOptionFor(loaded.card, loaded.purchase, unsold)
+      : null;
 
   return (
     <Dialog open={card !== null} onClose={onClose} fullWidth maxWidth="sm">
@@ -173,6 +212,14 @@ export function GiftCardDetailDialog({
         )}
 
         {record && <CardRecord purchase={record} unsold={unsold} />}
+
+        {record?.closure?.completedAt && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {record.closure.kind === 'refund'
+              ? `Refunded ${formatGiftCardMoney(record.closure.amountCents)} and turned off on ${formatGiftCardDate(record.closure.completedAt)}.`
+              : `Turned off on ${formatGiftCardDate(record.closure.completedAt)}${record.closure.amountCents > 0 ? `, with ${formatGiftCardMoney(record.closure.amountCents)} taken off` : ''}.`}
+          </Alert>
+        )}
 
         {showBuyer && (
           <GiftCardBuyerBox
@@ -219,6 +266,40 @@ export function GiftCardDetailDialog({
               onClick={() => onReplace(loaded.card)}
             >
               Replace lost card
+            </Button>
+          </Box>
+        )}
+
+        {closeOption && loaded && (
+          <Box
+            component="section"
+            aria-label="Refund or turn off"
+            sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
+          >
+            <Typography variant="body2" sx={{ mb: 1.5 }}>
+              {closeOption.finishing
+                ? closeOption.mode === 'refund'
+                  ? 'A refund of this card was started but did not finish. Finish it.'
+                  : 'Turning this card off was started but did not finish. Finish it.'
+                : closeOption.mode === 'refund'
+                  ? 'Bought on the website. Refund what is left to the card that paid, and turn this card off.'
+                  : 'Turn this card off so it cannot be spent. No money is returned from here.'}
+            </Typography>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<BlockIcon />}
+              onClick={() =>
+                onCloseCard?.(loaded.card, closeOption.mode, closeOption.amountCents)
+              }
+            >
+              {closeOption.finishing
+                ? closeOption.mode === 'refund'
+                  ? 'Finish refund'
+                  : 'Finish turning off'
+                : closeOption.mode === 'refund'
+                  ? 'Refund and turn off'
+                  : 'Turn off card'}
             </Button>
           </Box>
         )}

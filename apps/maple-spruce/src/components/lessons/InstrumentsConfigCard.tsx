@@ -26,6 +26,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import {
   instrumentKeyFromLabel,
   instrumentListProblem,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type { InstrumentOption, RequestState } from '@maple/ts/domain';
 
@@ -78,7 +79,7 @@ export function InstrumentsConfigCard({
       setDirty(false);
       setSaved(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save');
+      setError(errorMessageFor(e, 'Could not save'));
     }
   };
 

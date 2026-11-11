@@ -11,7 +11,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { LESSON_LENGTHS } from '@maple/ts/domain';
+import { LESSON_LENGTHS, errorMessageFor } from '@maple/ts/domain';
 import type { LessonRateByLength } from '@maple/ts/domain';
 import { LESSON_LENGTH_LABELS } from '@maple/react/students';
 import { useLessonRatesConfig } from '@maple/react/data';
@@ -55,7 +55,7 @@ export function LessonRatesConfigCard() {
       await saveConfig(rateByLength);
       setDirty(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save');
+      setError(errorMessageFor(e, 'Failed to save'));
     } finally {
       setSaving(false);
     }

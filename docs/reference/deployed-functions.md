@@ -506,6 +506,12 @@ Square SDK integration for payments, catalog management, and sync conflict resol
   (reference `repl-<12 hex>`) and `DEACTIVATE`s the lost one. Off before on, so the balance is
   never on both cards; a retry resumes from the record. Logs `gift_card_replaced` (`oldId`,
   `newId`, `balanceCents`, `uid`) and `gift_card_replace_failed` (`step`), never a code.
+- `giftCards/closeGiftCard` — admin only. `mode: 'refund'` (a card bought online): records a
+  `closure` on the card's record, `ADJUST_DECREMENT`s what is left (`SUPPORT_ISSUE`), refunds
+  that amount on the original payment, then `DEACTIVATE`s the card. `mode: 'deactivate'` (any
+  card): the same without the refund. Off the card before any refund; Square keys come from the
+  card, so a retry never refunds twice. Logs `gift_card_closed` and `gift_card_close_failed`
+  (`step`), never a code.
 
 ### Square webhook
 - `squareWebhook` — HTTP endpoint _(memory: 512MiB, concurrency: 10)_. For `catalog.version.updated` events, the handler just bumps the singleton `catalogSyncRequests/pending` doc and acks 200 within Square's 10-second delivery timeout; the actual catalog re-sync runs in `processCatalogSyncRequest`. For `payment.created` / `payment.updated` events with a `COMPLETED` payment, it enqueues a `posSaleRequests/{paymentId}` doc (stays lean — no Square SDK) and returns; `processPosSale` does the work. Inventory and invoice events run inline (fast).

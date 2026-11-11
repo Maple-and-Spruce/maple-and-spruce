@@ -29,7 +29,7 @@ import { httpsCallable } from 'firebase/functions';
 import { theme, fonts } from '@maple/react/theme';
 import { SquareCardForm } from '@maple/react/registrations';
 import type { CardTokenizeResult } from '@maple/react/registrations';
-import { CRAFT_CLUB_MONTHLY_PRICE_CENTS } from '@maple/ts/domain';
+import { CRAFT_CLUB_MONTHLY_PRICE_CENTS, errorMessageFor } from '@maple/ts/domain';
 import type {
   CheckCraftClubEligibilityRequest,
   CheckCraftClubEligibilityResponse,
@@ -106,7 +106,7 @@ export function CraftClubSignupWidget({
         setStep(res.data.status);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : 'Something went wrong.'
+          errorMessageFor(err, 'Something went wrong.')
         );
       } finally {
         setBusy(false);
@@ -135,9 +135,7 @@ export function CraftClubSignupWidget({
       setStep('success');
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : 'We could not start your membership. Please try again.'
+        errorMessageFor(err, 'We could not start your membership. Please try again.')
       );
     } finally {
       setBusy(false);
@@ -162,7 +160,7 @@ export function CraftClubSignupWidget({
         setStep('requested');
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : 'Something went wrong.'
+          errorMessageFor(err, 'Something went wrong.')
         );
       } finally {
         setBusy(false);

@@ -22,6 +22,7 @@ import type {
   DeleteLessonBlockRequest,
   DeleteLessonBlockResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /** Coerce ISO timestamps from the callable back to Date. */
 function hydrateBlock(block: LessonBlock): LessonBlock {
@@ -74,9 +75,7 @@ export function useLessonBlocks(options: UseLessonBlocksOptions = {}) {
       setLessonBlocksState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch lesson blocks',
+          errorMessageFor(error, 'Failed to fetch lesson blocks'),
       });
     }
   }, [teacherId]);

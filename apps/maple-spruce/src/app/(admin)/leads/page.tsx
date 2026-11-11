@@ -17,7 +17,7 @@ import {
   Typography,
 } from '@mui/material';
 import type { CreateStudentInput, LessonInquiry } from '@maple/ts/domain';
-import { studentDraftFromInquiry } from '@maple/ts/domain';
+import { studentDraftFromInquiry, errorMessageFor } from '@maple/ts/domain';
 import { LessonInquiryList } from '@maple/react/lessons';
 import { StudentForm } from '@maple/react/students';
 import {
@@ -113,7 +113,7 @@ export default function LeadsPage() {
       setCreatingFrom(null);
     } catch (error) {
       setCreateError(
-        error instanceof Error ? error.message : 'Could not create the student.'
+        errorMessageFor(error, 'Could not create the student.')
       );
     } finally {
       setCreating(false);

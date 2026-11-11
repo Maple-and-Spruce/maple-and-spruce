@@ -13,6 +13,7 @@ import type {
   UpdateBusinessPaymentConfigRequest,
   UpdateBusinessPaymentConfigResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for the business Venmo handle config (legacy #631), shown on the admin
@@ -40,7 +41,7 @@ export function useBusinessPaymentConfig() {
       console.error('Failed to fetch business payment config:', error);
       setConfigState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch config',
+        error: errorMessageFor(error, 'Failed to fetch config'),
       });
     }
   }, []);

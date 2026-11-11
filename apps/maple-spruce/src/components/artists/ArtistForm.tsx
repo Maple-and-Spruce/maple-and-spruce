@@ -44,6 +44,7 @@ import {
   batch,
   useSignals,
 } from '@maple/react/signals';
+import { errorMessageFor } from '@maple/ts/domain';
 
 interface ArtistFormProps {
   open: boolean;
@@ -263,9 +264,7 @@ export function ArtistForm({
           imageUploadState.value = { status: 'success', url: currentPhotoUrl };
         } catch (uploadError) {
           const errorMessage =
-            uploadError instanceof Error
-              ? uploadError.message
-              : 'Failed to upload image';
+            errorMessageFor(uploadError, 'Failed to upload image');
           imageUploadState.value = {
             status: 'error',
             error: errorMessage,

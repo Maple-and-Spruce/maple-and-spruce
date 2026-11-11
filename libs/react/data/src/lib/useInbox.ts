@@ -13,6 +13,7 @@ import type {
   GetInboxRequest,
   GetInboxResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * The studio-wide inbox on the admin Home dashboard (#235).
@@ -47,7 +48,7 @@ export function useInbox(enabled = true) {
       console.error('Failed to fetch the inbox:', error);
       setInboxState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch',
+        error: errorMessageFor(error, 'Failed to fetch'),
       });
     }
   }, []);

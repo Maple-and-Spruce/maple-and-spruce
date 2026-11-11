@@ -22,6 +22,7 @@ import type {
   SaveHopeOrderRequest,
   SaveHopeOrderResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export interface HopeQueueData {
   entries: HopeQueueEntry[];
@@ -103,9 +104,7 @@ export function useHopeQueue(options: UseHopeQueueOptions = {}) {
       setQueueState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Could not load the Hope queue',
+          errorMessageFor(error, 'Could not load the Hope queue'),
       });
     }
   }, [studentId]);

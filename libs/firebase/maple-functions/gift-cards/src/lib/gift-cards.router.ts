@@ -10,7 +10,9 @@
  * at the register is a class certificate (no Square write), `issueGiftCard`
  * makes and loads a free card in Square (#310), `printGiftCertificates`
  * makes a batch of printed certificates with no money on them (#314, #332),
- * and `replaceGiftCard` moves a lost card's balance to a new card (#332).
+ * `replaceGiftCard` moves a lost card's balance to a new card (#332), and
+ * `closeGiftCard` refunds a card bought online and turns it off, or turns any
+ * card off.
  * `getGiftCardBuyer` and `searchGiftCardsByCustomer` read customers from
  * Square (#332).
  *
@@ -39,6 +41,8 @@ import type {
   GetGiftCardBuyerResponse,
   ReplaceGiftCardRequest,
   ReplaceGiftCardResponse,
+  CloseGiftCardRequest,
+  CloseGiftCardResponse,
   SearchGiftCardsByCustomerRequest,
   SearchGiftCardsByCustomerResponse,
   GetGiftCardRequest,
@@ -78,6 +82,7 @@ import {
   searchGiftCardsByCustomer,
 } from './gift-card-customers';
 import { replaceGiftCard } from './replace-gift-card';
+import { closeGiftCard } from './close-gift-card';
 
 export const giftCards = Functions.router('giftCards', {
   /** Every card and this month's totals. */
@@ -185,6 +190,16 @@ export const giftCards = Functions.router('giftCards', {
     .usingSecrets(...SQUARE_SECRET_NAMES)
     .usingStrings(...SQUARE_STRING_NAMES)
     .asRoute<ReplaceGiftCardRequest, ReplaceGiftCardResponse>(replaceGiftCard),
+
+  /**
+   * Refund a card bought online and turn it off, or turn any card off. Takes
+   * what is left off the card before any refund (see close-gift-card.ts).
+   */
+  closeGiftCard: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .usingSecrets(...SQUARE_SECRET_NAMES)
+    .usingStrings(...SQUARE_STRING_NAMES)
+    .asRoute<CloseGiftCardRequest, CloseGiftCardResponse>(closeGiftCard),
 
   /**
    * Public (#301): what a gift card would pay toward a class at checkout.

@@ -8,6 +8,7 @@ export {
 export { GiftCardCodeReveal } from './GiftCardCodeReveal';
 export { GiftCardBuyerBox } from './GiftCardBuyerBox';
 export { ReplaceGiftCardDialog } from './ReplaceGiftCardDialog';
+export { CloseGiftCardDialog, type CloseGiftCardMode } from './CloseGiftCardDialog';
 export { IssueGiftCardDialog } from './IssueGiftCardDialog';
 export { MarkClassCertificateDialog } from './MarkClassCertificateDialog';
 export {

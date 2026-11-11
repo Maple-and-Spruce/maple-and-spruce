@@ -17,6 +17,7 @@ import type {
   SaveHopeProductRequest,
   SaveHopeProductResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 function hydrate(product: HopeProduct): HopeProduct {
   return {
@@ -52,7 +53,7 @@ export function useHopeProducts() {
       setProductsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Could not load EMA products',
+          errorMessageFor(error, 'Could not load EMA products'),
       });
     }
   }, []);

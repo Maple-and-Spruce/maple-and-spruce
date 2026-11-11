@@ -22,6 +22,7 @@ import type {
   RemoveCalendarEmbedSourceRequest,
   RemoveCalendarEmbedSourceResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 export function useCalendarEmbedConfig() {
   const [configState, setConfigState] = useState<
@@ -44,9 +45,7 @@ export function useCalendarEmbedConfig() {
       setConfigState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch calendar embed config',
+          errorMessageFor(error, 'Failed to fetch calendar embed config'),
       });
     }
   }, []);

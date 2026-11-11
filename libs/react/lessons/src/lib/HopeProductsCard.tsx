@@ -42,7 +42,7 @@ import type {
   RequestState,
   SaveHopeProductInput,
 } from '@maple/ts/domain';
-import { formatHopePrice } from '@maple/ts/domain';
+import { formatHopePrice, errorMessageFor } from '@maple/ts/domain';
 import { hopeProductValidation } from '@maple/ts/validation';
 
 export interface HopeProductsCardProps {
@@ -98,7 +98,7 @@ function ProductDialog({
       await onSave(toInput(value));
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save the product');
+      setError(errorMessageFor(err, 'Could not save the product'));
     }
   };
 

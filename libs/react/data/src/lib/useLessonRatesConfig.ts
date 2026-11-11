@@ -17,6 +17,7 @@ import type {
   UpdateLessonRatesConfigRequest,
   UpdateLessonRatesConfigResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * Hook for the admin-configured default private-pay lesson rates (legacy #629), shown
@@ -44,7 +45,7 @@ export function useLessonRatesConfig() {
       console.error('Failed to fetch lesson rates config:', error);
       setConfigState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch config',
+        error: errorMessageFor(error, 'Failed to fetch config'),
       });
     }
   }, []);

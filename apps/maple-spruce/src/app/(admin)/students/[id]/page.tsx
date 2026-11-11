@@ -44,6 +44,7 @@ import {
   lessonBillingState,
   planPushLessonsBack,
   resolvePrivatePayLessonRateCents,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type {
   CreateInvoiceInput,
@@ -289,7 +290,7 @@ export default function StudentDetailPage() {
       try {
         await updateLesson({ id: item.lessonId, scheduledAt: to });
       } catch (err) {
-        setPayError(err instanceof Error ? err.message : 'Could not move it');
+        setPayError(errorMessageFor(err, 'Could not move it'));
       } finally {
         setPaying(false);
       }
@@ -415,7 +416,7 @@ export default function StudentDetailPage() {
       await pushLessonsBack(pushAnchor.id);
       setPushAnchor(null);
     } catch (err) {
-      setPushError(err instanceof Error ? err.message : 'Could not push them back');
+      setPushError(errorMessageFor(err, 'Could not push them back'));
     } finally {
       setPushBusy(false);
     }
@@ -439,7 +440,7 @@ export default function StudentDetailPage() {
       setEditingSchedule(undefined);
     } catch (err) {
       setScheduleError(
-        err instanceof Error ? err.message : 'Could not save the weekly time'
+        errorMessageFor(err, 'Could not save the weekly time')
       );
     }
   };
@@ -501,7 +502,7 @@ export default function StudentDetailPage() {
       setCancellingLesson(null);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Could not update the lesson';
+        errorMessageFor(err, 'Could not update the lesson');
       if (virtual) setCancelError(message);
       else setActivityError(message);
     } finally {
@@ -516,7 +517,7 @@ export default function StudentDetailPage() {
       await updateLesson({ id: lesson.id, status: 'cancelled' });
       setCancellingLesson(null);
     } catch (err) {
-      setCancelError(err instanceof Error ? err.message : 'Could not cancel the lesson');
+      setCancelError(errorMessageFor(err, 'Could not cancel the lesson'));
     } finally {
       setPendingLessonId(null);
     }
@@ -543,7 +544,7 @@ export default function StudentDetailPage() {
       await Promise.all([refetchBilling(), fetchInvoices()]);
     } catch (err) {
       setCancelError(
-        err instanceof Error ? err.message : 'Could not reschedule the lesson'
+        errorMessageFor(err, 'Could not reschedule the lesson')
       );
     } finally {
       setPendingLessonId(null);
@@ -623,7 +624,7 @@ export default function StudentDetailPage() {
       }
       setSettling(null);
     } catch (err) {
-      setSettleError(err instanceof Error ? err.message : 'Could not do that');
+      setSettleError(errorMessageFor(err, 'Could not do that'));
     } finally {
       setIsSubmitting(false);
     }
@@ -639,7 +640,7 @@ export default function StudentDetailPage() {
       await updateLesson({ id: lesson.id, status });
     } catch (err) {
       setActivityError(
-        err instanceof Error ? err.message : 'Could not update the lesson'
+        errorMessageFor(err, 'Could not update the lesson')
       );
     } finally {
       setPendingLessonId(null);

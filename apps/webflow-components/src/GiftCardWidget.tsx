@@ -41,6 +41,7 @@ import type { CardTokenizeResult } from '@maple/react/registrations';
 import {
   GIFT_CARD_MESSAGE_MAX_LENGTH,
   formatGiftCardDollars,
+  errorMessageFor,
 } from '@maple/ts/domain';
 import type { GiftCertificateClassType, RequestState } from '@maple/ts/domain';
 import type {
@@ -189,7 +190,7 @@ export function GiftCardWidget({
         if (!cancelled) {
           setOptionsState({
             status: 'error',
-            error: err instanceof Error ? err.message : 'Could not load gift card options',
+            error: errorMessageFor(err, 'Could not load gift card options'),
           });
         }
       });
@@ -350,9 +351,7 @@ export function GiftCardWidget({
       setStep({ status: 'done', result: res.data, description });
     } catch (err) {
       setSubmitError(
-        err instanceof Error && err.message
-          ? err.message
-          : 'We could not complete your purchase. Please try again.'
+        errorMessageFor(err, 'We could not complete your purchase. Please try again.')
       );
       setStep({ status: 'form' });
     }

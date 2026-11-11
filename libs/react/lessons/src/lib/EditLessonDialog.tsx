@@ -34,7 +34,7 @@ import type {
   Room,
   UpdateLessonInput,
 } from '@maple/ts/domain';
-import { ROOMS, getRoomLabel, lessonFitsBlock, lessonRoom } from '@maple/ts/domain';
+import { ROOMS, getRoomLabel, lessonFitsBlock, lessonRoom, errorMessageFor } from '@maple/ts/domain';
 import { lessonValidation } from '@maple/ts/validation';
 import {
   batch,
@@ -151,7 +151,7 @@ export function EditLessonDialog({
       onClose();
     } catch (error: unknown) {
       submitError.value =
-        error instanceof Error ? error.message : 'Failed to update lesson';
+        errorMessageFor(error, 'Failed to update lesson');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lesson, onSubmit, onClose, isSubmitting]);

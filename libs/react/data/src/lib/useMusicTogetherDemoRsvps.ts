@@ -8,6 +8,7 @@ import type {
   GetMusicTogetherDemoRsvpsResponse,
   MusicTogetherDemoRsvpGroup,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /** Hydrate ISO date strings (callable serialization) back into Dates. */
 function hydrateGroup(
@@ -56,7 +57,7 @@ export function useMusicTogetherDemoRsvps() {
       setDemoRsvpsState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch demo RSVPs',
+          errorMessageFor(error, 'Failed to fetch demo RSVPs'),
       });
     }
   }, []);

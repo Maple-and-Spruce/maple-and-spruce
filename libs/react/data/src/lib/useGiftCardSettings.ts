@@ -13,6 +13,7 @@ import type {
   UpdateGiftCardSettingsRequest,
   UpdateGiftCardSettingsResponse,
 } from '@maple/ts/firebase/api-types';
+import { errorMessageFor } from '@maple/ts/domain';
 
 /**
  * The dollar gift card amounts the website sells (#309), from the `settings`
@@ -37,9 +38,7 @@ export function useGiftCardSettings() {
       setSettingsState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Could not load gift card amounts',
+          errorMessageFor(error, 'Could not load gift card amounts'),
       });
     }
   }, []);
