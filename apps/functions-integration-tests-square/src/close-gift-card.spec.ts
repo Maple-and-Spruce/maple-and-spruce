@@ -6,9 +6,10 @@
  * Square does.
  *
  * What only this level proves: the requests the route makes are ones Square
- * accepts (ADJUST_DECREMENT, a refund on the original payment, DEACTIVATE),
- * the card ends at $0 and turned off, our record keeps the closure, a failed
- * last step can be finished by trying again without refunding twice, and only
+ * accepts (ADJUST_DECREMENT, a refund on the original payment, DEACTIVATE
+ * with the one reason Square takes from an app), a refunded card ends at $0
+ * and still active while a turned-off one ends deactivated, our record keeps
+ * the closure, a failed last step can be finished by trying again, and only
  * an admin can do it.
  */
 import {
@@ -131,7 +132,7 @@ describe('refunding and turning off a gift card', () => {
       idToken,
     });
 
-  it('refunds what is left on a card bought online and turns it off', async () => {
+  it('refunds what is left on a card bought online, leaving it at $0', async () => {
     const id = await loadedCard(4000);
     await boughtOnline(id, 4000);
 
@@ -144,7 +145,8 @@ describe('refunding and turning off a gift card', () => {
       amountCents: 4000,
       refundedCents: 4000,
     });
-    expect(await card(id)).toEqual({ balance: 0, state: 'DEACTIVATED' });
+    // Not turned off: Square only lets an app do that as "suspicious activity".
+    expect(await card(id)).toEqual({ balance: 0, state: 'ACTIVE' });
     const refunds = await refundRequests();
     expect(refunds).toHaveLength(1);
     expect(refunds[0]).toMatchObject({
@@ -160,23 +162,29 @@ describe('refunding and turning off a gift card', () => {
     expect((record?.['closure'] as Wire)['completedAt']).toBeTruthy();
   });
 
-  it('a failed turn-off is finished by trying again, without refunding twice', async () => {
+  it('refuses to refund a card a second time', async () => {
     const id = await loadedCard(2500);
     await boughtOnline(id, 2500);
+    expect((await close({ giftCardId: id, mode: 'refund' })).status).toBe(200);
+
+    const again = await close({ giftCardId: id, mode: 'refund' });
+    expect(again.status).not.toBe(200);
+    expect(await refundRequests()).toHaveLength(1);
+  });
+
+  it('a failed turn-off is finished by trying again', async () => {
+    const id = await loadedCard(2500);
     await postMock('/_mock/gift-cards/fail-next-activity', { type: 'DEACTIVATE' });
 
-    const first = await close({ giftCardId: id, mode: 'refund' });
+    const first = await close({ giftCardId: id, mode: 'deactivate' });
     expect(first.status).toBe(200);
     expect(first.data?.warning).toMatch(/did not turn the card off/);
     expect(await card(id)).toEqual({ balance: 0, state: 'ACTIVE' });
 
-    const second = await close({ giftCardId: id, mode: 'refund' });
+    const second = await close({ giftCardId: id, mode: 'deactivate' });
     expect(second.status).toBe(200);
     expect(second.data?.warning).toBeUndefined();
     expect(await card(id)).toEqual({ balance: 0, state: 'DEACTIVATED' });
-    // Square's key returns the first refund; no second refund of the money.
-    const refunds = await refundRequests();
-    expect(new Set(refunds.map((r) => r['idempotency_key'])).size).toBe(1);
   });
 
   it('turns off a card sold at the register without refunding anything', async () => {

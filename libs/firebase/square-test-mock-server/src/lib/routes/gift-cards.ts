@@ -351,7 +351,8 @@ const MOCKED_ACTIVITY_TYPES: ReadonlySet<string> = new Set([
 
 /**
  * `ADJUST_DECREMENT` (no more than the balance, active cards only) and
- * `DEACTIVATE` (for good), as Square does them (#332).
+ * `DEACTIVATE` (for good, reason `SUSPICIOUS_ACTIVITY` only), as Square
+ * does them (#332).
  */
 function adjustOrDeactivate(
   card: Wire,
@@ -372,6 +373,12 @@ function adjustOrDeactivate(
   if (activity['type'] === 'DEACTIVATE') {
     const details = (activity['deactivate_activity_details'] ?? {}) as Wire;
     if (!details['reason']) return error(400, 'MISSING_REQUIRED_PARAMETER', 'reason is required');
+    // Square accepts only SUSPICIOUS_ACTIVITY from an app; UNKNOWN_REASON and
+    // CHARGEBACK_DEACTIVATE are read-only and refused with this exact detail.
+    if (details['reason'] !== 'SUSPICIOUS_ACTIVITY') {
+      activityCounter--;
+      return error(400, 'BAD_REQUEST', 'Reason is not valid for creating a deactivate giftcard activity');
+    }
     card['state'] = 'DEACTIVATED';
     return {
       activity: {
