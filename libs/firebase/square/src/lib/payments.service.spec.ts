@@ -3,6 +3,7 @@ import { SquareError } from 'square';
 import {
   GENERIC_PAYMENT_ERROR_MESSAGE,
   getPaymentErrorMessage,
+  isPaymentOutcomeUnknown,
   PaymentError,
   PaymentsService,
 } from './payments.service';
@@ -127,6 +128,31 @@ function createMockClient() {
     },
   };
 }
+
+describe('isPaymentOutcomeUnknown', () => {
+  it('is false for a decline, which is an answer', () => {
+    expect(
+      isPaymentOutcomeUnknown(new PaymentError('declined', 'CARD_DECLINED'))
+    ).toBe(false);
+    expect(
+      isPaymentOutcomeUnknown(new PaymentError('cvv', 'CVV_FAILURE'))
+    ).toBe(false);
+  });
+
+  it('is true when Square gave no code (a timeout or dropped connection)', () => {
+    expect(isPaymentOutcomeUnknown(new PaymentError('generic'))).toBe(true);
+    expect(isPaymentOutcomeUnknown(new Error('socket hang up'))).toBe(true);
+  });
+
+  it.each(['INTERNAL_SERVER_ERROR', 'SERVICE_UNAVAILABLE', 'GATEWAY_TIMEOUT'])(
+    'is true for a Square server error (%s)',
+    (code) => {
+      expect(isPaymentOutcomeUnknown(new PaymentError('generic', code))).toBe(
+        true
+      );
+    }
+  );
+});
 
 describe('PaymentsService', () => {
   let mockClient: ReturnType<typeof createMockClient>;

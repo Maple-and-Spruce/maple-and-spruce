@@ -21,9 +21,31 @@
   logs (`payment_error_unmapped`).
 - A discount use is given back when the card payment fails, as Music Together already did, so a
   single-use or referral code survives a decline.
-- **Not done (from the same review):** a payment Square took but we failed to record is still
-  reported as failed with no void; network errors can show a code word; Google Pay failures are
-  silent; an abandoned hosted checkout still keeps its discount use.
+- Live on the site since 2026-11-11: the library update was accepted in the Designer and the
+  site published.
+
+### Checkout never charges twice or blames a taken payment (2026-11-11)
+
+- The card payment's Square key is now fixed per registration (`card-payment.ts`). When Square
+  does not say whether a payment went through (timeout, dropped connection, Square 5xx), the
+  same request is sent once more with the same key, so Square answers with the first result
+  instead of charging again. A decline is never retried. Still unknown after that: void by key
+  and log `payment_outcome_unknown`.
+- If the card was charged and saving the registration then fails, the write is retried. If it
+  still fails the registration is left alone (not cancelled, discount not handed back), the
+  family is told the payment went through and not to pay again, and `payment_taken_not_recorded`
+  is logged with the Square payment id.
+- When the pay request gets no answer, Firebase's code words ("internal", "unavailable") are
+  replaced: "busy, your card was not charged" when the request was turned away, "check your
+  email before trying again" when it may have run. The repeat-failure advice (try another card,
+  pay on Square) is hidden for any message that means the card may already be charged.
+- A Google Pay failure that is not the buyer closing the sheet now shows a message.
+- Each failed payment sends a GA `payment_failed` event (method, attempt, our own wording).
+- **Not done:** nothing alerts staff on `payment_taken_not_recorded` or `payment_outcome_unknown`
+  (a log-based alert would close that); such a registration stays `pending`, so the hold reaper
+  cancels it after 15 minutes and staff must restore it by hand. An abandoned hosted checkout
+  still keeps its discount use. The retry is covered by unit tests only: the Square mock cannot
+  yet fail once and then answer.
 
 ### Class registration closes on the site at the class start (2026-11-09)
 

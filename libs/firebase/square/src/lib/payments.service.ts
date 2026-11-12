@@ -145,6 +145,29 @@ export class PaymentError extends Error {
 }
 
 /**
+ * Square codes that mean Square itself failed, so the payment may or may not
+ * have been taken.
+ */
+const OUTCOME_UNKNOWN_CODES = new Set([
+  'INTERNAL_SERVER_ERROR',
+  'SERVICE_UNAVAILABLE',
+  'GATEWAY_TIMEOUT',
+]);
+
+/**
+ * Whether a failed `createPayment` leaves it unknown if Square took the
+ * payment: a timeout or network failure (no Square code at all), or a Square
+ * server error. A decline or a bad card always carries its own code, and
+ * nothing was taken. Sending the same request again with the same idempotency
+ * key is safe: Square returns the first result if there was one.
+ */
+export function isPaymentOutcomeUnknown(error: unknown): boolean {
+  if (!(error instanceof PaymentError)) return true;
+  if (!error.squareErrorCode) return true;
+  return OUTCOME_UNKNOWN_CODES.has(error.squareErrorCode);
+}
+
+/**
  * Input for creating a payment
  */
 export interface CreatePaymentInput {

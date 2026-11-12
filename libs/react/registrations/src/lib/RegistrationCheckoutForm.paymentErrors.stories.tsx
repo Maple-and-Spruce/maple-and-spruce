@@ -161,3 +161,37 @@ export const RetrySucceeds: Story = {
     await expect(canvas.queryByRole('alert')).toBeNull();
   },
 };
+
+/** The request got no answer: Firebase reports only the word "internal". */
+function noAnswer() {
+  return fn(async (): Promise<CreateRegistrationResponse> => {
+    throw Object.assign(new Error('internal'), { code: 'functions/internal' });
+  });
+}
+
+/**
+ * When the payment may have gone through, the form says to check email, and
+ * never suggests another card or Square's page, however often it happens.
+ */
+export const PaymentUnconfirmed: Story = {
+  args: {
+    onSubmit: noAnswer(),
+    onHostedCheckout: fn(() => new Promise<{ checkoutUrl: string }>(() => undefined)),
+  },
+  play: async ({ canvasElement, args }) => {
+    const { canvas, pay } = await fillAndPay(canvasElement);
+    const alert = await canvas.findByRole('alert');
+    await expect(alert).toHaveTextContent(
+      'Please check your email for a confirmation before trying again.'
+    );
+    await expect(alert).not.toHaveTextContent('internal');
+    await userEvent.click(pay);
+    await waitFor(() => expect(args.onSubmit).toHaveBeenCalledTimes(2));
+    await expect(await canvas.findByRole('alert')).not.toHaveTextContent(
+      'Still not going through?'
+    );
+    await expect(
+      canvas.queryByRole('button', { name: /Square's checkout page/ })
+    ).toBeNull();
+  },
+};

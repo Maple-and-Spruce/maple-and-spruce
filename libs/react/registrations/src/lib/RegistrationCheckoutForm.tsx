@@ -51,6 +51,7 @@ import { PrivateHourPicker } from './PrivateHourPicker';
 import { HourWaitlistForm, type HourWaitlistStatus } from './HourWaitlistForm';
 import { formatPhoneNumber } from './formatPhoneNumber';
 import { customerFacingMessage } from './customer-facing-message';
+import { checkoutErrorMessage, mayAlreadyBePaid } from './checkout-error-message';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -114,6 +115,33 @@ function extractErrorMessage(error: unknown): string {
   }
 
   return fallback;
+}
+
+/** Shown when the Google Pay sheet closes without a usable payment. */
+const GOOGLE_PAY_FAILED_MESSAGE =
+  'Google Pay could not complete this payment. Please try again, or pay by card below.';
+
+/**
+ * Count a failed payment in GA, so a run of failures is visible without
+ * reading logs. Telemetry must never throw back into checkout.
+ */
+function reportPaymentFailed(info: {
+  method: 'card' | 'wallet';
+  attempt: number;
+  message: string;
+}): void {
+  try {
+    (
+      window as unknown as { gtag?: (...args: unknown[]) => void }
+    ).gtag?.('event', 'payment_failed', {
+      payment_method: info.method,
+      attempt: info.attempt,
+      // Our own wording for the failure, never anything the buyer typed.
+      reason: info.message.slice(0, 100),
+    });
+  } catch {
+    // Never let a telemetry failure break the form.
+  }
 }
 
 /**
@@ -689,8 +717,13 @@ export function RegistrationCheckoutForm({
       try {
         await performSubmit(nonce);
       } catch (error) {
-        submitError.value = extractErrorMessage(error);
+        submitError.value = checkoutErrorMessage(error);
         failedPayAttempts.value += 1;
+        reportPaymentFailed({
+          method: 'wallet',
+          attempt: failedPayAttempts.value,
+          message: submitError.value,
+        });
       } finally {
         isSubmitting.value = false;
       }
@@ -729,6 +762,12 @@ export function RegistrationCheckoutForm({
   );
 
 
+  // Google Pay closed with an error (not the buyer cancelling). Without this
+  // the sheet just vanishes and the page says nothing.
+  const handleDigitalWalletError = useCallback(() => {
+    submitError.value = GOOGLE_PAY_FAILED_MESSAGE;
+  }, [submitError]);
+
   const handleSubmit = useCallback(async () => {
     if (isSubmitting.value) return;
     if (giftCardStatus.value.kind === 'applying') return;
@@ -760,8 +799,13 @@ export function RegistrationCheckoutForm({
       const { nonce } = await tokenizeRef.current();
       await performSubmit(nonce);
     } catch (error) {
-      submitError.value = extractErrorMessage(error);
+      submitError.value = checkoutErrorMessage(error);
       failedPayAttempts.value += 1;
+      reportPaymentFailed({
+        method: 'card',
+        attempt: failedPayAttempts.value,
+        message: submitError.value,
+      });
     } finally {
       isSubmitting.value = false;
     }
@@ -937,7 +981,11 @@ export function RegistrationCheckoutForm({
   // Offered from the second failed payment. Square's hosted page takes no gift
   // card, so it is left out once one is applied.
   const showRepeatFailureHelp =
-    failedPayAttempts.value >= 2 && !cardInitFailed.value;
+    failedPayAttempts.value >= 2 &&
+    !cardInitFailed.value &&
+    // Never suggest another card or another way to pay when this one may
+    // have gone through.
+    !mayAlreadyBePaid(submitErrorText ?? '');
   const offerHostedAfterFailure =
     showRepeatFailureHelp && !!onHostedCheckout && !appliedGiftCard.value;
 
@@ -1469,6 +1517,7 @@ export function RegistrationCheckoutForm({
           }}
           onDigitalWalletToken={handleDigitalWalletToken}
           beforeDigitalWallet={canStartDigitalWallet}
+          onDigitalWalletError={handleDigitalWalletError}
           afterCardContent={
             cardInitFailed.value && onHostedCheckout ? (
               // Card form couldn't initialize (e.g. Safari ITP) — offer Square's
