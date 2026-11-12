@@ -52,6 +52,7 @@ export {
   PaymentsService,
   PaymentError,
   getPaymentErrorMessage,
+  isPaymentOutcomeUnknown,
   type CreatePaymentInput,
   type CreatePaymentResult,
   type RefundPaymentInput,

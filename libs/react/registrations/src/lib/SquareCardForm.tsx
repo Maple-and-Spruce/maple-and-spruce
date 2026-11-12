@@ -284,6 +284,11 @@ interface SquareCardFormProps {
    */
   beforeDigitalWallet?: () => boolean;
   /**
+   * Called when Google Pay fails for any reason other than the buyer closing
+   * the sheet, so the page can say something.
+   */
+  onDigitalWalletError?: () => void;
+  /**
    * Optional content to render after the card form.
    * When in Shadow DOM, this content is portaled to the external
    * container so it appears visually after the card input.
@@ -376,6 +381,7 @@ export function SquareCardForm({
   billingContact,
   onDigitalWalletToken,
   beforeDigitalWallet,
+  onDigitalWalletError,
   afterCardContent,
   maxWidth,
   enableGiftCard = false,
@@ -398,6 +404,8 @@ export function SquareCardForm({
   onDigitalWalletTokenRef.current = onDigitalWalletToken;
   const beforeDigitalWalletRef = useRef(beforeDigitalWallet);
   beforeDigitalWalletRef.current = beforeDigitalWallet;
+  const onDigitalWalletErrorRef = useRef(onDigitalWalletError);
+  onDigitalWalletErrorRef.current = onDigitalWalletError;
   const onInitErrorRef = useRef(onInitError);
   onInitErrorRef.current = onInitError;
   // Read at init only, so turning them on later does not re-init the SDK.
@@ -653,15 +661,17 @@ export function SquareCardForm({
             if (beforeDigitalWalletRef.current?.() === false) return;
             try {
               const result = await googlePay.tokenize();
-              // Any other status is the buyer closing the sheet or a decline,
-              // which Google Pay has already shown them.
+              // "Cancel" is the buyer closing the sheet. Anything else is a
+              // failure the page has to mention, or nothing visibly happens.
               if (result.status === 'OK' && result.token) {
                 onDigitalWalletTokenRef.current?.(result.token);
               } else if (result.status !== 'Cancel') {
                 console.error('[SquareCardForm] Google Pay did not tokenize', result);
+                onDigitalWalletErrorRef.current?.();
               }
             } catch (err) {
               console.error('[SquareCardForm] Google Pay tokenize failed', err);
+              onDigitalWalletErrorRef.current?.();
             }
           });
           googlePayRef.current = googlePay;

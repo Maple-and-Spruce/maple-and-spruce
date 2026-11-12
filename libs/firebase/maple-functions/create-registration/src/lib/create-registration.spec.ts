@@ -64,6 +64,9 @@ vi.mock('@maple/firebase/square', () => ({
   SQUARE_SECRET_NAMES: [],
   SQUARE_STRING_NAMES: [],
   PaymentError: class extends Error {},
+  // Every failure in this file is a plain refusal; card-payment.spec covers
+  // the retry for an unknown outcome.
+  isPaymentOutcomeUnknown: () => false,
 }));
 
 import './create-registration';
@@ -78,6 +81,8 @@ const CLASS = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.regUpdate.mockReset();
+  mocks.regUpdate.mockResolvedValue(undefined);
   mocks.reserveClassRegistration.mockResolvedValue({
     registrationId: 'reg-card-1',
     classEntity: CLASS,
@@ -187,6 +192,49 @@ describe('createRegistration — confirmation email', () => {
     expect(mocks.regUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'cancelled' })
     );
+  });
+
+  it('uses one Square key per registration, so a repeat cannot charge twice', async () => {
+    await mocks.handler?.(REQUEST, {}, {}, STRINGS);
+
+    expect(mocks.createOrder.mock.calls[0][0].idempotencyKey).toBe(
+      'order-reg-card-1'
+    );
+    expect(mocks.createPayment.mock.calls[0][0].idempotencyKey).toBe(
+      'reg-reg-card-1'
+    );
+  });
+
+  it('tries again when saving the paid registration fails once', async () => {
+    mocks.regUpdate.mockRejectedValueOnce(new Error('unavailable'));
+
+    await mocks.handler?.(REQUEST, {}, {}, STRINGS);
+
+    expect(mocks.regUpdate).toHaveBeenCalledTimes(2);
+    expect(mocks.regUpdate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'confirmed', squarePaymentId: 'PAY-1' })
+    );
+    expect(mocks.queueRegistrationConfirmation).toHaveBeenCalled();
+  });
+
+  it('never calls a taken payment failed: no cancel, no discount handed back', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mocks.reserveClassRegistration.mockResolvedValue({
+      ...(await mocks.reserveClassRegistration()),
+      redeemedDiscountId: 'disc-referral',
+    });
+    mocks.regUpdate.mockRejectedValue(new Error('unavailable'));
+
+    await expect(mocks.handler?.(REQUEST, {}, {}, STRINGS)).rejects.toThrow(
+      /Your payment went through.*do not pay again/
+    );
+
+    expect(mocks.createPayment).toHaveBeenCalledTimes(1);
+    expect(mocks.regUpdate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'cancelled' })
+    );
+    expect(mocks.releaseDiscountUsage).not.toHaveBeenCalled();
+    expect(mocks.queueRegistrationConfirmation).not.toHaveBeenCalled();
   });
 
   it('keeps the discount use when the payment goes through', async () => {

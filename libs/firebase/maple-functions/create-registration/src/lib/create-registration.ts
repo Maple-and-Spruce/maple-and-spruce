@@ -46,6 +46,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 import type { PercentDiscountData } from '@maple/ts/domain';
 import { randomBytes } from 'crypto';
+import { cardIdempotencyKeys, chargeCard } from './card-payment';
 import {
   CLASS_CERTIFICATE_DISCOUNT_NAME,
   chargeWithGiftCard,
@@ -68,6 +69,29 @@ function generateReferralCode(): string {
     code += chars[bytes[i] % chars.length];
   }
   return `FR-${code}`;
+}
+
+/**
+ * Shown when the card was charged but the registration could not be saved.
+ * The one thing the family must not do is pay again.
+ */
+export const PAID_NOT_RECORDED_MESSAGE =
+  'Your payment went through, but we could not finish saving your registration. Please do not pay again. Contact us and we will confirm your spot.';
+
+/** Run a write up to `attempts` times, with a short pause between tries. */
+async function withRetries(
+  write: () => Promise<unknown>,
+  attempts = 3
+): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await write();
+      return;
+    } catch (error) {
+      if (attempt >= attempts) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
+    }
+  }
 }
 
 /**
@@ -135,6 +159,9 @@ export const createRegistration = Functions.endpoint
       let squarePaymentId: string | undefined;
       let squareReceiptUrl: string | undefined;
       let squareOrderId: string | undefined;
+      // True once Square has taken the money. A failure after that is not a
+      // failed payment, and must not be reported or unwound as one.
+      let paymentTaken = false;
       // Set only when a gift card paid: what each source paid and the
       // studio-covered certificate amount (#301).
       let giftCardFields:
@@ -216,6 +243,7 @@ export const createRegistration = Functions.endpoint
           // The card payment is what a card refund goes back to; when the
           // gift card paid it all, its own payment is.
           squarePaymentId = charge.cardPaymentId ?? charge.giftCardPaymentId;
+          paymentTaken = true;
           squareReceiptUrl = charge.receiptUrl;
           giftCardFields = {
             squareGiftCardPaymentId: charge.giftCardPaymentId,
@@ -233,7 +261,7 @@ export const createRegistration = Functions.endpoint
           // Create Square Order with line item and tax
           const orderResult = await square.ordersService.createOrder({
             locationId: square.locationId,
-            idempotencyKey: `order-${registrationDocRef.id}-${Date.now()}`,
+            idempotencyKey: cardIdempotencyKeys(registrationDocRef.id).order,
             referenceId: registrationDocRef.id,
             lineItems: [
               {
@@ -264,10 +292,10 @@ export const createRegistration = Functions.endpoint
           squareOrderId = orderResult.orderId;
 
           // Process payment against the order
-          const paymentResult = await square.paymentsService.createPayment({
+          const paymentResult = await chargeCard(square, {
             sourceId: data.paymentNonce,
             amountCents: orderResult.totalCents,
-            idempotencyKey: `reg-${registrationDocRef.id}-${Date.now()}`,
+            idempotencyKey: cardIdempotencyKeys(registrationDocRef.id).payment,
             locationId: square.locationId,
             buyerEmailAddress: data.customerEmail,
             note: `Registration for ${classEntity.name} - ${confirmationNumber}`,
@@ -277,18 +305,41 @@ export const createRegistration = Functions.endpoint
 
           squarePaymentId = paymentResult.paymentId;
           squareReceiptUrl = paymentResult.receiptUrl;
+          paymentTaken = true;
         }
 
-        // 7. Update registration to confirmed with payment info
-        await registrationDocRef.update({
-          status: 'confirmed',
-          squarePaymentId: squarePaymentId || null,
-          squareOrderId: squareOrderId || null,
-          squareReceiptUrl: squareReceiptUrl || null,
-          ...giftCardFields,
-          updatedAt: new Date(),
-        });
+        // 7. Update registration to confirmed with payment info. The money
+        // has moved by now, so this write gets more than one chance.
+        await withRetries(() =>
+          registrationDocRef.update({
+            status: 'confirmed',
+            squarePaymentId: squarePaymentId || null,
+            squareOrderId: squareOrderId || null,
+            squareReceiptUrl: squareReceiptUrl || null,
+            ...giftCardFields,
+            updatedAt: new Date(),
+          })
+        );
       } catch (paymentError) {
+        if (paymentTaken) {
+          // Paid, but the registration could not be marked confirmed. Leave
+          // it alone: cancelling it or handing back the discount code would
+          // describe a payment that failed, and this one did not. Staff
+          // confirm it by hand from this log line.
+          console.error(
+            JSON.stringify({
+              event: 'payment_taken_not_recorded',
+              registrationId: registrationDocRef.id,
+              squarePaymentId: squarePaymentId ?? null,
+              squareOrderId: squareOrderId ?? null,
+              message:
+                paymentError instanceof Error
+                  ? paymentError.message
+                  : String(paymentError),
+            })
+          );
+          throw new PaymentError(PAID_NOT_RECORDED_MESSAGE);
+        }
         // Payment failed - update registration to cancelled. The note is for
         // staff, so it carries Square's code and detail when there are any.
         const errorDetail =
