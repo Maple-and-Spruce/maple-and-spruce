@@ -6,6 +6,7 @@ import {
   mockLabelledGiftCards,
   mockSoldCertificate,
 } from '@maple/react/storybook-fixtures';
+import type { GiftCardSummary } from '@maple/ts/domain';
 import { GiftCardsTable } from './GiftCardsTable';
 
 const meta = {
@@ -22,12 +23,15 @@ export const WithCards: Story = {
   args: { cardsState: { status: 'success', data: mockGiftCards } },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getAllByRole('row')).toHaveLength(mockGiftCards.length + 1);
+    // 7710 holds $0, so it waits behind the switch.
+    await expect(canvas.getAllByRole('row')).toHaveLength(mockGiftCards.length);
     await expect(canvas.getByText('Blocked')).toBeVisible();
-    await expect(canvas.getByText('Plastic card')).toBeVisible();
 
     await userEvent.click(canvas.getByRole('row', { name: 'Gift card ending 0937' }));
     await expect(args.onSelect).toHaveBeenCalledWith(mockGiftCards[1]);
+
+    await userEvent.click(canvas.getByLabelText('Show used up and turned off (1)'));
+    await expect(canvas.getByText('Plastic card')).toBeVisible();
   },
 };
 
@@ -66,6 +70,45 @@ export const SearchByLastDigits: Story = {
     await userEvent.clear(search);
     await userEvent.type(search, '9999');
     await expect(canvas.getByText('No gift card ends in 9999.')).toBeVisible();
+  },
+};
+
+const usedUpCards: GiftCardSummary[] = [
+  { ...mockGiftCards[0], id: 'gftc-off', last4: '5501', state: 'deactivated', balanceCents: 0 },
+  { ...mockGiftCards[0], id: 'gftc-spent', last4: '5502', state: 'active', balanceCents: 0 },
+];
+
+/**
+ * Turned-off and $0 cards are hidden until the switch shows them, so Katie
+ * sees the cards that still matter. A search by last digits still finds them.
+ */
+export const HidesUsedUpCards: Story = {
+  args: {
+    cardsState: { status: 'success', data: [mockGiftCards[0], ...usedUpCards] },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('row', { name: 'Gift card ending 4821' })).toBeVisible();
+    await expect(canvas.queryByRole('row', { name: 'Gift card ending 5501' })).toBeNull();
+    await expect(canvas.queryByRole('row', { name: 'Gift card ending 5502' })).toBeNull();
+
+    await userEvent.type(canvas.getByLabelText('Last 4 digits'), '5501');
+    await expect(canvas.getByRole('row', { name: 'Gift card ending 5501' })).toBeVisible();
+    await userEvent.clear(canvas.getByLabelText('Last 4 digits'));
+
+    await userEvent.click(canvas.getByLabelText('Show used up and turned off (2)'));
+    await expect(canvas.getByRole('row', { name: 'Gift card ending 5501' })).toBeVisible();
+    await expect(canvas.getByRole('row', { name: 'Gift card ending 5502' })).toBeVisible();
+  },
+};
+
+/** Every card used up: say so, rather than "no gift cards yet". */
+export const OnlyUsedUpCards: Story = {
+  args: { cardsState: { status: 'success', data: usedUpCards } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('No cards with money on them.')).toBeVisible();
+    await expect(canvas.queryByText(/No gift cards yet/)).toBeNull();
   },
 };
 

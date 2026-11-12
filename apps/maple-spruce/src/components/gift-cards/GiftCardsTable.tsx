@@ -6,10 +6,12 @@ import {
   Box,
   Button,
   Chip,
+  FormControlLabel,
   InputAdornment,
   Paper,
   Skeleton,
   Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -164,10 +166,21 @@ function CustomerMatches({ result }: { result: SearchGiftCardsByCustomerResponse
   );
 }
 
+/**
+ * A card with nothing left to do: turned off, or active with $0 on it (spent,
+ * refunded, or moved to a replacement). Hidden from the list until asked for,
+ * so the list shows the cards that matter. An unsold printed certificate is
+ * `pending`, not empty, and stays.
+ */
+export function isGiftCardUsedUp(card: GiftCardSummary): boolean {
+  return card.state === 'deactivated' || (card.state === 'active' && card.balanceCents <= 0);
+}
+
 function emptyMessage(
   customerSearch: CustomerSearch,
   digits: string,
-  searching: boolean
+  searching: boolean,
+  hiddenCount: number
 ): string {
   if (searching && customerSearch.status === 'success') {
     return customerSearch.data.matches.length === 0
@@ -175,11 +188,13 @@ function emptyMessage(
       : 'No gift cards found for that customer.';
   }
   if (digits) return `No gift card ends in ${digits}.`;
+  if (hiddenCount > 0) return 'No cards with money on them.';
   return 'No gift cards yet. Once one is sold in Square, it shows up here.';
 }
 
 /**
- * Every card, newest first. The search box takes the last digits of a code
+ * Every card, newest first, leaving out used-up and turned-off cards unless
+ * the switch shows them. The search box takes the last digits of a code
  * (searched on the page), or a customer's name, email or phone (searched in
  * Square, #332).
  */
@@ -198,14 +213,24 @@ export function GiftCardsTable({
     (kind === 'email' || kind === 'phone' || kind === 'name');
   const digits = kind === 'last4' ? search.replace(/\D/g, '') : '';
   const searching = customerSearch.status !== 'idle';
+  const [showUsedUp, setShowUsedUp] = useState(false);
+
+  const usedUpCount = useMemo(
+    () => (cardsState.status === 'success' ? cardsState.data.filter(isGiftCardUsedUp).length : 0),
+    [cardsState]
+  );
 
   const cards = useMemo(() => {
     if (customerSearch.status === 'success') return customerSearch.data.cards;
     if (cardsState.status !== 'success') return [];
-    if (!digits) return cardsState.data;
+    // A search looks through every card, used up or not.
+    if (!digits) {
+      return showUsedUp ? cardsState.data : cardsState.data.filter((c) => !isGiftCardUsedUp(c));
+    }
     // Digits are typed left to right, so "48" should already find "4821".
     return cardsState.data.filter((c) => c.last4.startsWith(digits));
-  }, [cardsState, digits, customerSearch]);
+  }, [cardsState, digits, customerSearch, showUsedUp]);
+  const hiddenCount = !digits && !searching && !showUsedUp ? usedUpCount : 0;
 
   if (cardsState.status === 'error') {
     return (
@@ -298,6 +323,19 @@ export function GiftCardsTable({
             Show all cards
           </Button>
         )}
+        {!search && usedUpCount > 0 && (
+          <FormControlLabel
+            sx={{ ml: { sm: 'auto' } }}
+            control={
+              <Switch
+                size="small"
+                checked={showUsedUp}
+                onChange={(e) => setShowUsedUp(e.target.checked)}
+              />
+            }
+            label={`Show used up and turned off (${usedUpCount})`}
+          />
+        )}
       </Stack>
 
       {customerSearch.status === 'error' && (
@@ -332,7 +370,7 @@ export function GiftCardsTable({
       {!loading && customerSearch.status !== 'error' && cards.length === 0 && (
         <Box sx={{ p: 3, textAlign: 'center' }}>
           <Typography color="textSecondary">
-            {emptyMessage(customerSearch, digits, searching)}
+            {emptyMessage(customerSearch, digits, searching, hiddenCount)}
           </Typography>
         </Box>
       )}
