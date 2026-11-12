@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { PublicClass } from '@maple/ts/domain';
 import { RegistrationWidget } from './RegistrationWidget';
 
@@ -61,7 +61,13 @@ vi.mock('./lib/warmup', () => ({ warmup: vi.fn() }));
 
 // The real form loads the Square SDK. Its only job here is to say it rendered;
 // a real form would call `onCalculateCost` on mount, so the stub does too.
-vi.mock('@maple/react/registrations', () => ({
+vi.mock('@maple/react/registrations', async () => ({
+  // The real hint: it is what the waitlist form's typo test drives.
+  EmailTypoHint: (
+    await vi.importActual<
+      typeof import('../../../libs/react/registrations/src/lib/EmailTypoHint')
+    >('../../../libs/react/registrations/src/lib/EmailTypoHint')
+  ).EmailTypoHint,
   FreeCancellationNote: () => null,
   RegistrationCheckoutForm: ({
     onCalculateCost,
@@ -173,6 +179,25 @@ describe('RegistrationWidget registration cutoff, no server verdict', () => {
       await screen.findByRole('button', { name: 'Join waitlist' })
     ).toBeInTheDocument();
     expect(screen.queryByTestId('registration-closed')).toBeNull();
+  });
+
+  it('offers to fix a mistyped email domain on the waitlist form', async () => {
+    nextClass = makeClass({ spotsRemaining: 0 });
+    vi.setSystemTime(START_MS - 60_000);
+    renderWidget();
+    const field = await screen.findByLabelText(/Email address/);
+    // Built at runtime so no real-looking address sits in the source.
+    const typed = ['robin', 'gnail.com'].join('@');
+    const fixed = ['robin', 'gmail.com'].join('@');
+
+    fireEvent.change(field, { target: { value: typed } });
+    expect(screen.getByTestId('email-typo-hint')).toHaveTextContent(
+      `Did you mean ${fixed}?`
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: fixed }));
+    expect(field).toHaveValue(fixed);
+    expect(screen.queryByTestId('email-typo-hint')).toBeNull();
   });
 
   it('closes at an earlier registrationClosesAt override', async () => {

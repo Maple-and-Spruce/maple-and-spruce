@@ -7,6 +7,7 @@
  * gets it.
  */
 import { Alert, Box, Button, TextField, Typography } from '@mui/material';
+import { EmailTypoHint } from './EmailTypoHint';
 
 export type HourWaitlistStatus =
   | { kind: 'idle' }
@@ -77,6 +78,7 @@ export function HourWaitlistForm({
           {status.kind === 'sending' ? 'Joining…' : 'Join waitlist'}
         </Button>
       </Box>
+      <EmailTypoHint email={email} onAccept={onEmailChange} />
       {status.kind === 'error' && (
         <Typography variant="caption" color="error">
           {status.message}

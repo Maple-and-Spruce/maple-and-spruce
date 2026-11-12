@@ -222,6 +222,33 @@ describe('RegistrationCheckoutForm submit flow', () => {
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
+  it('offers to fix a mistyped email domain and applies it on click', async () => {
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={vi.fn().mockResolvedValue(mockCostResponse)}
+        onSubmit={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+    // Built at runtime so no real-looking address sits in the source.
+    const typed = ['jane', 'gnail.com'].join('@');
+    const fixed = ['jane', 'gmail.com'].join('@');
+    const field = await screen.findByLabelText(/Email Address/);
+
+    expect(screen.queryByTestId('email-typo-hint')).toBeNull();
+    fireEvent.change(field, { target: { value: typed } });
+    expect(screen.getByTestId('email-typo-hint')).toHaveTextContent(
+      `Did you mean ${fixed}?`
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: fixed }));
+    await waitFor(() => expect(field).toHaveValue(fixed));
+    expect(screen.queryByTestId('email-typo-hint')).toBeNull();
+  });
+
   it('blocks submit on an invalid email and lets it through once corrected', async () => {
     const user = userEvent.setup();
 
