@@ -24,6 +24,7 @@ import {
   paymentThrottles,
   queueRegistrationConfirmation,
   reserveClassRegistration,
+  releaseDiscountUsage,
   processInlineAgreements,
 } from '@maple/firebase/functions';
 import {
@@ -120,6 +121,7 @@ export const createRegistration = Functions.endpoint
         taxRatePercent,
         discountCode,
         discountAmountCents,
+        redeemedDiscountId,
       } = await reserveClassRegistration(data, square.taxRatePercent, {
         // Ad-attribution signal only (Meta CAPI client_ip_address /
         // client_user_agent) — never authorized on.
@@ -287,16 +289,25 @@ export const createRegistration = Functions.endpoint
           updatedAt: new Date(),
         });
       } catch (paymentError) {
-        // Payment failed - update registration to cancelled
+        // Payment failed - update registration to cancelled. The note is for
+        // staff, so it carries Square's code and detail when there are any.
         const errorDetail =
           paymentError instanceof Error
             ? paymentError.message
             : 'Unknown error';
+        const squareInfo =
+          paymentError instanceof PaymentError
+            ? [paymentError.squareErrorCode, paymentError.squareDetail]
+                .filter(Boolean)
+                .join(': ')
+            : '';
         await registrationDocRef.update({
           status: 'cancelled',
-          notes: `Payment failed: ${errorDetail}`,
+          notes: `Payment failed: ${errorDetail}${squareInfo ? ` (Square: ${squareInfo})` : ''}`,
           updatedAt: new Date(),
         });
+        // Nobody was charged, so a single-use code is theirs to try again.
+        await releaseDiscountUsage(redeemedDiscountId, registrationDocRef.id);
 
         // Forward user-friendly message from PaymentError, or wrap generic errors
         if (paymentError instanceof PaymentError) {

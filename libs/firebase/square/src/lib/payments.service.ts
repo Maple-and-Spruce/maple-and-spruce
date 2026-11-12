@@ -10,27 +10,54 @@
  */
 import { SquareClient, Square, SquareError } from 'square';
 
+const DECLINED = 'Your card was declined. Please try a different card.';
+const CALL_BANK =
+  'Your bank needs to approve this payment. Please call the number on the back of your card and try again, or use a different card.';
+const CHECK_ZIP =
+  "The ZIP code doesn't match the one your bank has for this card. Please check the ZIP code and try again.";
+const CHECK_EXPIRATION =
+  'The card expiration date is invalid. Please check your card details.';
+const CHECK_CARD_NUMBER =
+  'The card number is invalid. Please check your card details.';
+const TRY_AGAIN_SOON =
+  'Our payment processor had a brief problem. Please try again in a minute.';
+
+/** Shown for any Square code not listed below. Never Square's own wording. */
+export const GENERIC_PAYMENT_ERROR_MESSAGE =
+  "We couldn't process this payment. Please try again or use a different card.";
+
 /**
- * User-friendly messages for common Square payment error codes.
+ * User-friendly messages for Square payment error codes.
+ *
+ * A code that is not here gets `GENERIC_PAYMENT_ERROR_MESSAGE`, never Square's
+ * `detail`: that text is written for developers ("Authorization error:
+ * 'TRANSACTION_LIMIT'", "Card nonce not found") and was shown to a family at
+ * checkout. Square's code and detail stay on the `PaymentError` for logs.
  *
  * @see https://developer.squareup.com/docs/payments-api/error-codes
  */
 const SQUARE_PAYMENT_ERROR_MESSAGES: Record<string, string> = {
-  CARD_DECLINED: 'Your card was declined. Please try a different card.',
+  CARD_DECLINED: DECLINED,
+  GENERIC_DECLINE: DECLINED,
+  CARD_DECLINED_CALL_ISSUER: CALL_BANK,
+  CARD_DECLINED_VERIFICATION_REQUIRED: CALL_BANK,
+  VOICE_FAILURE: CALL_BANK,
+  TRANSACTION_LIMIT:
+    'This payment is over a limit on your card. Please try a different card, or call your bank and try again.',
   CVV_FAILURE:
     'The CVV number is incorrect. Please check your card details and try again.',
-  ADDRESS_VERIFICATION_FAILURE:
-    'The billing address does not match the card on file. Please verify your address.',
-  INVALID_EXPIRATION:
-    'The card expiration date is invalid. Please check your card details.',
+  // The card form only asks for a ZIP code, so say ZIP, not "address".
+  ADDRESS_VERIFICATION_FAILURE: CHECK_ZIP,
+  INVALID_POSTAL_CODE: CHECK_ZIP,
+  INVALID_EXPIRATION: CHECK_EXPIRATION,
+  BAD_EXPIRATION: CHECK_EXPIRATION,
+  EXPIRATION_FAILURE: CHECK_EXPIRATION,
   INSUFFICIENT_FUNDS:
     'Insufficient funds. Please try a different payment method.',
-  CARD_EXPIRED:
-    'Your card has expired. Please use a different card.',
-  INVALID_CARD:
-    'The card number is invalid. Please check your card details.',
-  GENERIC_DECLINE:
-    'Your card was declined. Please try a different card.',
+  CARD_EXPIRED: 'Your card has expired. Please use a different card.',
+  INVALID_CARD: CHECK_CARD_NUMBER,
+  PAN_FAILURE: CHECK_CARD_NUMBER,
+  INVALID_CARD_DATA: CHECK_CARD_NUMBER,
   CARD_NOT_SUPPORTED:
     'This card type is not supported. Please try a different card.',
   INVALID_ACCOUNT:
@@ -39,6 +66,11 @@ const SQUARE_PAYMENT_ERROR_MESSAGES: Record<string, string> = {
     'Your payment session has expired. Please refresh the page and try again.',
   CARD_TOKEN_USED:
     'A payment error occurred. Please refresh the page and try again.',
+  TEMPORARY_ERROR: TRY_AGAIN_SOON,
+  INTERNAL_SERVER_ERROR: TRY_AGAIN_SOON,
+  SERVICE_UNAVAILABLE: TRY_AGAIN_SOON,
+  GATEWAY_TIMEOUT: TRY_AGAIN_SOON,
+  RATE_LIMITED: TRY_AGAIN_SOON,
 };
 
 /**
@@ -51,11 +83,9 @@ interface SquareErrorEntry {
 }
 
 /**
- * Extract a user-friendly error message from a Square API error.
- *
- * Checks the error code against known payment error codes and returns
- * a customer-friendly message. Falls back to the Square-provided detail
- * or a generic message.
+ * The customer-facing message for a Square API error: the wording for the
+ * first code we know, or the generic line. Square's `detail` is never
+ * returned.
  */
 export function getPaymentErrorMessage(errors: SquareErrorEntry[]): string {
   for (const error of errors) {
@@ -64,33 +94,39 @@ export function getPaymentErrorMessage(errors: SquareErrorEntry[]): string {
       return SQUARE_PAYMENT_ERROR_MESSAGES[code];
     }
   }
+  return GENERIC_PAYMENT_ERROR_MESSAGE;
+}
 
-  // Fall back to Square's detail message if available
-  const detail = errors[0]?.detail;
-  if (detail) {
-    return detail;
-  }
-
-  return 'Unable to process payment. Please try again or use a different card.';
+/** Whether we have our own wording for any of these Square errors. */
+function hasKnownPaymentErrorCode(errors: SquareErrorEntry[]): boolean {
+  return errors.some((e) => (e.code || '') in SQUARE_PAYMENT_ERROR_MESSAGES);
 }
 
 /**
- * Extract error details from a SquareError (thrown by the SDK on HTTP errors).
+ * Turn anything `payments.create` threw, or the errors it returned, into a
+ * `PaymentError` with customer-safe wording. An unrecognised failure is logged
+ * with Square's own code and detail, since the customer no longer sees them.
  */
-function extractSquareErrorMessage(error: unknown): string {
-  if (error instanceof SquareError) {
-    const squareErrors = error.errors;
-    if (squareErrors && squareErrors.length > 0) {
-      return getPaymentErrorMessage(squareErrors);
-    }
-    return error.message || 'Unable to process payment. Please try again.';
+function toPaymentError(
+  error: unknown,
+  responseErrors?: SquareErrorEntry[]
+): PaymentError {
+  const squareErrors =
+    responseErrors ?? (error instanceof SquareError ? error.errors ?? [] : []);
+  const code = squareErrors[0]?.code;
+  const detail =
+    squareErrors[0]?.detail ??
+    (error instanceof Error ? error.message : undefined);
+  if (!hasKnownPaymentErrorCode(squareErrors)) {
+    console.error(
+      JSON.stringify({
+        event: 'payment_error_unmapped',
+        squareErrorCode: code ?? null,
+        detail: detail ?? null,
+      })
+    );
   }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return 'Unable to process payment. Please try again.';
+  return new PaymentError(getPaymentErrorMessage(squareErrors), code, detail);
 }
 
 /**
@@ -99,7 +135,9 @@ function extractSquareErrorMessage(error: unknown): string {
 export class PaymentError extends Error {
   constructor(
     public readonly userMessage: string,
-    public readonly squareErrorCode?: string
+    public readonly squareErrorCode?: string,
+    /** Square's own description, for logs and staff. Never shown to a customer. */
+    public readonly squareDetail?: string
   ) {
     super(userMessage);
     this.name = 'PaymentError';
@@ -255,25 +293,16 @@ export class PaymentsService {
       });
     } catch (error) {
       // Square SDK throws SquareError for HTTP-level failures (4xx/5xx)
-      const userMessage = extractSquareErrorMessage(error);
-      const squareCode =
-        error instanceof SquareError
-          ? error.errors?.[0]?.code
-          : undefined;
-      throw new PaymentError(userMessage, squareCode);
+      throw toPaymentError(error);
     }
 
     if (response.errors && response.errors.length > 0) {
-      const userMessage = getPaymentErrorMessage(response.errors);
-      throw new PaymentError(userMessage, response.errors[0]?.code);
+      throw toPaymentError(undefined, response.errors);
     }
 
     const payment = response.payment;
     if (!payment) {
-      throw new PaymentError(
-        'Unable to process payment. Please try again.',
-        undefined
-      );
+      throw new PaymentError(GENERIC_PAYMENT_ERROR_MESSAGE);
     }
 
     return {

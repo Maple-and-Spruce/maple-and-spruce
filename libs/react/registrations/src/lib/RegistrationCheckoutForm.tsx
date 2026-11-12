@@ -286,6 +286,11 @@ export function RegistrationCheckoutForm({
   // caused duplicate charges.
   const isSubmitting = useSignal(false);
   const submitError = useSignal<string | null>(null);
+  // How many times paying has failed. From the second failure the form offers
+  // more than the same message again (prod showed families retrying the same
+  // declined card up to six times).
+  const failedPayAttempts = useSignal(0);
+  const payErrorRef = useRef<HTMLDivElement | null>(null);
   const isCardReady = useSignal(false);
   // Set when the embedded Square card form fails to initialize (e.g. Safari
   // ITP). Reveals the hosted-checkout fallback so the buyer isn't dead-ended.
@@ -685,6 +690,7 @@ export function RegistrationCheckoutForm({
         await performSubmit(nonce);
       } catch (error) {
         submitError.value = extractErrorMessage(error);
+        failedPayAttempts.value += 1;
       } finally {
         isSubmitting.value = false;
       }
@@ -692,6 +698,7 @@ export function RegistrationCheckoutForm({
     [
       isSubmitting,
       submitError,
+      failedPayAttempts,
       showValidationErrors,
       isValid,
       allAgreementsSigned,
@@ -754,12 +761,14 @@ export function RegistrationCheckoutForm({
       await performSubmit(nonce);
     } catch (error) {
       submitError.value = extractErrorMessage(error);
+      failedPayAttempts.value += 1;
     } finally {
       isSubmitting.value = false;
     }
   }, [
     isSubmitting,
     submitError,
+    failedPayAttempts,
     showValidationErrors,
     isValid,
     allAgreementsSigned,
@@ -917,13 +926,75 @@ export function RegistrationCheckoutForm({
   const payDisabled =
     isButtonDisabled.value || giftCardStatus.value.kind === 'applying';
 
+  // Bring a payment error to the buyer. It sits beside the pay button, and on
+  // a phone the button can still be below the fold after the keyboard closes.
+  const submitErrorText = submitError.value;
+  useEffect(() => {
+    if (!submitErrorText) return;
+    payErrorRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  }, [submitErrorText, failedPayAttempts.value]);
+
+  // Offered from the second failed payment. Square's hosted page takes no gift
+  // card, so it is left out once one is applied.
+  const showRepeatFailureHelp =
+    failedPayAttempts.value >= 2 && !cardInitFailed.value;
+  const offerHostedAfterFailure =
+    showRepeatFailureHelp && !!onHostedCheckout && !appliedGiftCard.value;
+
+  // Plain elements with inline styles: inside Webflow this is portaled out of
+  // the shadow root with the pay button, where MUI's styles do not reach.
+  const payError = submitErrorText ? (
+    <div
+      ref={payErrorRef}
+      role="alert"
+      style={{
+        marginBottom: 12,
+        padding: '12px 14px',
+        borderRadius: 8,
+        backgroundColor: '#FDEDED',
+        color: '#5F2120',
+        fontFamily: fonts.body,
+        fontSize: 15,
+        lineHeight: 1.45,
+      }}
+    >
+      <div style={{ fontWeight: 600 }}>{submitErrorText}</div>
+      {showRepeatFailureHelp && (
+        <div style={{ marginTop: 8 }}>
+          Still not going through? Your bank may be blocking the charge. A
+          quick call to the number on the back of your card usually clears it,
+          or you can try a different card.
+          {offerHostedAfterFailure && (
+            <>
+              {' '}
+              You can also{' '}
+              <button
+                type="button"
+                onClick={handleHostedCheckout}
+                disabled={isSubmitting.value}
+                style={{
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                  color: 'inherit',
+                  font: 'inherit',
+                  fontWeight: 600,
+                  textDecoration: 'underline',
+                  cursor: isSubmitting.value ? 'not-allowed' : 'pointer',
+                }}
+              >
+                pay on Square&apos;s checkout page instead
+              </button>
+              .
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {submitError.value && (
-        <Alert severity="error" onClose={() => (submitError.value = null)}>
-          {submitError.value}
-        </Alert>
-      )}
       {isFull.value && (
         <Alert severity="warning">
           This class is full. Registration is not available at this time.
@@ -1403,6 +1474,7 @@ export function RegistrationCheckoutForm({
               // Card form couldn't initialize (e.g. Safari ITP) — offer Square's
               // hosted checkout instead of a dead-ended, disabled pay button.
               (<Box>
+                {payError}
                 <Typography
                   variant="body2"
                   sx={{ mb: 1.5, color: 'text.secondary' }}
@@ -1448,6 +1520,7 @@ export function RegistrationCheckoutForm({
                   disabled={isSubmitting.value}
                 />
               )}
+              {payError}
               <button
                 type="button"
                 onClick={handleSubmit}

@@ -6,6 +6,25 @@
 
 ## Current Status
 
+### Payment errors at class checkout (2026-11-10)
+
+- Reviewed the 31 payment failures recorded in prod. Families were retrying the same declined
+  card (up to six times in ten minutes): the error showed at the top of the form, off screen on
+  a phone, while the pay button is at the bottom.
+- The error now sits right above the pay button and scrolls into view. From the second failure
+  it adds what to do next (call the bank, try another card) and, where the hosted checkout is
+  available, a link to pay on Square's page.
+- Square codes with no wording of ours get one generic line; Square's own text ("Authorization
+  error: 'TRANSACTION_LIMIT'") is never shown. New wording for the codes seen or likely
+  (transaction limit, call issuer, bad card number, ZIP, temporary errors). The address message
+  now says ZIP code. Square's code and detail go to the cancelled registration's note and the
+  logs (`payment_error_unmapped`).
+- A discount use is given back when the card payment fails, as Music Together already did, so a
+  single-use or referral code survives a decline.
+- **Not done (from the same review):** a payment Square took but we failed to record is still
+  reported as failed with no void; network errors can show a code word; Google Pay failures are
+  silent; an abandoned hosted checkout still keeps its discount use.
+
 ### Class registration closes on the site at the class start (2026-11-09)
 
 - The site decided availability from seats alone, so on a class's own day it kept offering the

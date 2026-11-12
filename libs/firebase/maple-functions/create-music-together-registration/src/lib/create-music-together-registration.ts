@@ -507,6 +507,11 @@ export const createMusicTogetherRegistration = Functions.endpoint
         paymentPlan: data.paymentPlan,
         squareErrorCode,
         detail,
+        // Square's own wording; `detail` is the customer-safe message.
+        squareDetail:
+          paymentError instanceof PaymentError
+            ? paymentError.squareDetail
+            : undefined,
       });
       await regRef.update({
         status: 'cancelled',

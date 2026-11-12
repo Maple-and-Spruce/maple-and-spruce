@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   handler: undefined as Handler | undefined,
   queueRegistrationConfirmation: vi.fn(),
   reserveClassRegistration: vi.fn(),
+  releaseDiscountUsage: vi.fn(),
   processInlineAgreements: vi.fn(),
   regUpdate: vi.fn(),
   regFindById: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock('@maple/firebase/functions', () => {
     paymentThrottles: () => [],
     queueRegistrationConfirmation: mocks.queueRegistrationConfirmation,
     reserveClassRegistration: mocks.reserveClassRegistration,
+    releaseDiscountUsage: mocks.releaseDiscountUsage,
     processInlineAgreements: mocks.processInlineAgreements,
   };
 });
@@ -155,5 +157,46 @@ describe('createRegistration — confirmation email', () => {
       )
     ).rejects.toThrow();
     expect(mocks.queueRegistrationConfirmation).not.toHaveBeenCalled();
+  });
+
+  const REQUEST = {
+    classId: 'class-1',
+    customerName: 'Robin Ashfield',
+    customerEmail: 'robin@example.com',
+    quantity: 1,
+    paymentNonce: 'cnon:card',
+    discountCode: 'FR-ABC234',
+  };
+  const STRINGS = { ALLOWED_ORIGINS: 'https://example.com' };
+
+  it('gives a discount use back when the payment fails', async () => {
+    mocks.reserveClassRegistration.mockResolvedValue({
+      ...(await mocks.reserveClassRegistration()),
+      discountCode: 'FR-ABC234',
+      discountAmountCents: 900,
+      redeemedDiscountId: 'disc-referral',
+    });
+    mocks.createPayment.mockRejectedValue(new Error('declined'));
+
+    await expect(mocks.handler?.(REQUEST, {}, {}, STRINGS)).rejects.toThrow();
+
+    expect(mocks.releaseDiscountUsage).toHaveBeenCalledWith(
+      'disc-referral',
+      'reg-card-1'
+    );
+    expect(mocks.regUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'cancelled' })
+    );
+  });
+
+  it('keeps the discount use when the payment goes through', async () => {
+    mocks.reserveClassRegistration.mockResolvedValue({
+      ...(await mocks.reserveClassRegistration()),
+      redeemedDiscountId: 'disc-referral',
+    });
+
+    await mocks.handler?.(REQUEST, {}, {}, STRINGS);
+
+    expect(mocks.releaseDiscountUsage).not.toHaveBeenCalled();
   });
 });
