@@ -171,9 +171,16 @@ function toCardPaymentError(error: unknown): PaymentError {
     const message =
       squareErrors.length > 0
         ? getPaymentErrorMessage(squareErrors)
-        : error.message ||
+        : // No error list: `error.message` is the raw HTTP body. Keep it for
+          // logs, not for the family.
           'Unable to store your card. Please try a different card.';
-    return new PaymentError(message, squareErrors[0]?.code);
+    // Square's own detail rides along for prod logs; the message stays
+    // customer-safe.
+    return new PaymentError(
+      message,
+      squareErrors[0]?.code,
+      squareErrors[0]?.detail ?? error.message
+    );
   }
   if (error instanceof PaymentError) {
     return error;

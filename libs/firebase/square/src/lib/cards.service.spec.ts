@@ -69,9 +69,11 @@ describe('CardsService.createCardOnFile', () => {
       expect((error as PaymentError).squareErrorCode).toBe(
         'VERIFICATION_TOKEN_USED'
       );
-      // Detail flows into the message so prod logs show why the vault failed
-      // instead of a generic "Unable to process payment".
-      expect((error as PaymentError).userMessage).toContain(
+      // Square's detail is kept for prod logs, and kept away from the family.
+      expect((error as PaymentError).squareDetail).toContain(
+        'verification token'
+      );
+      expect((error as PaymentError).userMessage).not.toContain(
         'verification token'
       );
     }
@@ -82,8 +84,11 @@ describe('CardsService.createCardOnFile', () => {
       new SquareError({ message: 'Internal server error' })
     );
 
-    await expect(service.createCardOnFile(baseInput)).rejects.toBeInstanceOf(
-      PaymentError
+    const err = await service.createCardOnFile(baseInput).catch((e) => e);
+    expect(err).toBeInstanceOf(PaymentError);
+    // The raw HTTP body is for logs only.
+    expect((err as PaymentError).userMessage).not.toContain(
+      'Internal server error'
     );
   });
 

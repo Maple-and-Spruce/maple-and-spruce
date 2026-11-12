@@ -244,6 +244,44 @@ export interface ReserveRegistrationResult {
   discountCode?: string;
   /** Discount amount applied in cents (0 if none). */
   discountAmountCents: number;
+  /**
+   * Id of the discount whose usage this reservation consumed, if any. Pass it
+   * to `releaseDiscountUsage` when the payment then fails.
+   */
+  redeemedDiscountId?: string;
+}
+
+/**
+ * Give a consumed discount use back after a failed payment.
+ *
+ * The seat is freed on that path and the family was never charged, so keeping
+ * the use would lock them out of a single-use code (every referral code is
+ * one) on their very next try. This is NOT the customer-cancellation path,
+ * where usage stays consumed by design.
+ *
+ * Never throws: a bookkeeping failure here must not mask the payment error the
+ * caller is about to surface.
+ */
+export async function releaseDiscountUsage(
+  discountId: string | undefined,
+  registrationId: string
+): Promise<void> {
+  if (!discountId) return;
+  try {
+    await DiscountRepository.getDocRef(discountId).update({
+      usageCount: FieldValue.increment(-1),
+      updatedAt: new Date(),
+    });
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: 'discount_release_failed',
+        registrationId,
+        discountId,
+        message: error instanceof Error ? error.message : String(error),
+      })
+    );
+  }
 }
 
 /**
@@ -478,5 +516,6 @@ export async function reserveClassRegistration(
     taxRatePercent,
     discountCode,
     discountAmountCents,
+    redeemedDiscountId: discountIdToRedeem,
   };
 }

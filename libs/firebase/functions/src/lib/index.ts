@@ -120,6 +120,7 @@ export { queueMail, type MailSender, type QueueMailInput } from './mail.utility'
 // Shared class-registration reservation (card + hosted-checkout paths)
 export {
   reserveClassRegistration,
+  releaseDiscountUsage,
   priceClassOrder,
   type ClassOrderPrice,
   validateRequiredAgreements,

@@ -16,7 +16,10 @@ import {
   callFunction,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
-import { ADMIN_USER } from '@maple/firebase/integration-test-utils';
+import {
+  ADMIN_USER,
+  EMULATOR_CONFIG,
+} from '@maple/firebase/integration-test-utils';
 import type {
   CreateRegistrationRequest,
   CreateRegistrationResponse,
@@ -791,6 +794,100 @@ describe('createRegistration', () => {
 
       const loser = both.find((r) => r !== redeemed[0])!;
       expect(loser.status).not.toBe(200);
+    });
+  });
+
+  describe('A failed payment', () => {
+    // What the family is left with after Square refuses the card: a message
+    // in plain words, and a discount code they can still use.
+    const DECLINE_CLASS_ID = 'test-reg-decline-class';
+
+    async function declineNextPayment(code: string): Promise<void> {
+      await fetch(`${EMULATOR_CONFIG.squareMockServerUrl}/_mock/decline-next-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+    }
+
+    function payWith(email: string, discountCode?: string) {
+      return callFunction<CreateRegistrationRequest, CreateRegistrationResponse>({
+        functionName: 'createRegistration',
+        data: {
+          classId: DECLINE_CLASS_ID,
+          customerEmail: email,
+          customerName: 'Robin Ashfield',
+          quantity: 1,
+          discountCode,
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+    }
+
+    beforeAll(async () => {
+      await setFirestoreDoc('classes', DECLINE_CLASS_ID, {
+        ...TEST_CLASS,
+        name: 'Declined Card Workshop',
+        capacity: 20,
+      });
+    });
+
+    it('THE POINT: a single-use code survives a declined card', async () => {
+      await setFirestoreDoc('discounts', 'test-discount-decline', {
+        code: 'ONCE-DECLINED',
+        type: 'percent',
+        description: 'single-use, card declined on the first try',
+        status: 'active',
+        appliesTo: 'order',
+        nthSlot: 1,
+        usageLimit: 1,
+        usageCount: 0,
+        percent: 50,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      await declineNextPayment('CARD_DECLINED');
+      const declined = await payWith('declined-once@example.com', 'ONCE-DECLINED');
+      expect(declined.status).not.toBe(200);
+      expect(JSON.stringify(declined.raw)).toContain(
+        'Your card was declined. Please try a different card.'
+      );
+      const afterDecline = await getFirestoreDoc('discounts', 'test-discount-decline');
+      expect(Number(afterDecline?.['usageCount'])).toBe(0);
+
+      // Same family, same code, a card that works.
+      const retry = await payWith('declined-once@example.com', 'ONCE-DECLINED');
+      expect(retry.status).toBe(200);
+      expect(retry.data?.registration.discountCode).toBe('ONCE-DECLINED');
+      expect(retry.data?.registration.discountAmountCents).toBe(2250);
+      const afterRetry = await getFirestoreDoc('discounts', 'test-discount-decline');
+      expect(Number(afterRetry?.['usageCount'])).toBe(1);
+    });
+
+    it("never shows Square's own wording for a code we do not know", async () => {
+      await declineNextPayment('SOME_FUTURE_SQUARE_CODE');
+      const result = await payWith('unknown-code@example.com');
+      expect(result.status).not.toBe(200);
+      const shown = JSON.stringify(result.raw);
+      expect(shown).toContain("We couldn't process this payment.");
+      expect(shown).not.toContain('SOME_FUTURE_SQUARE_CODE');
+      expect(shown).not.toContain('Mock decline');
+
+      // Staff still get the code, on the cancelled registration.
+      const registrations = await listFirestoreDocs('registrations');
+      const failed = registrations.find(
+        (r) => r.data['customerEmail'] === 'unknown-code@example.com'
+      );
+      expect(failed?.data['status']).toBe('cancelled');
+      expect(String(failed?.data['notes'])).toContain('SOME_FUTURE_SQUARE_CODE');
+    });
+
+    it('says ZIP code, the only address field the card form has', async () => {
+      await declineNextPayment('ADDRESS_VERIFICATION_FAILURE');
+      const result = await payWith('zip-mismatch@example.com');
+      expect(result.status).not.toBe(200);
+      expect(JSON.stringify(result.raw)).toContain('Please check the ZIP code');
     });
   });
 

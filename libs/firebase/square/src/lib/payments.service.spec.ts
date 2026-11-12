@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SquareError } from 'square';
 import {
+  GENERIC_PAYMENT_ERROR_MESSAGE,
   getPaymentErrorMessage,
   PaymentError,
   PaymentsService,
@@ -40,7 +41,7 @@ describe('getPaymentErrorMessage', () => {
   it('should return user-friendly message for ADDRESS_VERIFICATION_FAILURE', () => {
     const errors = [{ code: 'ADDRESS_VERIFICATION_FAILURE' }];
     expect(getPaymentErrorMessage(errors)).toBe(
-      'The billing address does not match the card on file. Please verify your address.'
+      "The ZIP code doesn't match the one your bank has for this card. Please check the ZIP code and try again."
     );
   });
 
@@ -58,18 +59,26 @@ describe('getPaymentErrorMessage', () => {
     );
   });
 
-  it('should fall back to Square detail message for unknown error codes', () => {
+  it("never shows Square's own detail for a code we have no wording for", () => {
     const errors = [
-      { code: 'SOME_UNKNOWN_CODE', detail: 'Something specific happened' },
+      {
+        code: 'SOME_UNKNOWN_CODE',
+        detail: "Authorization error: 'SOME_UNKNOWN_CODE'",
+      },
     ];
-    expect(getPaymentErrorMessage(errors)).toBe('Something specific happened');
+    expect(getPaymentErrorMessage(errors)).toBe(GENERIC_PAYMENT_ERROR_MESSAGE);
   });
 
-  it('should return generic message when no detail and no known code', () => {
-    const errors = [{ code: 'SOME_UNKNOWN_CODE' }];
-    expect(getPaymentErrorMessage(errors)).toBe(
-      'Unable to process payment. Please try again or use a different card.'
-    );
+  it.each([
+    ['TRANSACTION_LIMIT', /over a limit on your card/],
+    ['PAN_FAILURE', /card number is invalid/],
+    ['CARD_DECLINED_VERIFICATION_REQUIRED', /call the number on the back/],
+    ['CARD_DECLINED_CALL_ISSUER', /call the number on the back/],
+    ['INVALID_POSTAL_CODE', /ZIP code/],
+    ['BAD_EXPIRATION', /expiration date/],
+    ['TEMPORARY_ERROR', /try again in a minute/],
+  ])('has plain wording for %s', (code, wording) => {
+    expect(getPaymentErrorMessage([{ code, detail: 'raw' }])).toMatch(wording);
   });
 
   it('should check all errors in array for known codes', () => {
@@ -307,10 +316,11 @@ describe('PaymentsService', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(PaymentError);
-        // SquareError without errors array falls back to message or generic
-        const msg = (error as PaymentError).userMessage;
-        expect(typeof msg).toBe('string');
-        expect(msg.length).toBeGreaterThan(0);
+        // The raw HTTP message is for logs, not the family.
+        expect((error as PaymentError).userMessage).toBe(
+          GENERIC_PAYMENT_ERROR_MESSAGE
+        );
+        expect((error as PaymentError).squareDetail).toBe('Server error');
       }
     });
 
@@ -324,7 +334,10 @@ describe('PaymentsService', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(PaymentError);
-        expect((error as PaymentError).userMessage).toBe('Network timeout');
+        expect((error as PaymentError).userMessage).toBe(
+          GENERIC_PAYMENT_ERROR_MESSAGE
+        );
+        expect((error as PaymentError).squareDetail).toBe('Network timeout');
         expect((error as PaymentError).squareErrorCode).toBeUndefined();
       }
     });
@@ -338,7 +351,7 @@ describe('PaymentsService', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(PaymentError);
         expect((error as PaymentError).userMessage).toBe(
-          'Unable to process payment. Please try again.'
+          GENERIC_PAYMENT_ERROR_MESSAGE
         );
       }
     });
@@ -374,7 +387,7 @@ describe('PaymentsService', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(PaymentError);
         expect((error as PaymentError).userMessage).toBe(
-          'Unable to process payment. Please try again.'
+          GENERIC_PAYMENT_ERROR_MESSAGE
         );
       }
     });

@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   txnGet: vi.fn(),
   txnSet: vi.fn(),
   txnUpdate: vi.fn(),
+  discountUpdate: vi.fn(),
 }));
 
 vi.mock('firebase-admin/firestore', () => ({
@@ -29,7 +30,7 @@ vi.mock('@maple/firebase/database', () => {
     ClassRepository: { findById: mocks.findClass },
     DiscountRepository: {
       findByCode: mocks.findDiscount,
-      getDocRef: (id: string) => ({ id }),
+      getDocRef: (id: string) => ({ id, update: mocks.discountUpdate }),
     },
     RegistrationRepository: { getDocRef: () => ({ id: 'reg-new' }) },
     AgreementTemplateRepository: {
@@ -43,7 +44,10 @@ vi.mock('@maple/firebase/database', () => {
   };
 });
 
-import { reserveClassRegistration } from './registration-reservation.utility';
+import {
+  reserveClassRegistration,
+  releaseDiscountUsage,
+} from './registration-reservation.utility';
 import type { RegistrationReservationInput } from './registration-reservation.utility';
 import type { Class } from '@maple/ts/domain';
 
@@ -348,5 +352,32 @@ describe('priceClassOrder (#301)', () => {
     );
     expect(price.discountAmountCents).toBe(0);
     expect(price.subtotalCents).toBe(5000);
+  });
+});
+
+describe('releaseDiscountUsage', () => {
+  beforeEach(() => {
+    mocks.discountUpdate.mockReset();
+  });
+
+  it('gives one use back', async () => {
+    mocks.discountUpdate.mockResolvedValue(undefined);
+    await releaseDiscountUsage('disc-1', 'reg-1');
+    expect(mocks.discountUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ usageCount: { increment: -1 } })
+    );
+  });
+
+  it('does nothing when no discount was used', async () => {
+    await releaseDiscountUsage(undefined, 'reg-1');
+    expect(mocks.discountUpdate).not.toHaveBeenCalled();
+  });
+
+  it('never throws, so the payment error still reaches the family', async () => {
+    mocks.discountUpdate.mockRejectedValue(new Error('firestore down'));
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await expect(releaseDiscountUsage('disc-1', 'reg-1')).resolves.toBeUndefined();
+    expect(logged).toHaveBeenCalled();
+    logged.mockRestore();
   });
 });
