@@ -240,3 +240,32 @@ export const FlatForSmallNavs: Story = {
     await expect(canvas.queryByRole('list', { name: 'Lessons pages' })).toBeNull();
   },
 };
+
+/** No external links, no pinned row. */
+export const NoPinnedLinks: Story = {
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement).queryByRole('group', { name: 'Pinned links' }),
+    ).toBeNull();
+  },
+};
+
+/** When every link fits in the row there's nothing behind a sliver. */
+export const PinnedLinksWithoutMore: Story = {
+  args: {
+    pinnedLinks: [
+      { label: 'Square', href: 'https://example.com/a', icon: StorefrontIcon, color: '#006aff', pinned: true },
+      { label: 'A Very Long Service Name', href: 'https://example.com/b', icon: PaymentsIcon, color: '#1c6dd0', pinned: true },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const row = within(
+      within(canvasElement).getByRole('group', { name: 'Pinned links' }),
+    );
+    await expect(row.getAllByRole('link')).toHaveLength(2);
+    await expect(row.queryByRole('button')).toBeNull();
+    // The label truncates; the full name stays on title and aria-label.
+    const long = row.getByRole('link', { name: 'A Very Long Service Name' });
+    await expect(long).toHaveAttribute('title', 'A Very Long Service Name');
+  },
+};

@@ -38,16 +38,20 @@ import {
   groupOfHref,
   navModeFor,
   searchNav,
+  type ExternalLink,
   type NavAction,
   type NavGroup,
   type NavItem,
 } from './nav-model';
+import { PinnedLinks } from './PinnedLinks';
 
 export interface AppShellProps {
   children: ReactNode;
   navGroups: NavGroup[];
   /** Quick-create entries for the pinned Create menu; none hides it. */
   createActions?: NavAction[];
+  /** External services pinned under the header; none hides the row. */
+  pinnedLinks?: readonly ExternalLink[];
   /** At or under this many pages the nav is a plain grouped list. */
   flatMaxItems?: number;
   title?: string;
@@ -385,6 +389,7 @@ export function AppShell({
   children,
   navGroups,
   createActions = [],
+  pinnedLinks = [],
   flatMaxItems = FLAT_NAV_MAX_ITEMS,
   title = 'Maple & Spruce',
   maxWidth = 'lg',
@@ -445,6 +450,8 @@ export function AppShell({
           {title}
         </Typography>
       </Box>
+
+      {pinnedLinks.length > 0 && <PinnedLinks links={pinnedLinks} />}
 
       <Box sx={{ px: 1.5, pt: 1.5, pb: 1 }}>
         <TextField

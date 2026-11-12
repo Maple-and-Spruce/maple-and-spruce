@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   FLAT_NAV_MAX_ITEMS,
+  MAX_PINNED_LINKS,
+  splitPinnedLinks,
   findActiveHref,
   groupBadge,
   groupOfHref,
@@ -137,5 +139,42 @@ describe('searchNav', () => {
       'Artist Payouts',
       'Artists',
     ]);
+  });
+});
+
+describe('splitPinnedLinks', () => {
+  const link = (label: string, pinned = false) => ({ label, pinned });
+  const names = (xs: Array<{ label: string }>) => xs.map((x) => x.label);
+
+  it('puts pinned links in the row and the rest, in order, in the panel', () => {
+    const { pinned, more } = splitPinnedLinks([
+      link('Wave'),
+      link('Square', true),
+      link('MailerLite'),
+      link('Tally', true),
+    ]);
+    expect(names(pinned)).toEqual(['Square', 'Tally']);
+    expect(names(more)).toEqual(['Wave', 'MailerLite']);
+  });
+
+  it('caps the row and lets overflow pins fall into the panel', () => {
+    const { pinned, more } = splitPinnedLinks([
+      link('A', true),
+      link('B', true),
+      link('C', true),
+      link('D', true),
+      link('E'),
+    ]);
+    expect(MAX_PINNED_LINKS).toBe(3);
+    expect(names(pinned)).toEqual(['A', 'B', 'C']);
+    expect(names(more)).toEqual(['D', 'E']);
+  });
+
+  it('handles no pins and no links', () => {
+    expect(splitPinnedLinks([link('A')])).toEqual({
+      pinned: [],
+      more: [link('A')],
+    });
+    expect(splitPinnedLinks([])).toEqual({ pinned: [], more: [] });
   });
 });
