@@ -42,6 +42,7 @@ import {
   getFirestoreDoc,
   setFirestoreDoc,
   listFirestoreDocs,
+  listMail,
   EMULATOR_CONFIG,
   PUBLISHED_CLASS,
   TRIGGER_WAIT_TIMEOUT_MS,
@@ -198,7 +199,7 @@ async function listRegistrations(): Promise<
 async function listNoEmailAlerts(): Promise<
   Array<{ id: string; data: Record<string, unknown> }>
 > {
-  const mail = await listFirestoreDocs('mail');
+  const mail = await listMail();
   return mail.filter((doc) => {
     const message = doc.data['message'] as Record<string, unknown> | undefined;
     const subject = (message?.['subject'] as string | undefined) ?? '';

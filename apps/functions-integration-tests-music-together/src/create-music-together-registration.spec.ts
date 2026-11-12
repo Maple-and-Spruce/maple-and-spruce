@@ -13,6 +13,7 @@ import {
   setFirestoreDoc,
   getFirestoreDoc,
   listFirestoreDocs,
+  listMail,
   callFunction,
 } from '@maple/firebase/integration-test-utils';
 import type {
@@ -118,7 +119,7 @@ describe('createMusicTogetherRegistration', () => {
     // Pay-in-full needs no special handling: the committed total IS the charge.
     expect(reg?.totalCommittedCents).toBe(25200);
 
-    const mail = await listFirestoreDocs('mail');
+    const mail = await listMail();
     expect(
       mail.some((m) => (m.data as { to?: string }).to === 'jamie@test.com')
     ).toBe(true);

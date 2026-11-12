@@ -11,5 +11,6 @@ export {
   FirestoreRef,
   FirestoreTimestamp,
 } from './firestore-helper.js';
+export { listMail, isSyncFailureAlert } from './mail-helper.js';
 export { callFunction } from './http-client.js';
 export type { FunctionResponse } from './http-client.js';
