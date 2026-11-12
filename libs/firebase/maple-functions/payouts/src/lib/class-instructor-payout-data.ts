@@ -29,6 +29,11 @@ export interface PayoutMonthData {
   instructors: Instructor[];
   classes: Class[];
   registrationsByClass: Record<string, Registration[]>;
+  /**
+   * Instructors left out because they aren't contract instructors (the owner,
+   * staff): their classes are all M&S's, so there is nothing to pay them.
+   */
+  nonContractorIds: string[];
 }
 
 /** Whether any of a class's sessions could land on `month`'s statement. */
@@ -50,7 +55,13 @@ export async function loadPayoutMonthData(
     RegistrationRepository.findAll({ status: 'refunded' }),
   ]);
 
-  const taught = allClasses.filter((c) => c.instructorId);
+  // Only contract instructors are paid a share. A class taught by the owner or
+  // staff is entirely M&S's, so it never reaches a statement or a preview.
+  const contractors = allInstructors.filter((i) => i.isContractor === true);
+  const contractorIds = new Set(contractors.map((i) => i.id));
+  const taught = allClasses.filter(
+    (c) => c.instructorId && contractorIds.has(c.instructorId)
+  );
   const inWindow = taught.filter((c) => taughtInWindow(c, month));
   const registrations = await Promise.all(
     inWindow.map((c) => RegistrationRepository.findByClassId(c.id))
@@ -77,9 +88,12 @@ export async function loadPayoutMonthData(
   }
 
   return {
-    instructors: allInstructors,
+    instructors: contractors,
     classes: [...inWindow, ...reachedBack],
     registrationsByClass,
+    nonContractorIds: allInstructors
+      .filter((i) => i.isContractor !== true)
+      .map((i) => i.id),
   };
 }
 

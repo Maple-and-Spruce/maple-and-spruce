@@ -96,6 +96,7 @@ describe('class-instructor payouts', () => {
       name,
       email: `${name.toLowerCase().replace(/ /g, '.')}@example.com`,
       status: 'active',
+      isContractor: true,
       payRate,
       payRateType,
       createdAt: created,
@@ -104,6 +105,11 @@ describe('class-instructor payouts', () => {
     await setFirestoreDoc('instructors', 'inst-glass', instructor('Glass Instructor', 0.8, 'percentage'));
     await setFirestoreDoc('instructors', 'inst-weave', instructor('Weaving Instructor', 0.8, 'percentage'));
     await setFirestoreDoc('instructors', 'inst-norate', instructor('Unrated Instructor', null, null));
+    // The owner teaches too, but those classes are all M&S's: never on the tab.
+    await setFirestoreDoc('instructors', 'inst-owner', {
+      ...instructor('Studio Owner', null, null),
+      isContractor: false,
+    });
 
     const klass = (name: string, instructorId: string, sessions: Date[]) => ({
       name,
@@ -124,6 +130,7 @@ describe('class-instructor payouts', () => {
     await setFirestoreDoc('classes', 'class-glass', klass('Stained Glass Series', 'inst-glass', [monthsAgo(2), monthsAgo(1)]));
     await setFirestoreDoc('classes', 'class-weave', klass('Weaving Workshop', 'inst-weave', [monthsAgo(2, 10)]));
     await setFirestoreDoc('classes', 'class-norate', klass('Basketry', 'inst-norate', [monthsAgo(2, 12)]));
+    await setFirestoreDoc('classes', 'class-owner', klass('Owner Workshop', 'inst-owner', [monthsAgo(2, 14)]));
 
     await setFirestoreDoc('registrations', 'reg-g1', registration('reg-g1', 'class-glass', 10000));
     await setFirestoreDoc('registrations', 'reg-g2', registration('reg-g2', 'class-glass', 20000, 2));
@@ -133,6 +140,7 @@ describe('class-instructor payouts', () => {
     });
     await setFirestoreDoc('registrations', 'reg-w1', registration('reg-w1', 'class-weave', 6000));
     await setFirestoreDoc('registrations', 'reg-n1', registration('reg-n1', 'class-norate', 5000));
+    await setFirestoreDoc('registrations', 'reg-o1', registration('reg-o1', 'class-owner', 5000));
   });
 
   it('gates every route to admins', async () => {
@@ -165,12 +173,18 @@ describe('class-instructor payouts', () => {
     expect(byId['inst-glass'].classes[0]).toMatchObject({ headcount: 3, totalSessions: 2 });
     expect(byId['inst-weave']).toMatchObject({ grossCents: 6000, shareCents: 4800 });
     expect(byId['inst-norate']).toMatchObject({ missingRateConfig: true, shareCents: 0 });
+    // Owner-taught classes are all M&S's: no card, no "Rate not set".
+    expect(byId['inst-owner']).toBeUndefined();
   });
 
   it('refuses the current month and an instructor without a rate', async () => {
     const current = await generate('inst-glass', monthKeyInStudioZone(new Date()));
     expect(current.status).toBe(400);
     expect(message(current)).toMatch(/isn't over yet/);
+
+    const owner = await generate('inst-owner', EARLIER);
+    expect(owner.status).toBe(400);
+    expect(message(owner)).toMatch(/Only contract instructors/);
 
     const noRate = await generate('inst-norate', EARLIER);
     expect(noRate.status).toBe(400);

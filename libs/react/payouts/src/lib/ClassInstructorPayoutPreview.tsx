@@ -194,7 +194,7 @@ export function ClassInstructorPayoutPreview({
       <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
         <Typography variant="body1">No class sessions to pay for this month.</Typography>
         <Typography variant="body2">
-          Instructors are paid for sessions that have ended, in classes with an instructor set.
+          Contract instructors are paid for sessions that have ended. Classes taught by the owner or staff aren't listed.
         </Typography>
       </Box>
     );
