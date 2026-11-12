@@ -79,37 +79,50 @@ interface GiftCardDetailDialogProps {
    */
   onReplace?: (card: GiftCardSummary) => void;
   /**
-   * Opens "Refund and turn off" (a card bought online with money on it) or
-   * "Turn off" (any other active card). Also offered to finish one that was
-   * started and stopped part way. `amountCents` is what will come off, when
-   * a started one fixed it already.
+   * Opens "Refund" (a card bought online with money on it) or "Turn off"
+   * (any other active card). Also offered to finish one that was started and
+   * stopped part way. `amountCents` is what will come off, when a started one
+   * fixed it already; `refundMade` when Square already made that refund.
    */
   onCloseCard?: (
     card: GiftCardSummary,
     mode: 'refund' | 'deactivate',
-    amountCents?: number
+    amountCents?: number,
+    refundMade?: boolean
   ) => void;
 }
 
 /**
  * What the refund or turn-off section offers for a card, if anything: refund
  * a card bought online that still holds money, turn off any other active
- * card, or finish one that was started.
+ * card, or finish one that was started. Nothing for a card already refunded:
+ * it stays active at $0 (Square won't let an app turn it off for a refund).
  */
 export function closeOptionFor(
   card: GiftCardSummary,
   purchase: GiftCardPurchaseDetails | undefined,
   unsold: boolean
-): { mode: 'refund' | 'deactivate'; amountCents?: number; finishing: boolean } | null {
+): {
+  mode: 'refund' | 'deactivate';
+  amountCents?: number;
+  finishing: boolean;
+  refundMade: boolean;
+} | null {
   const closure = purchase?.closure;
   if (closure && !closure.completedAt) {
-    return { mode: closure.kind, amountCents: closure.amountCents, finishing: true };
+    return {
+      mode: closure.kind,
+      amountCents: closure.amountCents,
+      finishing: true,
+      refundMade: closure.kind === 'refund' && closure.squareRefundId !== undefined,
+    };
   }
+  if (closure?.completedAt && closure.kind === 'refund') return null;
   if (card.state !== 'active' || unsold) return null;
   if (isRefundableOnline(purchase) && card.balanceCents > 0) {
-    return { mode: 'refund', finishing: false };
+    return { mode: 'refund', finishing: false, refundMade: false };
   }
-  return { mode: 'deactivate', finishing: false };
+  return { mode: 'deactivate', finishing: false, refundMade: false };
 }
 
 /**
@@ -216,7 +229,7 @@ export function GiftCardDetailDialog({
         {record?.closure?.completedAt && (
           <Alert severity="info" sx={{ mb: 2 }}>
             {record.closure.kind === 'refund'
-              ? `Refunded ${formatGiftCardMoney(record.closure.amountCents)} and turned off on ${formatGiftCardDate(record.closure.completedAt)}.`
+              ? `Refunded ${formatGiftCardMoney(record.closure.amountCents)} on ${formatGiftCardDate(record.closure.completedAt)}. The card holds $0, so nothing can be spent from it.`
               : `Turned off on ${formatGiftCardDate(record.closure.completedAt)}${record.closure.amountCents > 0 ? `, with ${formatGiftCardMoney(record.closure.amountCents)} taken off` : ''}.`}
           </Alert>
         )}
@@ -282,7 +295,7 @@ export function GiftCardDetailDialog({
                   ? 'A refund of this card was started but did not finish. Finish it.'
                   : 'Turning this card off was started but did not finish. Finish it.'
                 : closeOption.mode === 'refund'
-                  ? 'Bought on the website. Refund what is left to the card that paid, and turn this card off.'
+                  ? 'Bought on the website. Refund what is left to the card that paid. The card is left at $0.'
                   : 'Turn this card off so it cannot be spent. No money is returned from here.'}
             </Typography>
             <Button
@@ -290,7 +303,12 @@ export function GiftCardDetailDialog({
               color="error"
               startIcon={<BlockIcon />}
               onClick={() =>
-                onCloseCard?.(loaded.card, closeOption.mode, closeOption.amountCents)
+                onCloseCard?.(
+                  loaded.card,
+                  closeOption.mode,
+                  closeOption.amountCents,
+                  closeOption.refundMade
+                )
               }
             >
               {closeOption.finishing
@@ -298,7 +316,7 @@ export function GiftCardDetailDialog({
                   ? 'Finish refund'
                   : 'Finish turning off'
                 : closeOption.mode === 'refund'
-                  ? 'Refund and turn off'
+                  ? 'Refund'
                   : 'Turn off card'}
             </Button>
           </Box>

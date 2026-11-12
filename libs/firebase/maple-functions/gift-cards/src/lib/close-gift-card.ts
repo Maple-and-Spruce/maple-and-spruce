@@ -1,12 +1,14 @@
 /**
- * Refund a gift card bought online and turn it off, or turn any card off.
- * Admin only.
+ * Refund a gift card bought online, or turn any card off. Admin only.
  *
  * Two modes:
  *
  *   - `refund`, for a card bought on our own buy page (a record with the
  *     Square payment). What is left on the card goes back to the card that
- *     paid for it, and the card is turned off.
+ *     paid for it, and the card is left at $0. It is not turned off: Square
+ *     lets an app turn a card off only as "suspicious activity", and a $0
+ *     card cannot be spent anyway. A refund in the Square Dashboard does the
+ *     same.
  *   - `deactivate`, for any card. What is left on it is taken off and the
  *     card is turned off. No money is returned by us: a card sold at the
  *     register is refunded at the register or in the Square Dashboard.
@@ -24,7 +26,7 @@
  *   2. Take what is left off the card (`ADJUST_DECREMENT`). From here nobody
  *      can spend it.
  *   3. Refund mode: refund that amount on the original payment.
- *   4. Turn the card off (`DEACTIVATE`).
+ *   4. Deactivate mode: turn the card off (`DEACTIVATE`).
  *
  * The balance comes off the card before any refund, so **a failure never
  * leaves the money both refunded and spendable**. A failure at each step
@@ -34,12 +36,13 @@
  *   - 3: the money off the card and not yet refunded. It is not lost: the
  *     record holds the amount and the card's Square history shows it coming
  *     off; trying again makes the refund.
- *   - 4: the money handled, the card holding $0 but not turned off. Nothing
- *     can be spent from it; trying again turns it off.
+ *   - 4: the card holding $0 but not turned off. Nothing can be spent from
+ *     it; trying again turns it off.
  *
  * Every Square call uses a key derived from the card, so a retried call
- * returns Square's first answer instead of moving money twice; step 2 is also
- * skipped when the card's history already shows it.
+ * returns Square's first answer instead of moving money twice. Step 2 is also
+ * skipped when the card's history already shows it, and step 3 when the
+ * closure already holds Square's refund id.
  *
  * Logs `gift_card_closed {giftCardId, mode, amountCents, refundedCents, uid}`,
  * never a code.
@@ -117,6 +120,9 @@ export async function closeGiftCard(
       'Only a card bought on the website can be refunded here. Turn this one off instead, and refund it in Square if it was paid for.'
     );
   }
+  if (record?.closure?.completedAt && record.closure.kind === 'refund') {
+    throwFailedPrecondition('This card was already refunded. It holds $0, so nothing can be spent from it.');
+  }
   if (record?.closure && record.closure.kind !== mode) {
     throwFailedPrecondition(
       record.closure.kind === 'refund'
@@ -171,6 +177,7 @@ export async function closeGiftCard(
           locationId: square.locationId,
           amountCents,
           idempotencyKey: keys.decrement(amountCents),
+          reason: mode === 'refund' ? 'PURCHASE_WAS_REFUNDED' : 'SUPPORT_ISSUE',
         });
       } catch (error) {
         fail('decrement', error);
@@ -184,7 +191,10 @@ export async function closeGiftCard(
 
   // Step 3: refund it.
   let refundedCents = 0;
-  if (mode === 'refund' && amountCents > 0 && record?.squarePaymentId) {
+  if (mode === 'refund' && amountCents > 0 && closure.squareRefundId) {
+    // An earlier try made the refund and stopped before recording it done.
+    refundedCents = amountCents;
+  } else if (mode === 'refund' && amountCents > 0 && record?.squarePaymentId) {
     try {
       const refund = await square.paymentsService.refundPayment({
         paymentId: record.squarePaymentId,
@@ -207,9 +217,9 @@ export async function closeGiftCard(
     }
   }
 
-  // Step 4: turn the card off.
+  // Step 4: turn the card off. Not on a refund: see the top of this file.
   const response: CloseGiftCardResponse = { giftCardId, mode, amountCents, refundedCents };
-  const now = await giftCards.getGiftCard(giftCardId);
+  const now = mode === 'deactivate' ? await giftCards.getGiftCard(giftCardId) : undefined;
   if (now && now.state !== 'deactivated') {
     try {
       await giftCards.deactivate({
@@ -219,7 +229,7 @@ export async function closeGiftCard(
       });
     } catch (error) {
       fail('deactivate', error);
-      response.warning = `The money is handled, but Square did not turn the card off. It holds nothing, so nothing can be spent from it. Try again to turn it off. (It is ${giftCardStateLabel(now.state).toLowerCase()}.)`;
+      response.warning = `Square did not turn the card off. It holds nothing, so nothing can be spent from it. Try again to turn it off. (It is ${giftCardStateLabel(now.state).toLowerCase()}.)`;
     }
   }
   if (!response.warning && record) {

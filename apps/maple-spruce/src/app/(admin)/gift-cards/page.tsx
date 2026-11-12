@@ -65,6 +65,7 @@ export default function GiftCardsPage() {
     card: GiftCardSummary;
     mode: CloseGiftCardMode;
     amountCents?: number;
+    refundMade?: boolean;
   } | null>(null);
 
   const totalsState = useMemo<RequestState<GiftCardTotals>>(
@@ -159,13 +160,16 @@ export default function GiftCardsPage() {
         onMakeClassCertificate={setCertificateCard}
         onLoadBuyer={fetchGiftCardBuyer}
         onReplace={setReplaceCard}
-        onCloseCard={(card, mode, amountCents) => setCloseTarget({ card, mode, amountCents })}
+        onCloseCard={(card, mode, amountCents, refundMade) =>
+          setCloseTarget({ card, mode, amountCents, refundMade })
+        }
       />
 
       <CloseGiftCardDialog
         card={closeTarget?.card ?? null}
         mode={closeTarget?.mode ?? 'deactivate'}
         amountCents={closeTarget?.amountCents}
+        refundMade={closeTarget?.refundMade}
         onClose={() => setCloseTarget(null)}
         onCloseCard={closeGiftCard}
         onDone={() => {

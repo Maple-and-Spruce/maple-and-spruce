@@ -88,8 +88,8 @@ const HOW_TOS: HowTo[] = [
     title: 'Refund or turn off a card',
     steps: [
       <>
-        Bought on the website: open it and click <strong>Refund and turn off</strong>.
-        What is left goes back to the card that paid.
+        Bought on the website: open it and click <strong>Refund</strong>. What is
+        left goes back to the card that paid, and the gift card is left at $0.
       </>,
       <>
         Any other card: <strong>Turn off card</strong> takes the money off and stops it

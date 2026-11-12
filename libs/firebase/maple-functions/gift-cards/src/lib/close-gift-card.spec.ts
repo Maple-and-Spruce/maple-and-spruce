@@ -206,7 +206,7 @@ afterEach(() => {
 });
 
 describe('closeGiftCard: refund', () => {
-  it('takes the balance off, refunds it to the original payment and turns the card off', async () => {
+  it('takes the balance off and refunds it to the original payment, leaving the card at $0', async () => {
     addCard('gftc-online');
     addOnlineRecord();
 
@@ -220,7 +220,12 @@ describe('closeGiftCard: refund', () => {
     });
     const card = square.state.cards.get('gftc-online')!;
     expect(card.balanceCents).toBe(0);
-    expect(card.state).toBe('deactivated');
+    // Square only lets an app turn a card off as "suspicious activity".
+    expect(card.state).toBe('active');
+    expect(square.giftCardsService.deactivate).not.toHaveBeenCalled();
+    expect(square.giftCardsService.adjustDecrement).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: 'PURCHASE_WAS_REFUNDED' })
+    );
     expect(square.state.refunds).toEqual([{ paymentId: 'pay-online-1', amountCents: 4000 }]);
     // The balance came off before the refund.
     expect(square.giftCardsService.adjustDecrement.mock.invocationCallOrder[0]).toBeLessThan(
@@ -288,7 +293,7 @@ describe('closeGiftCard: refund', () => {
     expect(
       square.state.history.filter((a) => a.type === 'adjust_decrement')
     ).toHaveLength(1);
-    expect(square.state.cards.get('gftc-online')!.state).toBe('deactivated');
+    expect(square.state.cards.get('gftc-online')!.state).toBe('active');
   });
 
   it('after a failed decrement, nothing was refunded and a retry finishes', async () => {
@@ -304,19 +309,49 @@ describe('closeGiftCard: refund', () => {
     expect(square.state.refunds).toHaveLength(1);
   });
 
-  it('warns when the card could not be turned off; a retry turns it off', async () => {
-    addCard('gftc-online');
-    addOnlineRecord();
-    square.state.failNext.add('deactivate');
+  it('finishes a refund Square already made without refunding again', async () => {
+    // An earlier try refunded and stopped before recording it done.
+    addCard('gftc-online', { balanceCents: 0 });
+    addOnlineRecord({
+      closure: {
+        kind: 'refund',
+        amountCents: 4000,
+        squareRefundId: 'refund-earlier',
+        startedAt: '2026-11-08T14:00:00Z',
+      },
+    });
+    square.state.history.push({
+      id: 'act-dec',
+      giftCardId: 'gftc-online',
+      type: 'adjust_decrement',
+      amountCents: -4000,
+      balanceAfterCents: 0,
+      createdAt: '2026-11-08T14:00:01Z',
+    });
 
-    const first = await close('refund');
-    expect(first.warning).toMatch(/did not turn the card off/);
-    expect(square.state.refunds).toHaveLength(1);
+    const result = await close('refund');
 
-    const second = await close('refund');
-    expect(second.warning).toBeUndefined();
-    expect(square.state.refunds).toHaveLength(1);
-    expect(square.state.cards.get('gftc-online')!.state).toBe('deactivated');
+    expect(result).toMatchObject({ refundedCents: 4000 });
+    expect(result.warning).toBeUndefined();
+    expect(square.paymentsService.refundPayment).not.toHaveBeenCalled();
+    expect(square.giftCardsService.adjustDecrement).not.toHaveBeenCalled();
+    const closure = store.records.get('gftc-online')!['closure'] as Record<string, unknown>;
+    expect(closure['completedAt']).toBeTruthy();
+  });
+
+  it('refuses a card that was already refunded', async () => {
+    addCard('gftc-online', { balanceCents: 0 });
+    addOnlineRecord({
+      closure: {
+        kind: 'refund',
+        amountCents: 4000,
+        squareRefundId: 'refund-1',
+        startedAt: '2026-11-08T14:00:00Z',
+        completedAt: '2026-11-08T14:00:02Z',
+      },
+    });
+    await expect(close('refund')).rejects.toThrow(/already refunded/);
+    await expect(close('deactivate')).rejects.toThrow(/already refunded/);
   });
 
   it('will not switch a started refund to a plain turn-off', async () => {
@@ -342,6 +377,22 @@ describe('closeGiftCard: deactivate', () => {
     expect(card.balanceCents).toBe(0);
     expect(card.state).toBe('deactivated');
     expect(square.paymentsService.refundPayment).not.toHaveBeenCalled();
+  });
+
+  it('warns when the card could not be turned off; a retry turns it off', async () => {
+    addCard('gftc-register', { balanceCents: 2500 });
+    square.state.failNext.add('deactivate');
+
+    const first = await close('deactivate', 'gftc-register');
+    expect(first.warning).toMatch(/did not turn the card off/);
+    expect(square.state.cards.get('gftc-register')!.balanceCents).toBe(0);
+
+    const second = await close('deactivate', 'gftc-register');
+    expect(second.warning).toBeUndefined();
+    expect(square.state.cards.get('gftc-register')!.state).toBe('deactivated');
+    expect(
+      square.state.history.filter((a) => a.type === 'adjust_decrement')
+    ).toHaveLength(1);
   });
 
   it('turns off an empty card without a decrement', async () => {
