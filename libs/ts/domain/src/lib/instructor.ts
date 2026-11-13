@@ -57,7 +57,11 @@ export interface InstructorReadiness {
     /** Where the signed copy lives: a link, or a note such as "paper, in the office binder". */
     reference?: string;
   };
-  /** The background check came back clear. Run outside this system; this is the record of it. */
+  /**
+   * The background check came back clear. Run outside this system; this is the
+   * record of it. Required only for lesson teachers: see
+   * {@link backgroundCheckRequired}.
+   */
   backgroundCheck?: {
     clearedOn: string;
   };
@@ -68,7 +72,10 @@ export interface InstructorReadiness {
   };
 }
 
-/** One thing that must be done before a contract instructor can teach. */
+/**
+ * One thing that must be done before a contract instructor can teach. Not every
+ * item applies to every instructor: see {@link instructorReadiness}.
+ */
 export type InstructorReadinessItem =
   | 'contractor-agreement'
   | 'background-check'
@@ -96,8 +103,10 @@ export const INSTRUCTOR_READINESS_ITEM_LABELS: Record<
  * Whether an instructor is cleared to teach.
  *
  * - `not-applicable`: not a paid contractor, so nothing is tracked.
- * - `ready`: all four items are done: the three recorded steps, and a pay
+ * - `ready`: every item that applies is done: the recorded steps, and a pay
  *   rate on the instructor (without one, nothing can be worked out to pay).
+ *   The background check applies only to lesson teachers
+ *   ({@link backgroundCheckRequired}).
  *   Class payouts need that rate to be a percentage and say so separately,
  *   as "Rate not set", because a lesson contractor may be paid another way.
  * - `not-ready`: `missing` lists what is still outstanding, in checklist order.
@@ -196,7 +205,10 @@ export interface Instructor extends Omit<Payee, 'email'> {
  * stored.
  */
 export function instructorReadiness(
-  instructor: Pick<Instructor, 'isContractor' | 'readiness' | 'payRate' | 'payRateType'>
+  instructor: Pick<
+    Instructor,
+    'isContractor' | 'readiness' | 'payRate' | 'payRateType' | 'programs'
+  >
 ): InstructorReadinessStatus {
   if (!instructor.isContractor) {
     return { kind: 'not-applicable' };
@@ -205,13 +217,31 @@ export function instructorReadiness(
   const r = instructor.readiness ?? {};
   const done: Record<InstructorReadinessItem, boolean> = {
     'contractor-agreement': !!r.contractorAgreement?.signedOn,
-    'background-check': !!r.backgroundCheck?.clearedOn,
+    'background-check':
+      !backgroundCheckRequired(instructor) || !!r.backgroundCheck?.clearedOn,
     'payment-setup': !!r.paymentSetup?.completedOn && !!r.paymentSetup.method,
     'pay-rate': hasPayRate(instructor),
   };
   const missing = INSTRUCTOR_READINESS_ITEMS.filter((item) => !done[item]);
 
   return missing.length === 0 ? { kind: 'ready' } : { kind: 'not-ready', missing };
+}
+
+/**
+ * Whether this instructor must clear a background check before teaching.
+ *
+ * Only lesson teachers (private lessons or the Suzuki school): they are alone
+ * with children, and teaching Hope Scholarship students makes a check a legal
+ * requirement (W. Va. Code §18-31-11(a)(5)). Craft classes are for adults, and
+ * a child attends only with a parent who stays, so their instructors are not
+ * checked (David, 2026-11-11). A check can still be recorded for anyone.
+ */
+export function backgroundCheckRequired(
+  instructor: Pick<Instructor, 'programs'>
+): boolean {
+  return (instructor.programs ?? []).some(
+    (program) => program === 'music-lessons' || program === 'suzuki'
+  );
 }
 
 /** Whether a pay rate is set: a type and a positive amount. */

@@ -23,11 +23,13 @@ import {
 import {
   INSTRUCTOR_PAYMENT_SETUP_METHODS,
   INSTRUCTOR_PAYMENT_SETUP_METHOD_LABELS,
+  backgroundCheckRequired,
   describeMissingReadiness,
   hasPayRate,
   instructorReadiness,
   type InstructorPayRateType,
   type InstructorPaymentSetupMethod,
+  type InstructorProgram,
 } from '@maple/ts/domain';
 import {
   readinessFromFormValues,
@@ -54,6 +56,11 @@ export interface InstructorReadinessSectionProps {
    */
   payRate?: number;
   payRateType?: InstructorPayRateType;
+  /**
+   * What they teach, as ticked elsewhere in the form. Decides whether a
+   * background check is required (lesson teachers only).
+   */
+  programs?: readonly InstructorProgram[];
 }
 
 function payRateText(payRate: number, payRateType: InstructorPayRateType): string {
@@ -79,12 +86,15 @@ export function InstructorReadinessSection({
   agreementActions,
   payRate,
   payRateType,
+  programs = [],
 }: InstructorReadinessSectionProps) {
   const status = instructorReadiness({
     ...readinessFromFormValues(values),
     payRate,
     payRateType,
+    programs: [...programs],
   });
+  const checkRequired = backgroundCheckRequired({ programs: [...programs] });
   const rateSet = hasPayRate({ payRate, payRateType });
 
   return (
@@ -115,9 +125,9 @@ export function InstructorReadinessSection({
         label="Paid contractor (1099)"
       />
       <FormHelperText sx={{ mt: -1 }}>
-        Contract instructors need a signed agreement, a background check,
-        payment setup and a pay rate before teaching. Leave off for staff and unpaid
-        instructors.
+        Contract instructors need a signed agreement, payment setup and a pay rate
+        before teaching. Lesson teachers also need a background check. Leave off for
+        staff and unpaid instructors.
       </FormHelperText>
 
       {values.isContractor && (
@@ -157,7 +167,17 @@ export function InstructorReadinessSection({
             />
           </Box>
 
-          <ItemHeading>Background check</ItemHeading>
+          <ItemHeading>{checkRequired ? 'Background check' : 'Background check (optional)'}</ItemHeading>
+          {!checkRequired && (
+            <Typography
+              variant="body2"
+              color="textSecondary"
+              data-testid="readiness-background-check-optional"
+            >
+              Only needed for private lesson and Suzuki teachers. Record a date
+              here if you run one anyway.
+            </Typography>
+          )}
           <TextField
             label="Date cleared"
             type="date"
