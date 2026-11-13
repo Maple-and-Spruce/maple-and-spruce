@@ -245,7 +245,8 @@ describe('getInbox', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       title: 'Robin Ashfield for Saturday’s Block Printing',
-      detail: 'Missing background check and payment setup',
+      // A craft class instructor needs no background check, only payment setup.
+      detail: 'Missing payment setup',
       href: '/instructors?edit=ins-1',
       urgent: true,
     });

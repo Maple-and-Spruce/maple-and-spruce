@@ -669,6 +669,7 @@ export function InstructorForm({
             getFieldError={getFieldError}
             payRate={payRate.value}
             payRateType={payRateType.value}
+            programs={programs.value}
             agreementActions={
               instructor && renderAgreementActions
                 ? renderAgreementActions(instructor, {
