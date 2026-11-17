@@ -195,6 +195,22 @@ describe('mapClassToFieldData', () => {
     ).toBe('All Levels');
   });
 
+  it('sends the description as rich text HTML', () => {
+    const result = mapClassToFieldData(
+      {
+        ...mockClass,
+        description:
+          'No sewing needed!\n\nBring:\nAn apron\nA **sturdy** towel & a *smile*',
+      },
+      { isDev: false }
+    );
+
+    expect(result.description).toBe(
+      '<p>No sewing needed!</p>' +
+        '<p>Bring:<br>An apron<br>A <strong>sturdy</strong> towel &amp; a <em>smile</em></p>'
+    );
+  });
+
   it('includes optional fields when present', () => {
     const result = mapClassToFieldData(mockClass, {
       isDev: false,
@@ -205,7 +221,7 @@ describe('mapClassToFieldData', () => {
     });
 
     expect(result['short-description']).toBe('Intro to pottery');
-    expect(result.description).toBe('Learn the basics of pottery');
+    expect(result.description).toBe('<p>Learn the basics of pottery</p>');
     expect(result.location).toBe('Main Studio');
     expect(result['materials-included']).toBe('Clay, glazes, tools');
     expect(result['what-to-bring']).toBe('Apron, towel');

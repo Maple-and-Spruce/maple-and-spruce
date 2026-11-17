@@ -1135,9 +1135,13 @@ export function ClassForm({
               value={description.value}
               onChange={(e) => (description.value = e.target.value)}
               error={!!getFieldError('description')}
-              helperText={getFieldError('description') || 'Detailed description for the class page'}
+              helperText={
+                getFieldError('description') ||
+                'Shown on the class page. Leave a blank line between paragraphs. Use **bold** and *italic*.'
+              }
               multiline
-              rows={4}
+              minRows={4}
+              maxRows={16}
               required
               fullWidth
             />

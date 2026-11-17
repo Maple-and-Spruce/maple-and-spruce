@@ -14,6 +14,7 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { ClassRepository } from '@maple/firebase/database';
 import type { Class } from '@maple/ts/domain';
+import { classDescriptionToPlainText } from '@maple/ts/domain';
 import {
   buildClassCatalogFeed,
   type CatalogFeedItem,
@@ -82,7 +83,9 @@ export function mapClassToFeedItem(
   return {
     id: classEntity.id,
     title: classEntity.name,
-    description: classEntity.shortDescription || classEntity.description,
+    description:
+      classEntity.shortDescription ||
+      classDescriptionToPlainText(classEntity.description),
     link: `${PUBLIC_SITE_BASE_URL}${CLASS_DETAIL_PATH}/${slug}`,
     imageLink: classEntity.imageUrl,
     priceCents: classEntity.priceCents,

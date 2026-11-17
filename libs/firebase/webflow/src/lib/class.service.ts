@@ -9,6 +9,7 @@
  * - Firebase `name` -> Webflow `name` (title field)
  * - Firebase `sessions[0].dateTime` -> Webflow `date-time`
  * - Firebase `priceCents` -> Webflow `price-cents`
+ * - Firebase `description` -> Webflow `description` (Rich Text, sent as HTML)
  * - Firebase `sessions.length` -> Webflow `session-count`
  * - Firebase `isFeatured` -> Webflow `is-featured` (Switch)
  * - Enriched `instructorName` / `categoryName` -> denormalized text fields
@@ -20,6 +21,7 @@ import type { CollectionItem } from 'webflow-api/api';
 import type { PublishableClass } from '@maple/ts/domain';
 import { isWebflowNotFound } from './webflow-errors';
 import {
+  classDescriptionToHtml,
   getBookableCapacity,
   getFirstSession,
   formatSessions,
@@ -229,8 +231,10 @@ export function mapClassToFieldData(
     fieldData['short-description'] = classEntity.shortDescription;
   }
 
+  // `description` is a Rich Text field, so it takes HTML. Sent as typed, the
+  // line breaks are bare whitespace and the page shows one long paragraph.
   if (classEntity.description) {
-    fieldData['description'] = classEntity.description;
+    fieldData['description'] = classDescriptionToHtml(classEntity.description);
   }
 
   if (classEntity.imageUrl) {

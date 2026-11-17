@@ -18,6 +18,7 @@ import {
 import { CalendarEventRepository } from '@maple/firebase/database';
 import type { Class, ClassSession } from '@maple/ts/domain';
 import {
+  classDescriptionToPlainText,
   DEFAULT_EVENT_LOCATION,
   getSessionEndTime,
   getSortedSessions,
@@ -166,7 +167,7 @@ export const onClassWrite = onDocumentWritten(
           const id = sessionEventId(classId, session);
           return CalendarEventRepository.upsertWithId(id, {
             title: afterClass.name,
-            description: afterClass.description || '',
+            description: classDescriptionToPlainText(afterClass.description || ''),
             startDateTime: session.dateTime,
             endDateTime: getSessionEndTime(session, afterClass.durationMinutes),
             recurrenceRule: null,

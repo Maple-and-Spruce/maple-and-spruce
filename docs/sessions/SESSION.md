@@ -6,6 +6,20 @@
 
 ## Current Status
 
+### Class descriptions keep their formatting on the site (2026-11-16)
+
+- The class page showed every description as one paragraph: the text went to Webflow's Rich
+  Text field as typed, so line breaks were bare whitespace. 9 of the 13 live class pages had
+  line breaks that were lost.
+- The sync now sends HTML (`classDescriptionToHtml` in `class-description.ts`): a blank line
+  starts a paragraph, a single line break is a `<br>`, and `**bold**`, `*italic*` and
+  `_italic_` work. Anything that looks like HTML is escaped.
+- Square, the calendar and the catalog feed show plain text, so they get the description with
+  the markers taken out (`classDescriptionToPlainText`).
+- The admin form says how to format and the box grows with the text.
+- Next: after deploy, run `tools/backfill-webflow-class-descriptions.ts --prod --execute` so
+  the classes already on the site pick it up (dry-run first). Not yet seen on a live page.
+
 ### Payment errors at class checkout (2026-11-10)
 
 - Reviewed the 31 payment failures recorded in prod. Families were retrying the same declined
