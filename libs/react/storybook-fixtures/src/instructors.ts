@@ -119,8 +119,8 @@ export const mockContractorReady: Instructor = {
 };
 
 /**
- * A contract instructor partway through onboarding: agreement signed, still
- * waiting on the background check and payment setup.
+ * A contract lesson teacher partway through onboarding: agreement signed, still
+ * waiting on the background check (lesson teachers need one) and payment setup.
  */
 export const mockContractorNotReady: Instructor = {
   id: 'instructor-008',
@@ -128,8 +128,9 @@ export const mockContractorNotReady: Instructor = {
   email: 'olive@example.com',
   phone: '304-555-0143',
   status: 'active',
-  bio: 'Block printer and bookbinder, new to teaching at the studio.',
-  specialties: ['block printing', 'bookbinding'],
+  bio: 'Fiddle teacher, new to teaching private lessons at the studio.',
+  specialties: ['fiddle'],
+  programs: ['music-lessons'],
   payRate: 0.6,
   payRateType: 'percentage',
   isContractor: true,
@@ -138,6 +139,30 @@ export const mockContractorNotReady: Instructor = {
   },
   createdAt: new Date('2026-09-15T10:00:00Z'),
   updatedAt: new Date('2026-09-20T10:00:00Z'),
+};
+
+/**
+ * A contract craft instructor cleared to teach without a background check:
+ * craft classes are for adults, so only lesson teachers need one.
+ */
+export const mockCraftContractorReadyNoCheck: Instructor = {
+  id: 'instructor-010',
+  name: 'Wren Calloway',
+  email: 'wren@example.com',
+  phone: '304-555-0144',
+  status: 'active',
+  bio: 'Basket maker teaching beginner reed baskets.',
+  specialties: ['basket weaving'],
+  programs: ['craft-classes'],
+  payRate: 0.75,
+  payRateType: 'percentage',
+  isContractor: true,
+  readiness: {
+    contractorAgreement: { signedOn: '2026-11-08', reference: 'paper, in the office binder' },
+    paymentSetup: { completedOn: '2026-11-11', method: 'square-payroll' },
+  },
+  createdAt: new Date('2026-10-18T10:00:00Z'),
+  updatedAt: new Date('2026-11-11T10:00:00Z'),
 };
 
 /** A contract instructor with nothing recorded yet. */

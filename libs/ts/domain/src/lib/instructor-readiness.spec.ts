@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  backgroundCheckRequired,
   contractorAgreementSignedOnline,
   describeMissingReadiness,
   instructorReadiness,
@@ -13,8 +14,22 @@ const allDone: InstructorReadiness = {
   backgroundCheck: { clearedOn: '2026-09-10' },
   paymentSetup: { completedOn: '2026-09-12', method: 'square-payroll' },
 };
-/** A pay rate, the fourth readiness item. */
-const rated = { payRate: 0.8, payRateType: 'percentage' as const };
+/** A pay rate, the fourth readiness item, on a lesson teacher (who needs a background check). */
+const rated = {
+  payRate: 0.8,
+  payRateType: 'percentage' as const,
+  programs: ['music-lessons' as const],
+};
+
+describe('backgroundCheckRequired', () => {
+  it('is required only for lesson teachers', () => {
+    expect(backgroundCheckRequired({})).toBe(false);
+    expect(backgroundCheckRequired({ programs: [] })).toBe(false);
+    expect(backgroundCheckRequired({ programs: ['craft-classes'] })).toBe(false);
+    expect(backgroundCheckRequired({ programs: ['music-lessons'] })).toBe(true);
+    expect(backgroundCheckRequired({ programs: ['suzuki'] })).toBe(true);
+  });
+});
 
 describe('instructorReadiness', () => {
   it('is not applicable when the instructor is not a contractor', () => {
@@ -25,7 +40,7 @@ describe('instructorReadiness', () => {
   });
 
   it('lists every item as missing for a contractor with no record', () => {
-    expect(instructorReadiness({ isContractor: true })).toEqual({
+    expect(instructorReadiness({ isContractor: true, programs: ['suzuki'] })).toEqual({
       kind: 'not-ready',
       missing: ['contractor-agreement', 'background-check', 'payment-setup', 'pay-rate'],
     });
@@ -67,7 +82,9 @@ describe('instructorReadiness', () => {
   });
 
   it('needs a pay rate even when the paperwork is done', () => {
-    expect(instructorReadiness({ isContractor: true, readiness: allDone })).toEqual({
+    expect(
+      instructorReadiness({ isContractor: true, readiness: allDone, programs: ['suzuki'] })
+    ).toEqual({
       kind: 'not-ready',
       missing: ['pay-rate'],
     });
@@ -82,6 +99,57 @@ describe('instructorReadiness', () => {
     // Any kind of rate clears readiness; class payouts flag a non-percentage separately.
     expect(check({ payRate: 5000, payRateType: 'flat' })).toBe('ready');
     expect(check({ payRate: 2500, payRateType: 'hourly' })).toBe('ready');
+  });
+
+  describe('background check', () => {
+    const { backgroundCheck: _check, ...withoutCheck } = allDone;
+    const rate = { payRate: 0.75, payRateType: 'percentage' as const };
+
+    it('is not needed by a craft class instructor', () => {
+      expect(
+        instructorReadiness({
+          isContractor: true,
+          readiness: withoutCheck,
+          programs: ['craft-classes'],
+          ...rate,
+        })
+      ).toEqual({ kind: 'ready' });
+    });
+
+    it('is not needed when no program is ticked', () => {
+      expect(
+        instructorReadiness({ isContractor: true, readiness: withoutCheck, ...rate })
+      ).toEqual({ kind: 'ready' });
+      expect(instructorReadiness({ isContractor: true })).toEqual({
+        kind: 'not-ready',
+        missing: ['contractor-agreement', 'payment-setup', 'pay-rate'],
+      });
+    });
+
+    it.each([['music-lessons'], ['suzuki']] as const)(
+      'is needed by a %s teacher, even one who also teaches craft classes',
+      (program) => {
+        expect(
+          instructorReadiness({
+            isContractor: true,
+            readiness: withoutCheck,
+            programs: ['craft-classes', program],
+            ...rate,
+          })
+        ).toEqual({ kind: 'not-ready', missing: ['background-check'] });
+      }
+    );
+
+    it('counts as done when recorded, whether or not it was needed', () => {
+      expect(
+        instructorReadiness({
+          isContractor: true,
+          readiness: allDone,
+          programs: ['craft-classes'],
+          ...rate,
+        })
+      ).toEqual({ kind: 'ready' });
+    });
   });
 
   it('never asks a non-contractor for a pay rate', () => {

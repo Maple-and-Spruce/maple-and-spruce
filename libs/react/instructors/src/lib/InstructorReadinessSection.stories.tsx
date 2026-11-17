@@ -4,9 +4,10 @@ import { expect, fireEvent, fn, userEvent, within } from 'storybook/test';
 import {
   mockContractorNotReady,
   mockContractorReady,
+  mockCraftContractorReadyNoCheck,
   mockInstructorMinimal,
 } from '@maple/react/storybook-fixtures';
-import type { InstructorPayRateType } from '@maple/ts/domain';
+import type { InstructorPayRateType, InstructorProgram } from '@maple/ts/domain';
 import { InstructorReadinessSection } from './InstructorReadinessSection';
 import { readinessFormValuesFrom, type ReadinessFormValues } from './readiness-form';
 
@@ -19,11 +20,13 @@ function Harness({
   onChange,
   payRate,
   payRateType,
+  programs,
 }: {
   initial: ReadinessFormValues;
   onChange?: (patch: Partial<ReadinessFormValues>) => void;
   payRate?: number;
   payRateType?: InstructorPayRateType;
+  programs?: InstructorProgram[];
 }) {
   const [values, setValues] = useState(initial);
   return (
@@ -36,6 +39,7 @@ function Harness({
         }}
         payRate={payRate}
         payRateType={payRateType}
+        programs={programs}
       />
     </div>
   );
@@ -45,8 +49,14 @@ const meta = {
   title: 'Instructors/InstructorReadinessSection',
   component: Harness,
   parameters: { layout: 'centered' },
-  // The pay rate lives in its own form field; most stories have one set.
-  args: { onChange: fn(), payRate: 0.8, payRateType: 'percentage' },
+  // The pay rate and programs live in their own form fields. Most stories have a
+  // rate set and are a lesson teacher, who needs a background check.
+  args: {
+    onChange: fn(),
+    payRate: 0.8,
+    payRateType: 'percentage',
+    programs: ['music-lessons'],
+  },
 } satisfies Meta<typeof Harness>;
 
 export default meta;
@@ -175,5 +185,46 @@ export const TogglingContractorOff: Story = {
     await userEvent.click(canvas.getByRole('switch', { name: /paid contractor/i }));
     await expect(args.onChange).toHaveBeenCalledWith({ isContractor: false });
     await expect(canvas.queryByLabelText(/date signed/i)).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * A craft class instructor: no background check needed, so agreement, payment
+ * setup and a rate are enough. The check can still be recorded.
+ */
+export const CraftInstructorNeedsNoBackgroundCheck: Story = {
+  args: {
+    initial: readinessFormValuesFrom(mockCraftContractorReadyNoCheck),
+    payRate: 0.75,
+    programs: ['craft-classes'],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/ready to teach/i)).toBeInTheDocument();
+    await expect(canvas.queryByText(/missing/i)).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole('heading', { name: /background check \(optional\)/i })
+    ).toBeInTheDocument();
+    await expect(canvas.getByTestId('readiness-background-check-optional')).toBeInTheDocument();
+    await expect(canvas.getByLabelText(/date cleared/i)).toBeInTheDocument();
+  },
+};
+
+/** Ticking a lesson program makes the background check required again. */
+export const LessonTeacherNeedsBackgroundCheck: Story = {
+  args: {
+    initial: readinessFormValuesFrom(mockCraftContractorReadyNoCheck),
+    payRate: 0.75,
+    programs: ['craft-classes', 'music-lessons'],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/missing background check\./i)).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('heading', { name: /^background check$/i })
+    ).toBeInTheDocument();
+    await expect(
+      canvas.queryByTestId('readiness-background-check-optional')
+    ).not.toBeInTheDocument();
   },
 };
