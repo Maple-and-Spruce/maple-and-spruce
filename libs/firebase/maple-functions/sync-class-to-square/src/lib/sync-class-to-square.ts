@@ -26,7 +26,10 @@ import {
 } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import type { Class } from '@maple/ts/domain';
-import { isPrivateHoursClass } from '@maple/ts/domain';
+import {
+  classDescriptionToPlainText,
+  isPrivateHoursClass,
+} from '@maple/ts/domain';
 import {
   Square,
   SQUARE_SECRET_NAMES,
@@ -196,7 +199,7 @@ export const syncClassToSquare = onDocumentWritten(
         const created = await square.catalogService.createClassCatalogItem({
           classId: after.id,
           name: after.name,
-          description: after.description,
+          description: classDescriptionToPlainText(after.description),
           priceCents: after.priceCents,
         });
 
@@ -243,7 +246,9 @@ export const syncClassToSquare = onDocumentWritten(
         const updated = await square.catalogService.updateItem({
           squareItemId: after.squareCatalogItemId,
           name: nameChanged ? after.name : undefined,
-          description: descriptionChanged ? after.description : undefined,
+          description: descriptionChanged
+            ? classDescriptionToPlainText(after.description)
+            : undefined,
           variations: priceChanged
             ? [
                 {
