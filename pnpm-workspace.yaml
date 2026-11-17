@@ -44,16 +44,11 @@ strictPeerDependencies: false
 
 # A HIGH advisory with no patched release anywhere cannot be overridden away;
 # it is accepted here, with the reason, and `pnpm audit` reports it as ignored.
+# Nothing audits an ignored id again, so the daily security-autofix workflow
+# rechecks this list (`tools/security-autofix.ts recheck-accepted`) and fails
+# once an entry has a patched release or no longer matches anything installed.
 auditConfig:
   ignoreGhsas:
-    # braces <=3.0.3: stack exhaustion on deeply nested brace patterns. No
-    # patched release exists (latest is 3.0.3, advisory has no fix). braces
-    # only expands glob patterns written in our own build-tool configs
-    # (micromatch under fast-glob, webflow-cli, firebase-tools, nx), never
-    # request input, and it is in no production dependency tree
-    # (`pnpm why braces --prod` is empty). Accepted 2026-10-04; swap for an
-    # override once 3.0.4 ships.
-    - GHSA-vfj7-8cjw-p6xm
     # zod <4.6.6: memory exhaustion validating oversized constrained
     # collections. Patched only in 4.6.6; the 3.x line has no fix. The zod 3
     # copy comes only from @webflow/webflow-cli > @webflow/cloud-app and
