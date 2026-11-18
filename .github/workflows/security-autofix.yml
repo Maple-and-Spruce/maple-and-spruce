@@ -74,6 +74,40 @@ jobs:
             exit 1
           fi
 
+  # An advisory accepted in pnpm-workspace.yaml (auditConfig.ignoreGhsas) is
+  # hidden from `pnpm audit`, so the job below never sees it again, not even
+  # after a patched release ships. This asks GitHub about each accepted id and
+  # fails when one can now be fixed, or matches nothing installed any more;
+  # the error says which line to change. Separate job so it never stops the
+  # fixes themselves.
+  accepted-advisories:
+    name: Accepted advisories
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Recheck
+        run: npx tsx tools/security-autofix.ts recheck-accepted
+
   autofix:
     name: Audit, fix, verify, merge
     runs-on: ubuntu-latest

@@ -2,12 +2,17 @@ import { describe, it, expect } from 'vitest';
 import {
   Advisory,
   breakingKey,
+  compareVersions,
   diffAdvisories,
   directDependencyJumps,
+  evaluateAccepted,
   evaluateGate,
+  inVulnerableRange,
   majorJumps,
   parseAuditReport,
+  parseIgnoredGhsas,
   parseLockVersions,
+  toAcceptedAdvisory,
 } from './security-autofix';
 
 const adv = (id: string, module = 'pkg'): Advisory => ({
@@ -167,5 +172,149 @@ describe('evaluateGate', () => {
     const jump = { name: 'x', from: '1.0.0', to: '2.0.0' };
     expect(evaluateGate({ ...clean, lockJumps: [jump] }).automerge).toBe(false);
     expect(evaluateGate({ ...clean, directJumps: [jump] }).automerge).toBe(false);
+  });
+});
+
+describe('parseIgnoredGhsas', () => {
+  it('reads the ids and skips the comments between them', () => {
+    const yaml = [
+      'packages:',
+      "  - 'apps/*'",
+      'auditConfig:',
+      '  ignoreGhsas:',
+      '    # why the first one is accepted',
+      '    - GHSA-aaaa-bbbb-cccc',
+      '',
+      '    # why the second one is accepted,',
+      '    # over two lines',
+      "    - 'GHSA-dddd-eeee-ffff'",
+      '',
+      'overrides:',
+      '  - GHSA-not-in-the-list',
+    ].join('\n');
+
+    expect(parseIgnoredGhsas(yaml)).toEqual(['GHSA-aaaa-bbbb-cccc', 'GHSA-dddd-eeee-ffff']);
+  });
+
+  it('is empty when nothing is accepted', () => {
+    expect(parseIgnoredGhsas("packages:\n  - 'apps/*'\n")).toEqual([]);
+  });
+});
+
+describe('compareVersions', () => {
+  it('orders numerically, not as text', () => {
+    expect(compareVersions('4.0.10', '4.0.9')).toBe(1);
+    expect(compareVersions('2.3.2', '4.0.0')).toBe(-1);
+    expect(compareVersions('1.2.3', '1.2.3')).toBe(0);
+  });
+
+  it('puts a prerelease below its release', () => {
+    expect(compareVersions('4.0.8-beta.1', '4.0.8')).toBe(-1);
+  });
+});
+
+describe('inVulnerableRange', () => {
+  it('handles the comparator forms GitHub writes', () => {
+    expect(inVulnerableRange('4.0.7', '<= 4.0.7')).toBe(true);
+    expect(inVulnerableRange('4.0.8', '<= 4.0.7')).toBe(false);
+    expect(inVulnerableRange('4.0.4', '>= 4.0.0, < 4.0.8')).toBe(true);
+    expect(inVulnerableRange('2.3.2', '>= 4.0.0, < 4.0.8')).toBe(false);
+    expect(inVulnerableRange('1.2.3', '= 1.2.3')).toBe(true);
+  });
+
+  it('treats a range it cannot read as still affected', () => {
+    expect(inVulnerableRange('1.0.0', 'everything')).toBe(true);
+  });
+});
+
+describe('evaluateAccepted', () => {
+  const installed = new Map([
+    ['globber', new Set(['2.3.2', '4.0.7'])],
+    ['schema', new Set(['3.25.0', '4.6.7'])],
+  ]);
+  const one = (pkg: string, range: string, firstPatched: string | null) => ({
+    withdrawn: false,
+    ranges: [{ package: pkg, range, firstPatched }],
+  });
+
+  it('keeps waiting while no patched release exists', () => {
+    const v = evaluateAccepted('GHSA-x', one('globber', '<= 4.0.7', null), installed);
+
+    expect(v.status).toBe('waiting');
+    expect(v.detail).toContain('globber 2.3.2');
+    expect(v.detail).toContain('globber 4.0.7');
+  });
+
+  it('keeps waiting when the only patch is across a major version', () => {
+    const v = evaluateAccepted('GHSA-x', one('schema', '< 4.6.6', '4.6.6'), installed);
+
+    expect(v.status).toBe('waiting');
+    expect(v.detail).toContain('schema 3.25.0 (patched only in 4.6.6, a different major)');
+  });
+
+  it('is fixable once every affected copy has a patch in its own major', () => {
+    const v = evaluateAccepted(
+      'GHSA-x',
+      {
+        withdrawn: false,
+        ranges: [
+          { package: 'globber', range: '>= 4.0.0, <= 4.0.7', firstPatched: '4.0.8' },
+          { package: 'globber', range: '< 2.3.3', firstPatched: '2.3.3' },
+        ],
+      },
+      installed,
+    );
+
+    expect(v.status).toBe('fixable');
+    expect(v.detail).toContain('globber 4.0.7 -> 4.0.8');
+    expect(v.detail).toContain('globber 2.3.2 -> 2.3.3');
+  });
+
+  it('is partly fixable when one major line is patched and another is not', () => {
+    const v = evaluateAccepted('GHSA-x', one('globber', '<= 4.0.7', '4.0.8'), installed);
+
+    expect(v.status).toBe('partly-fixable');
+    expect(v.detail).toContain('globber 4.0.7 -> 4.0.8');
+    expect(v.detail).toContain('not for globber 2.3.2');
+  });
+
+  it('is stale once nothing installed is affected', () => {
+    expect(evaluateAccepted('GHSA-x', one('globber', '< 2.0.0', null), installed).status).toBe('stale');
+    expect(evaluateAccepted('GHSA-x', one('gone', '< 9.0.0', null), installed).status).toBe('stale');
+  });
+
+  it('is stale when the advisory was withdrawn', () => {
+    const v = evaluateAccepted(
+      'GHSA-x',
+      { ...one('globber', '<= 4.0.7', null), withdrawn: true },
+      installed,
+    );
+
+    expect(v.status).toBe('stale');
+  });
+});
+
+describe('toAcceptedAdvisory', () => {
+  it('keeps npm entries and reads the fields the API really returns', () => {
+    const a = toAcceptedAdvisory({
+      withdrawn_at: null,
+      vulnerabilities: [
+        {
+          package: { ecosystem: 'npm', name: 'globber' },
+          vulnerable_version_range: '<= 4.0.7',
+          first_patched_version: null,
+        },
+        {
+          package: { ecosystem: 'pip', name: 'globber' },
+          vulnerable_version_range: '< 1.0',
+          first_patched_version: '1.0',
+        },
+      ],
+    });
+
+    expect(a).toEqual({
+      withdrawn: false,
+      ranges: [{ package: 'globber', range: '<= 4.0.7', firstPatched: null }],
+    });
   });
 });

@@ -15,6 +15,13 @@
  *          --before before.json --after after.json
  *      `gate` decides whether the fix PR may merge itself. See evaluateGate.
  *
+ *   3. The daily look at what we chose to live with (security-autofix.yml):
+ *        npx tsx tools/security-autofix.ts recheck-accepted
+ *      An id in `auditConfig.ignoreGhsas` is invisible to `pnpm audit` from
+ *      then on, so nothing above ever looks at it again. This fails once a
+ *      patched release ships, or once the entry no longer matches anything
+ *      installed. See evaluateAccepted.
+ *
  * Dependabot is not the source here: it reports no alerts for this repo
  * (it cannot read the pnpm 11+ lockfile), so `pnpm audit` is the truth.
  *
@@ -240,6 +247,241 @@ export function evaluateGate(input: GateInput): GateVerdict {
   return { automerge: reasons.length === 0, reasons };
 }
 
+// ------------------------------------------------------ accepted advisories --
+
+/** GHSA ids under `auditConfig.ignoreGhsas` in pnpm-workspace.yaml. */
+export function parseIgnoredGhsas(workspaceYaml: string): string[] {
+  const ids: string[] = [];
+  let inList = false;
+  for (const line of workspaceYaml.split('\n')) {
+    if (/^\s*ignoreGhsas:\s*$/.test(line)) {
+      inList = true;
+      continue;
+    }
+    if (!inList) continue;
+    if (/^\s*(#.*)?$/.test(line)) continue;
+    const m = /^\s+-\s+['"]?(GHSA-[0-9a-z-]+)/i.exec(line);
+    if (!m) break;
+    ids.push(m[1]);
+  }
+  return ids;
+}
+
+type Version = [number, number, number, string];
+
+function parseVersion(v: string): Version | null {
+  const m = /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:-([0-9A-Za-z.-]+))?/.exec(v.trim());
+  if (!m) return null;
+  return [Number(m[1]), Number(m[2] ?? 0), Number(m[3] ?? 0), m[4] ?? ''];
+}
+
+/** Semver order. A prerelease sorts below its release; that is all we need. */
+export function compareVersions(a: string, b: string): number {
+  const x = parseVersion(a);
+  const y = parseVersion(b);
+  if (!x || !y) return 0;
+  for (let i = 0; i < 3; i++) {
+    if (x[i] !== y[i]) return (x[i] as number) < (y[i] as number) ? -1 : 1;
+  }
+  if (x[3] === y[3]) return 0;
+  if (x[3] === '') return 1;
+  if (y[3] === '') return -1;
+  return x[3] < y[3] ? -1 : 1;
+}
+
+/**
+ * Is `version` inside a GitHub advisory range such as `>= 4.0.0, < 4.0.8`,
+ * `<= 4.0.7` or `= 1.2.3`? An unreadable range counts as a match: when in
+ * doubt the installed copy is still treated as affected.
+ */
+export function inVulnerableRange(version: string, range: string): boolean {
+  if (!parseVersion(version)) return true;
+  return range
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .every((part) => {
+      const m = /^(<=|>=|<|>|=)?\s*(\S+)$/.exec(part);
+      if (!m || !parseVersion(m[2])) return true;
+      const c = compareVersions(version, m[2]);
+      switch (m[1] ?? '=') {
+        case '<':
+          return c < 0;
+        case '<=':
+          return c <= 0;
+        case '>':
+          return c > 0;
+        case '>=':
+          return c >= 0;
+        default:
+          return c === 0;
+      }
+    });
+}
+
+/** One affected-package entry of a GitHub advisory, trimmed to what we use. */
+export interface AdvisoryRange {
+  package: string;
+  range: string;
+  firstPatched: string | null;
+}
+
+export interface AcceptedAdvisory {
+  withdrawn: boolean;
+  ranges: AdvisoryRange[];
+}
+
+export type AcceptedStatus = 'waiting' | 'fixable' | 'partly-fixable' | 'stale';
+
+export interface AcceptedVerdict {
+  id: string;
+  status: AcceptedStatus;
+  /** One sentence for the log and the job summary. */
+  detail: string;
+}
+
+/**
+ * Should an accepted advisory still be accepted?
+ *
+ *   waiting         an affected copy is installed and nothing can be done yet
+ *   fixable         every affected copy has a patched release in its own major
+ *   partly-fixable  some do, some do not (one major line patched, another not)
+ *   stale           no affected copy is installed, or the advisory was withdrawn
+ *
+ * "In its own major" is the same line the gate draws: a patch that exists
+ * only across a major version is not a fix the daily job is allowed to take,
+ * so it does not end the wait.
+ */
+export function evaluateAccepted(
+  id: string,
+  advisory: AcceptedAdvisory,
+  installed: Map<string, Set<string>>,
+): AcceptedVerdict {
+  if (advisory.withdrawn) {
+    return { id, status: 'stale', detail: 'The advisory was withdrawn.' };
+  }
+  const fixable: string[] = [];
+  const stuck: string[] = [];
+  for (const r of advisory.ranges) {
+    const affected = [...(installed.get(r.package) ?? [])].filter((v) =>
+      inVulnerableRange(v, r.range),
+    );
+    for (const version of affected) {
+      const copy = `${r.package} ${version}`;
+      if (r.firstPatched === null) stuck.push(copy);
+      else if (breakingKey(r.firstPatched) === breakingKey(version)) {
+        fixable.push(`${copy} -> ${r.firstPatched}`);
+      } else stuck.push(`${copy} (patched only in ${r.firstPatched}, a different major)`);
+    }
+  }
+  if (fixable.length === 0 && stuck.length === 0) {
+    return { id, status: 'stale', detail: 'No affected version is installed any more.' };
+  }
+  if (fixable.length === 0) {
+    return { id, status: 'waiting', detail: `No patched release to move to for ${stuck.join(', ')}.` };
+  }
+  if (stuck.length === 0) {
+    return { id, status: 'fixable', detail: `A patched release exists: ${fixable.join(', ')}.` };
+  }
+  return {
+    id,
+    status: 'partly-fixable',
+    detail: `A patched release exists for ${fixable.join(', ')}, but not for ${stuck.join(', ')}.`,
+  };
+}
+
+const ACCEPTED_ACTION: Record<Exclude<AcceptedStatus, 'waiting'>, string> = {
+  fixable:
+    'Delete its entry from auditConfig.ignoreGhsas in pnpm-workspace.yaml; the next daily run then fixes it like any other advisory.',
+  'partly-fixable':
+    'Keep its entry in auditConfig.ignoreGhsas, add a scoped override in pnpm-workspace.yaml for the line that has a patch, and update the comment.',
+  stale: 'Delete its entry from auditConfig.ignoreGhsas in pnpm-workspace.yaml.',
+};
+
+interface RawGithubAdvisory {
+  withdrawn_at?: string | null;
+  vulnerabilities?: {
+    package?: { ecosystem?: string; name?: string };
+    vulnerable_version_range?: string;
+    first_patched_version?: string | null;
+  }[];
+}
+
+export function toAcceptedAdvisory(raw: RawGithubAdvisory): AcceptedAdvisory {
+  return {
+    withdrawn: Boolean(raw.withdrawn_at),
+    ranges: (raw.vulnerabilities ?? []).flatMap((v) => {
+      const name = v.package?.ecosystem === 'npm' ? v.package.name : undefined;
+      if (!name) return [];
+      return [
+        {
+          package: name,
+          range: v.vulnerable_version_range ?? '',
+          firstPatched: v.first_patched_version ?? null,
+        },
+      ];
+    }),
+  };
+}
+
+/** null = GitHub did not answer; never read as "nothing to do". */
+async function fetchAdvisory(id: string): Promise<AcceptedAdvisory | null> {
+  const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
+  try {
+    const res = await fetch(`https://api.github.com/advisories/${id}`, {
+      headers: {
+        accept: 'application/vnd.github+json',
+        'user-agent': 'security-autofix',
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) return null;
+    return toAcceptedAdvisory((await res.json()) as RawGithubAdvisory);
+  } catch {
+    return null;
+  }
+}
+
+async function recheckAccepted(): Promise<void> {
+  const ids = parseIgnoredGhsas(readFileSync('pnpm-workspace.yaml', 'utf8'));
+  const installed = parseLockVersions(readFileSync('pnpm-lock.yaml', 'utf8'));
+  const verdicts: AcceptedVerdict[] = [];
+  const unanswered: string[] = [];
+  for (const id of ids) {
+    const advisory = await fetchAdvisory(id);
+    if (!advisory) {
+      unanswered.push(id);
+      continue;
+    }
+    verdicts.push(evaluateAccepted(id, advisory, installed));
+  }
+
+  for (const id of unanswered) {
+    console.log(
+      `::warning title=Could not look up ${id}::GitHub did not return the advisory, so it was not rechecked today.`,
+    );
+  }
+  const rows = verdicts.map((v) => `| ${v.id} | ${v.status} | ${v.detail} |`);
+  summary(
+    ['### Accepted advisories', '', '| Advisory | Status | Detail |', '|---|---|---|', ...rows].join('\n'),
+  );
+
+  let failed = false;
+  for (const v of verdicts) {
+    if (v.status === 'waiting') {
+      console.log(`${v.id}: still waiting. ${v.detail}`);
+      continue;
+    }
+    failed = true;
+    console.log(
+      `::error title=Accepted advisory ${v.id} is ${v.status}::${v.detail} ${ACCEPTED_ACTION[v.status]}`,
+    );
+  }
+  if (failed) process.exit(1);
+  console.log(`${verdicts.length} accepted advisories rechecked; none can move yet.`);
+}
+
 // ---------------------------------------------------------------- running --
 
 function sleep(ms: number): void {
@@ -394,8 +636,9 @@ function gate(base: string, beforeFile: string, afterFile: string): void {
   output('body', body);
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const [cmd] = process.argv.slice(2);
+  if (cmd === 'recheck-accepted') return recheckAccepted();
   if (cmd === 'audit') {
     const advisories = runAudit(arg('dir') ?? '.');
     if (!advisories) unreachable();
@@ -414,10 +657,13 @@ function main(): void {
     if (!before || !after) throw new Error('gate needs --before and --after');
     return gate(arg('base') ?? 'origin/main', before, after);
   }
-  console.error('Usage: security-autofix.ts audit|pr-check|gate [options]');
+  console.error('Usage: security-autofix.ts audit|pr-check|gate|recheck-accepted [options]');
   process.exit(2);
 }
 
 if (require.main === module) {
-  main();
+  main().catch((err: unknown) => {
+    console.error(err);
+    process.exit(1);
+  });
 }
