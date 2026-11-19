@@ -65,17 +65,6 @@ auditConfig:
     # dependency but never imports, so no code path reaches it. Accepted
     # 2026-10-25.
     - GHSA-848j-6mx2-7j84
-    # picomatch <=4.0.7 (high): slow matching on certain glob patterns. No
-    # patched release exists on either line (latest is 4.0.7, the advisory
-    # has no fix, and 2.x stops at 2.3.2), so there is nothing to override
-    # to. picomatch only matches glob patterns written in our own build-tool
-    # configs: 2.3.2 under firebase-tools > chokidar and webflow-cli >
-    # fast-glob > micromatch, 4.x under nx, vite, vitest, storybook and
-    # typescript-eslint (tinyglobby / fdir). It never sees request input and
-    # is in no production dependency tree (`pnpm why picomatch --prod` is
-    # empty). Accepted 2026-11-17; swap for per-major overrides once a
-    # patched release ships.
-    - GHSA-fc5q-39xc-vjpf
 
 overrides:
   # @webflow/webflow-cli@2.x > @module-federation/enhanced@2.5.1 >
