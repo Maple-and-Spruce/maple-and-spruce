@@ -5,7 +5,7 @@ import type { Class, ClassSession } from '@maple/ts/domain';
 // module instead would pull @maple/firebase/{webflow,database,functions} into
 // the coverage report (~124 files at ~5%) and sink the global threshold.
 import {
-  findExpiredLiveClasses,
+  findPastClassesToRestore,
   isClassPast,
 } from './expire-past-class-pages.logic';
 
@@ -97,10 +97,9 @@ describe('isClassPast', () => {
     expect(isClassPast(classEntity, NOW)).toBe(false);
   });
 
-  it('does not expire on an unparseable dateTime it cannot reason about', () => {
-    // Garbage normalizes to epoch 0, which would read as "long past". Guard
-    // against silently unpublishing a page because of a bad field value by
-    // asserting the observable behaviour explicitly.
+  it('reads an unparseable dateTime as long past', () => {
+    // Garbage normalizes to epoch 0. That is harmless now: being past only
+    // ever puts a page back online, it never takes one down.
     const classEntity = makeClass({
       id: 'bad-1',
       sessions: [{ dateTime: 'not-a-date' } as unknown as ClassSession],
@@ -122,31 +121,24 @@ describe('isClassPast', () => {
   });
 });
 
-describe('findExpiredLiveClasses', () => {
+describe('findPastClassesToRestore', () => {
   const pastClass = makeClass({
     id: 'past-1',
     name: 'Stained Glass - TryIt Class',
+    webflowItemId: 'wf-past-1',
     sessions: [{ dateTime: new Date('2026-07-30T22:00:00.000Z') }],
   });
   const upcomingClass = makeClass({
     id: 'upcoming-1',
     name: 'Stained Glass - Pumpkins!',
+    webflowItemId: 'wf-upcoming-1',
     sessions: [{ dateTime: new Date('2026-09-03T22:00:00.000Z') }],
   });
 
-  it('returns past classes that are currently live', () => {
-    const live = new Map([
-      ['past-1', 'wf-past-1'],
-      ['upcoming-1', 'wf-upcoming-1'],
-    ]);
-
-    const result = findExpiredLiveClasses(
-      [pastClass, upcomingClass],
-      live,
-      NOW
-    );
-
-    expect(result).toEqual([
+  it('returns past published classes whose page is not live', () => {
+    expect(
+      findPastClassesToRestore([pastClass, upcomingClass], new Map(), NOW)
+    ).toEqual([
       {
         classId: 'past-1',
         name: 'Stained Glass - TryIt Class',
@@ -155,29 +147,34 @@ describe('findExpiredLiveClasses', () => {
     ]);
   });
 
-  it('skips past classes that are not live (idempotent re-run)', () => {
-    // Second run of the day: the item is already unpublished, so Webflow no
-    // longer reports it as live and there is nothing to do.
-    const live = new Map([['upcoming-1', 'wf-upcoming-1']]);
+  it('skips past classes that are already live (idempotent re-run)', () => {
+    const live = new Map([['past-1', 'wf-past-1']]);
 
-    expect(findExpiredLiveClasses([pastClass, upcomingClass], live, NOW)).toEqual(
+    expect(findPastClassesToRestore([pastClass], live, NOW)).toEqual([]);
+  });
+
+  it('never restores an upcoming class', () => {
+    expect(findPastClassesToRestore([upcomingClass], new Map(), NOW)).toEqual(
       []
     );
   });
 
-  it('never returns an upcoming class', () => {
-    const live = new Map([['upcoming-1', 'wf-upcoming-1']]);
+  it.each(['draft', 'cancelled', 'completed'] as const)(
+    'leaves a %s class off the site',
+    (status) => {
+      expect(
+        findPastClassesToRestore([{ ...pastClass, status }], new Map(), NOW)
+      ).toEqual([]);
+    }
+  );
 
-    expect(findExpiredLiveClasses([upcomingClass], live, NOW)).toEqual([]);
-  });
+  it('skips a class that was never synced to Webflow', () => {
+    const neverSynced = { ...pastClass, webflowItemId: undefined };
 
-  it('returns nothing when no classes are live', () => {
-    expect(findExpiredLiveClasses([pastClass], new Map(), NOW)).toEqual([]);
+    expect(findPastClassesToRestore([neverSynced], new Map(), NOW)).toEqual([]);
   });
 
   it('handles an empty class list', () => {
-    expect(
-      findExpiredLiveClasses([], new Map([['x', 'wf-x']]), NOW)
-    ).toEqual([]);
+    expect(findPastClassesToRestore([], new Map(), NOW)).toEqual([]);
   });
 });

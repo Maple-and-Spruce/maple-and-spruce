@@ -133,6 +133,36 @@ classes are never closed by these scripts (they stay open while any hour is ahea
 A staff-set `registrationClosesAt` earlier than the start is not in the CMS, so only the widget
 honours it.
 
+**Past classes.** A class page stays live after the class has happened (the nightly
+`expirePastClassPages` sweep now *restores* past pages instead of unpublishing them). Once the
+last session has ended, `class-page-embed.html` turns the page into a record of what ran, not a
+sales page: a "Past class" tag, the date with its year, "This class ran on ...", a "See upcoming
+classes" button and an "Ask when it runs again" email link. The price, seat count, registration
+column and phone bar are hidden. The template's other-dates list (`.cls-related-block`, same
+category) moves under that panel as "Coming up", without the current page; when it has no cards
+the panel says nothing like it is on the calendar.
+
+Two Designer settings make this work:
+
+- **`data-start` on `.cls-hero-content`, bound to `date-time`.** The CMS date list has no year,
+  so without it the script guesses (right within about 6 months) and a class from more than 6
+  months ago reads as next year's, looking bookable. Any date format the browser parses works.
+- **No visibility condition on `.cls-related-block`.** Webflow leaves a conditionally hidden
+  element out of the page entirely, and the block used to be bound to `is-full`. The script now
+  shows it only on full or past classes.
+
+Both were set on 2026-11-21 (via the Webflow MCP) and published.
+
+**Past classes index (`/past-classes`, page `6b020d7417a30df16ff29ea9`).** A duplicate of
+/upcoming-classes whose Classes list is filtered to `date-time` on or before yesterday (Webflow
+offers only `<=` / `>=` on dates) and `is-dev-environment` off, sorted newest first. The list
+section carries `data-msx-mode="past"`, which puts `webflow-embed.html` in past mode: months
+always show their year, and there is no price, seat count, booking button, "Next up" tag, featured
+card or sticky bar. The Policies section is hidden. /upcoming-classes links to it ("See classes we
+have run before") beside the calendar link. Both pages carry the same `webflow-embed.html`.
+A Studio Series that has started but not finished is listed here (its first date has passed);
+its page says registration is closed rather than "Past class".
+
 **Editing any embed means editing it in Webflow and keeping its file here in
 sync.** These files are the source of truth the embeds point to.
 

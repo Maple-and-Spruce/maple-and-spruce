@@ -446,21 +446,26 @@ export class ClassService {
   }
 
   /**
-   * Unpublish items from the live site.
+   * Put items back on the live site: clear `isDraft` on the staged item, then
+   * publish it.
    *
-   * Webflow's live-delete endpoint *unpublishes* and sets `isDraft = true` —
-   * it does NOT delete the CMS item. The class keeps its `webflowItemId` and
-   * slug, so a later sync can republish it untouched (e.g. if a class is
-   * rescheduled into the future).
+   * An item unpublished through Webflow's live-delete endpoint is left with
+   * `isDraft = true`, and Webflow refuses to publish a draft, so both steps are
+   * needed. Field data is not touched: the item keeps whatever the class sync
+   * last wrote. Used to restore past class pages (see `expirePastClassPages`).
    */
-  async unpublishItems(itemIds: string[]): Promise<void> {
+  async restoreItems(itemIds: string[]): Promise<void> {
     if (itemIds.length === 0) return;
 
-    // Webflow caps bulk live-deletes at 100 items per request.
+    // Webflow caps bulk item updates and publishes at 100 items per request.
     const BATCH_SIZE = 100;
     for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
-      await this.client.collections.items.deleteItemsLive(this.collectionId, {
-        items: itemIds.slice(i, i + BATCH_SIZE).map((id) => ({ id })),
+      const batch = itemIds.slice(i, i + BATCH_SIZE);
+      await this.client.collections.items.updateItems(this.collectionId, {
+        items: batch.map((id) => ({ id, isDraft: false, isArchived: false })),
+      });
+      await this.client.collections.items.publishItem(this.collectionId, {
+        itemIds: batch,
       });
     }
   }

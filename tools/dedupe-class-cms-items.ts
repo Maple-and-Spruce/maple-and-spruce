@@ -33,7 +33,7 @@
  *
  * Removal is two calls, not one. `deleteItemLive` unpublishes and sets
  * `isDraft = true`; it does not remove the item (see `ClassService.
- * unpublishItems`). Deleting only-live leaves a staged ghost that the next
+ * restoreItems`, which undoes it). Deleting only-live leaves a staged ghost that the next
  * full-site publish can resurrect; deleting only-staged leaves the card live.
  * So a live loser gets both, in that order.
  *
@@ -370,7 +370,7 @@ async function main(): Promise<void> {
   for (const item of doomed) {
     try {
       // A live item must be taken off the published site first. Webflow's
-      // live-delete endpoint unpublishes (see ClassService.unpublishItems), so
+      // live-delete endpoint unpublishes (it sets `isDraft` instead of deleting), so
       // the staged delete below is what actually removes it — but if the live
       // call did remove it outright, that staged call 404s. That 404 means
       // "already gone", not a failure, so it must not be reported as one.

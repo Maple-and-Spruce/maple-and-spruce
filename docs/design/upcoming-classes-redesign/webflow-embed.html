@@ -103,6 +103,9 @@
 /* Made in the studio (Instagram) */
 .msx-made{padding:48px 16px;text-align:center}
 .msx-made .instagram-media{margin:16px auto 0!important}
+/* Past classes page (data-msx-mode="past" on the list section): a record of what ran, so no
+   price, seats or booking. Each row links to the class page, which shows it as a past class. */
+.msx-past .cls-card-footer{display:none!important}
 </style>
 <script>
 (function () {
@@ -163,6 +166,9 @@
     var items = Array.prototype.slice.call(grid.querySelectorAll('.cls-card'));
     if (!items.length) return;
     grid.classList.add('msx');
+    // The past-classes page lists the same collection newest first, filtered to dates before today.
+    var PAST = !!grid.closest('[data-msx-mode="past"]');
+    if (PAST) grid.classList.add('msx-past');
 
     var now = new Date();
     var rows = items.map(function (item) {
@@ -185,22 +191,23 @@
       // (isClassRegistrationOpen). The list is filtered to date-time on or after *today*, so a
       // class stays listed for the rest of its own day. A private-hours class stays open while
       // any hour is ahead, which the list cannot see, so it is never closed here.
-      var start = hours ? null : firstStart(d, time, item);
+      var start = hours || PAST ? null : firstStart(d, time, item);
       var closed = !!start && start <= now;
+      if (PAST) full = false;
       // The [data-msx-featured] marker's visibility is bound to the CMS is-featured Switch, set
       // from the admin portal. (A Switch cannot bind to an attribute, only to visibility.)
       // Off renders it with w-condition-invisible, or leaves it out.
       var flag = item.querySelector('[data-msx-featured]');
       var featured = !!flag && !flag.classList.contains('w-condition-invisible');
       return { item: item, name: name.trim(), date: d, spots: spots, series: series, workshop: workshop,
-        craft: craft ? craft.id : 'other', full: full, closed: closed, big: featured && !full && !closed,
+        craft: craft ? craft.id : 'other', full: full, closed: closed, big: !PAST && featured && !full && !closed,
         time: time,
         // A private-hours class counts open booking slots, not seats. The sync's wording marks it
         // ("17 slots open"; "hours" before the 2026-11 rename).
         hours: hours ? (spots === 1 ? '1 slot open' : spots + ' slots open') : '' };
     });
 
-    var next = rows.filter(function (r) { return !r.full && !r.closed; })[0];
+    var next = PAST ? null : rows.filter(function (r) { return !r.full && !r.closed; })[0];
 
     rows.forEach(function (r) {
       var item = r.item;
@@ -241,7 +248,7 @@
         if (dates) dates.textContent = (r.series || r.workshop ? 'Sessions: ' : '') + dates.textContent + (r.time ? ' at ' + r.time : '');
       }
 
-      if (footer) {
+      if (footer && !PAST) {
         var priceWrap = el('div', 'msx-price');
         var price = footer.querySelector('.cls-card-price');
         if (price) priceWrap.appendChild(price);
@@ -276,7 +283,7 @@
       var key = part(r.date, { year: 'numeric', month: 'long' });
       if (key !== lastKey) {
         var label = part(r.date, { month: 'long' });
-        if (+part(r.date, { year: 'numeric' }) !== thisYear) label = key;
+        if (PAST || +part(r.date, { year: 'numeric' }) !== thisYear) label = key;
         var h = el('h2', 'msx-month', label);
         grid.insertBefore(h, r.item);
         months.push({ h: h, rows: [] });
@@ -297,7 +304,7 @@
       var bar = el('div', 'msx-filters');
       bar.setAttribute('role', 'group');
       bar.setAttribute('aria-label', 'Filter classes');
-      var empty = el('p', 'msx-empty-filter', 'Nothing on the calendar for that yet.');
+      var empty = el('p', 'msx-empty-filter', PAST ? 'We have not run one of those yet.' : 'Nothing on the calendar for that yet.');
       empty.hidden = true;
       var state = { id: 'all', open: false };
       var toggle = null;

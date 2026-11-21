@@ -500,6 +500,7 @@ describe('ClassService', () => {
         deleteItem: vi.fn(),
         deleteItemLive: vi.fn(),
         deleteItemsLive: vi.fn(),
+        updateItems: vi.fn(),
         publishItem: vi.fn(),
       },
     },
@@ -1063,40 +1064,59 @@ describe('ClassService', () => {
     });
   });
 
-  describe('unpublishItems', () => {
-    it('unpublishes the given item ids', async () => {
-      mockClient.collections.items.deleteItemsLive.mockResolvedValue(undefined);
+  describe('restoreItems', () => {
+    it('clears the draft flag, then publishes the items', async () => {
+      const calls: string[] = [];
+      mockClient.collections.items.updateItems.mockImplementation(async () => {
+        calls.push('update');
+      });
+      mockClient.collections.items.publishItem.mockImplementation(async () => {
+        calls.push('publish');
+      });
 
-      await service.unpublishItems(['wf-1', 'wf-2']);
+      await service.restoreItems(['wf-1', 'wf-2']);
 
-      expect(mockClient.collections.items.deleteItemsLive).toHaveBeenCalledWith(
+      expect(mockClient.collections.items.updateItems).toHaveBeenCalledWith(
         COLLECTION_ID,
-        { items: [{ id: 'wf-1' }, { id: 'wf-2' }] }
+        {
+          items: [
+            { id: 'wf-1', isDraft: false, isArchived: false },
+            { id: 'wf-2', isDraft: false, isArchived: false },
+          ],
+        }
       );
+      expect(mockClient.collections.items.publishItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        { itemIds: ['wf-1', 'wf-2'] }
+      );
+      // Webflow refuses to publish a draft, so the update must land first.
+      expect(calls).toEqual(['update', 'publish']);
+    });
+
+    it('never sends field data, so the page keeps its last synced content', async () => {
+      await service.restoreItems(['wf-1']);
+
+      const [, request] = mockClient.collections.items.updateItems.mock.calls[0];
+      expect(request.items[0]).not.toHaveProperty('fieldData');
     });
 
     it('does not call the API for an empty list', async () => {
-      await service.unpublishItems([]);
+      await service.restoreItems([]);
 
-      expect(
-        mockClient.collections.items.deleteItemsLive
-      ).not.toHaveBeenCalled();
+      expect(mockClient.collections.items.updateItems).not.toHaveBeenCalled();
+      expect(mockClient.collections.items.publishItem).not.toHaveBeenCalled();
     });
 
     it('batches requests at the Webflow 100-item cap', async () => {
-      mockClient.collections.items.deleteItemsLive.mockResolvedValue(undefined);
       const ids = Array.from({ length: 150 }, (_, i) => `wf-${i}`);
 
-      await service.unpublishItems(ids);
+      await service.restoreItems(ids);
 
-      expect(mockClient.collections.items.deleteItemsLive).toHaveBeenCalledTimes(
-        2
-      );
-      const [firstCall, secondCall] =
-        mockClient.collections.items.deleteItemsLive.mock.calls;
-      expect(firstCall[1].items).toHaveLength(100);
-      expect(secondCall[1].items).toHaveLength(50);
-      expect(secondCall[1].items[49]).toEqual({ id: 'wf-149' });
+      expect(mockClient.collections.items.updateItems).toHaveBeenCalledTimes(2);
+      expect(mockClient.collections.items.publishItem).toHaveBeenCalledTimes(2);
+      const [, second] = mockClient.collections.items.publishItem.mock.calls[1];
+      expect(second.itemIds).toHaveLength(50);
+      expect(second.itemIds[49]).toBe('wf-149');
     });
   });
 });

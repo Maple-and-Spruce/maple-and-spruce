@@ -6,6 +6,32 @@
 
 ## Current Status
 
+### Past class pages stay up (2026-11-21)
+
+- **Categories first.** An inventory of prod found 64 classes and 5 categories, none with a
+  description. No category had been created since August, so every newer kind of class had none
+  (19 of 64). Katie's goal is to link closely related offerings, so categories stay narrow
+  ("<craft> <kind>": Stained Glass TryIt / Studio Series / Workshop / Pumpkins / Holiday, Hammered
+  Copper Jewelry, Basket Weaving TryIt, ...) and get no descriptions. Applied with an untracked
+  one-off script: 2 renames (fixing "Stain Glass"), 6 new categories (11 total), 27 classes refiled.
+- **Past pages stay live.** `expirePastClassPages` now restores past class pages (clears the
+  draft flag and publishes) instead of unpublishing them, so past offerings stay up for search,
+  AI answers, aggregators and prospective instructors. It keeps its name because the library
+  name is the deploy filter.
+- **Class page past mode.** `class-page-embed.html` shows a past class as a record: "Past class"
+  tag, date with year, "This class ran on ...", "See upcoming classes", "Ask when it runs again",
+  and the same-category list as "Coming up". Price, seats, registration and phone bar are hidden.
+- **Webflow (done, live):** `data-start` on `.cls-hero-content` bound to `date-time`, the `is-full`
+  visibility condition removed from `.cls-related-block`, and the new class-page embed pasted and
+  published. Without `data-start`, a class more than ~6 months old would read as next year's.
+- **/past-classes index page:** the Classes list filtered to dates on or before yesterday, newest
+  first, with `webflow-embed.html` in a new past mode (no prices, seats or booking). Linked from
+  /upcoming-classes. Built and checked on staging; goes live with the next site publish.
+- **Audit:** no other published page lists classes. Only /upcoming-classes (future dates) and each
+  class page's same-category block link to class pages; the Class Categories template is a draft.
+- **Until this merges**, the old nightly sweep keeps unpublishing past pages, so /past-classes
+  would be nearly empty.
+
 ### Class instructors paid per class, not only monthly (2026-11-21, #344)
 
 - The first contract instructor was paid twice in November, once per class, and the portal could
