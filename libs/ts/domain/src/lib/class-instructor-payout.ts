@@ -1,14 +1,19 @@
 /**
  * Class-instructor payouts: what M&S owes a contract instructor for the
- * classes they taught in a month.
+ * classes they have taught and not yet been paid for.
+ *
+ * Statements are made on demand (#344): David can pay after each class,
+ * weekly or monthly. A statement claims every finished session nobody has
+ * claimed yet, optionally only up to a chosen day, so a later statement in
+ * the same month picks up only what is left.
  *
  * Policy (David, 2026-09-29):
  * - The instructor earns `payRate` (e.g. 0.8) of what the student paid for
  *   the class — after discounts, before sales tax (`subtotalCents`). M&S
  *   absorbs the card fee.
  * - Revenue is split evenly across a class's sessions, and each session is
- *   paid in the month (studio time) it was held. A class running Oct 28 and
- *   Nov 4 lands half on October's statement and half on November's.
+ *   payable once it has ended. A class running Oct 28 and Nov 4 earns half
+ *   after each session.
  * - A registration earns a share whenever M&S kept the money: `confirmed`,
  *   `no-show`, or `cancelled` without a refund.
  * - A refund before the statement is marked paid means void and regenerate
@@ -122,7 +127,10 @@ export interface ClassInstructorStatementDraft {
   instructorName: string;
   /** The rate applied; undefined when the instructor has no percentage rate. */
   payRate?: number;
-  /** `YYYY-MM` */
+  /**
+   * `YYYY-MM`. A label, not a key: the month of the latest session covered.
+   * An instructor can have several statements in one month.
+   */
   month: string;
   classes: StatementClassLine[];
   adjustments: StatementAdjustment[];
@@ -177,9 +185,13 @@ export function isInStatementWindow(
   return sessionMonth === month || (sessionMonth >= startMonth && sessionMonth < month);
 }
 
-/** True once every day of `month` is in the past, in studio time. */
-export function isPayoutMonthOver(month: string, now: Date): boolean {
-  return monthKeyInStudioZone(now) > month;
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A real calendar day written `YYYY-MM-DD`. */
+export function isPayoutDay(value: unknown): value is string {
+  if (typeof value !== 'string' || !DAY_PATTERN.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
 // ── Money ─────────────────────────────────────────────────────────────
@@ -246,6 +258,12 @@ export interface BuildClassInstructorStatementInput {
   /** Ids of statements that have been marked paid. */
   paidStatementIds: ReadonlySet<string>;
   now: Date;
+  /**
+   * `YYYY-MM-DD` in studio time. Sessions held after this day are left for a
+   * later statement. It can only narrow what is claimed: a session that has
+   * not ended by `now` is never included, whatever this says.
+   */
+  throughDate?: string;
   /** Defaults to `CLASS_INSTRUCTOR_PAYOUTS_START_MONTH`. */
   startMonth?: string;
 }
@@ -284,6 +302,7 @@ export function buildClassInstructorStatementDraft(
         startMonth,
         rate,
         now,
+        throughDate: input.throughDate,
         existingIds,
         entries,
       });
@@ -342,6 +361,7 @@ function buildClassLine(
     startMonth: string;
     rate: number | undefined;
     now: Date;
+    throughDate: string | undefined;
     existingIds: Set<string>;
     entries: ProposedLedgerEntry[];
   }
@@ -382,6 +402,7 @@ function buildClassLine(
       const sessionMonth = monthKeyInStudioZone(at);
       if (!isInStatementWindow(sessionMonth, ctx.month, ctx.startMonth)) return;
       if (getSessionEndTime(session, classEntity.durationMinutes) > ctx.now) return;
+      if (ctx.throughDate !== undefined && zonedDateKey(at) > ctx.throughDate) return;
       // A private-hours booking has exactly one entry. Its id doesn't use the
       // session index, which shifts if hours are added before it later; a
       // shifted id would read as unpaid and pay the same booking twice.
@@ -482,6 +503,52 @@ function refundAdjustment(
   };
 }
 
+// ── On demand ─────────────────────────────────────────────────────────
+
+/**
+ * Everything the instructor is owed right now that no statement has claimed:
+ * every finished session back to the start month (up to `throughDate` when
+ * given), plus refund adjustments.
+ *
+ * The draft's `month` is a label: the month of the latest session it covers,
+ * or the current month when it holds only adjustments.
+ */
+export function buildOnDemandStatementDraft(
+  input: Omit<BuildClassInstructorStatementInput, 'month'>
+): ClassInstructorStatementDraft {
+  const draft = buildClassInstructorStatementDraft({
+    ...input,
+    month: monthKeyInStudioZone(input.now),
+  });
+  const sessionMonths = draft.classes.flatMap((line) =>
+    line.sessions.map((s) => monthKeyInStudioZone(s.at))
+  );
+  if (sessionMonths.length === 0) return draft;
+  const month = sessionMonths.reduce((latest, m) => (m > latest ? m : latest));
+  return {
+    ...draft,
+    month,
+    classes: draft.classes.map((line) => ({
+      ...line,
+      includesEarlierMonths: line.sessions.some((s) => monthKeyInStudioZone(s.at) < month),
+    })),
+  };
+}
+
+/**
+ * The first and last studio day (`YYYY-MM-DD`) of the sessions a statement
+ * or draft pays for. Undefined when it holds only adjustments.
+ */
+export function statementCoverage(
+  statement: Pick<ClassInstructorStatementDraft, 'classes'>
+): { from: string; to: string } | undefined {
+  const days = statement.classes
+    .flatMap((line) => line.sessions.map((s) => zonedDateKey(s.at)))
+    .sort();
+  if (days.length === 0) return undefined;
+  return { from: days[0], to: days[days.length - 1] };
+}
+
 // ── Stale check ───────────────────────────────────────────────────────
 
 export type StatementStaleReason =
@@ -492,7 +559,7 @@ export type StatementStaleReason =
  * Why a pending statement no longer matches the data — a registration on it
  * was refunded, or a class's sessions were edited. The fix is to void and
  * regenerate. Paid and void statements are never stale: refunds after
- * payment are handled as next month's adjustment.
+ * payment are handled as the next statement's adjustment.
  */
 export function statementStaleReasons(
   statement: Pick<ClassInstructorStatement, 'status' | 'classes'>,
@@ -550,6 +617,24 @@ export function paidTotalForYear(
       )
       .map((s) => s.totalOwedCents)
   );
+}
+
+/**
+ * What an instructor was paid in every calendar year they were paid in, by
+ * the day David paid it. Keyed by year (`"2026"`). Last year's figure is the
+ * one needed in January for the 1099-NEC and the workers' comp audit.
+ */
+export function paidTotalsByYear(
+  statements: ClassInstructorStatement[],
+  instructorId: string
+): Record<string, number> {
+  const totals: Record<string, number> = {};
+  for (const s of statements) {
+    if (s.instructorId !== instructorId || s.status !== 'paid' || !s.paidOn) continue;
+    const year = s.paidOn.slice(0, 4);
+    totals[year] = (totals[year] ?? 0) + s.totalOwedCents;
+  }
+  return totals;
 }
 
 function sum(values: number[]): number {

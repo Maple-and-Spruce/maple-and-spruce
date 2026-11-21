@@ -2,7 +2,8 @@
  * Class-instructor statement validation
  *
  * Vest suites for the class-instructor payout statement: generating one for
- * an instructor and month, and recording that David paid it.
+ * an instructor (optionally only up to a chosen day), and recording that
+ * David paid it.
  * @see https://vestjs.dev/
  */
 import { test, enforce, only } from 'vest';
@@ -11,7 +12,8 @@ import type { ClassInstructorPaymentMethod } from '@maple/ts/domain';
 
 export interface GenerateClassInstructorStatementInput {
   instructorId?: string;
-  month?: string;
+  /** `YYYY-MM-DD`; optional. */
+  throughDate?: string;
 }
 
 export interface MarkClassInstructorStatementPaidInput {
@@ -22,7 +24,6 @@ export interface MarkClassInstructorStatementPaidInput {
 }
 
 const PAYMENT_METHODS: ClassInstructorPaymentMethod[] = ['payroll', 'bill-pay', 'other'];
-const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 function isRealDay(value: string): boolean {
@@ -38,8 +39,13 @@ export const generateClassInstructorStatementValidation = staticSuite(
       enforce(data.instructorId).isNotBlank();
     });
 
-    test('month', 'Month must be YYYY-MM', () => {
-      enforce(data.month).isString().matches(MONTH);
+    test('throughDate', 'Through date must be a real date (YYYY-MM-DD)', () => {
+      if (data.throughDate === undefined) return;
+      enforce(
+        typeof data.throughDate === 'string' &&
+          DAY.test(data.throughDate) &&
+          isRealDay(data.throughDate)
+      ).isTruthy();
     });
   }
 );

@@ -8,7 +8,7 @@ import {
   setFirestoreDoc,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
-import { monthKeyInStudioZone } from '@maple/ts/domain';
+import { monthKeyInStudioZone, zonedDateKey } from '@maple/ts/domain';
 import type {
   GenerateClassInstructorStatementRequest,
   GenerateClassInstructorStatementResponse,
@@ -26,8 +26,10 @@ import type {
  * generates racing, and not by voiding and regenerating — and that a refund
  * after payment comes off the next statement.
  *
- * The functions read the real clock and only generate months that are over,
- * so the fixtures sit in the two months before the current one.
+ * Statements are made on demand (#344): any finished session can go on one,
+ * and `throughDate` leaves later sessions for the next. The functions read
+ * the real clock, so the fixtures sit in the two months before the current
+ * one, and the per-class scenario at the bottom a few days back.
  */
 
 const route = (name: string) => `payouts/${name}`;
@@ -44,6 +46,16 @@ function monthsAgo(n: number, day = 15): Date {
 
 const EARLIER = monthKeyInStudioZone(monthsAgo(2));
 const LATER = monthKeyInStudioZone(monthsAgo(1));
+/** The last day of the earlier month: a cutoff between the glass class's two sessions. */
+const END_OF_EARLIER = zonedDateKey(
+  new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 1, 0, 18))
+);
+
+function daysAgo(n: number): Date {
+  const now = new Date();
+  // 16:00 UTC is late morning in the studio, so the studio day matches the UTC day.
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - n, 16));
+}
 
 const created = new Date();
 /** Mid-year, so the "paid this year" total is stable whenever the suite runs. */
@@ -78,11 +90,20 @@ describe('class-instructor payouts', () => {
     });
   }
 
-  const generate = (instructorId: string, month: string) =>
+  const generate = (instructorId: string, throughDate?: string) =>
     call<GenerateClassInstructorStatementRequest, GenerateClassInstructorStatementResponse>(
       'generateClassInstructorStatement',
-      { instructorId, month }
+      { instructorId, ...(throughDate && { throughDate }) }
     );
+
+  const preview = async (throughDate?: string) => {
+    const result = await call<unknown, PreviewClassInstructorPayoutsResponse>(
+      'previewClassInstructorPayouts',
+      throughDate ? { throughDate } : {}
+    );
+    expect(result.status).toBe(200);
+    return Object.fromEntries(result.data!.previews.map((p) => [p.instructorId, p]));
+  };
 
   beforeAll(async () => {
     await clearAuthEmulator();
@@ -151,34 +172,37 @@ describe('class-instructor payouts', () => {
     }
   });
 
-  it('previews each instructor\'s share of the month, split by session', async () => {
-    const result = await call<unknown, PreviewClassInstructorPayoutsResponse>(
-      'previewClassInstructorPayouts',
-      { month: EARLIER }
-    );
-    expect(result.status).toBe(200);
-    expect(result.data?.monthIsOver).toBe(true);
-
-    const byId = Object.fromEntries(result.data!.previews.map((p) => [p.instructorId, p]));
+  it('previews each instructor\'s share up to a day, split by session', async () => {
+    const byId = await preview(END_OF_EARLIER);
     // Half of each glass registration (the other session is next month), 80% of that.
-    expect(byId['inst-glass']).toMatchObject({ grossCents: 15000, shareCents: 12000, totalOwedCents: 12000 });
+    expect(byId['inst-glass']).toMatchObject({
+      grossCents: 15000,
+      shareCents: 12000,
+      totalOwedCents: 12000,
+      owedCents: 12000,
+      pendingStatements: [],
+      paidThisYearCents: 0,
+    });
     expect(byId['inst-glass'].classes[0]).toMatchObject({ headcount: 3, totalSessions: 2 });
     expect(byId['inst-weave']).toMatchObject({ grossCents: 6000, shareCents: 4800 });
     expect(byId['inst-norate']).toMatchObject({ missingRateConfig: true, shareCents: 0 });
+
+    // With no cutoff, both glass sessions have finished and both are owed.
+    const everything = await preview();
+    expect(everything['inst-glass']).toMatchObject({ grossCents: 30000, totalOwedCents: 24000 });
   });
 
-  it('refuses the current month and an instructor without a rate', async () => {
-    const current = await generate('inst-glass', monthKeyInStudioZone(new Date()));
-    expect(current.status).toBe(400);
-    expect(message(current)).toMatch(/isn't over yet/);
+  it('refuses a bad through date and an instructor without a rate', async () => {
+    const badDay = await generate('inst-glass', '2026-02-30');
+    expect(badDay.status).toBe(400);
 
-    const noRate = await generate('inst-norate', EARLIER);
+    const noRate = await generate('inst-norate');
     expect(noRate.status).toBe(400);
     expect(message(noRate)).toMatch(/no percentage pay rate/);
   });
 
   it('generates a statement once, and never twice', async () => {
-    const first = await generate('inst-glass', EARLIER);
+    const first = await generate('inst-glass', END_OF_EARLIER);
     expect(first.status).toBe(200);
     expect(first.data?.statement).toMatchObject({
       instructorId: 'inst-glass',
@@ -193,13 +217,22 @@ describe('class-instructor payouts', () => {
       'class-session_reg-g2_0',
     ]);
 
-    const again = await generate('inst-glass', EARLIER);
+    // The same sessions again: there is nothing left to claim.
+    const again = await generate('inst-glass', END_OF_EARLIER);
     expect(again.status).toBe(400);
-    expect(message(again)).toMatch(/already exists/);
+    expect(message(again)).toMatch(/Nothing unpaid/);
+
+    // Generated but not yet marked paid still reads as owed.
+    const byId = await preview(END_OF_EARLIER);
+    expect(byId['inst-glass']).toMatchObject({
+      totalOwedCents: 0,
+      owedCents: 12000,
+      pendingStatements: [{ id: first.data!.statement.id, totalOwedCents: 12000 }],
+    });
   });
 
   it('lets exactly one of two racing generates through', async () => {
-    const results = await Promise.all([generate('inst-weave', EARLIER), generate('inst-weave', EARLIER)]);
+    const results = await Promise.all([generate('inst-weave'), generate('inst-weave')]);
     expect(results.map((r) => r.status).sort()).toEqual([200, 400]);
 
     const list = await call<unknown, GetClassInstructorStatementsResponse>(
@@ -222,7 +255,7 @@ describe('class-instructor payouts', () => {
     );
     expect(voided.data?.statement.status).toBe('void');
 
-    const regenerated = await generate('inst-weave', EARLIER);
+    const regenerated = await generate('inst-weave');
     expect(regenerated.status).toBe(200);
     expect(regenerated.data?.statement.id).not.toBe(original.id);
     expect(regenerated.data?.statement.totalOwedCents).toBe(original.totalOwedCents);
@@ -231,8 +264,8 @@ describe('class-instructor payouts', () => {
     expect(voidAgain.status).toBe(400);
   });
 
-  it('puts the next month\'s session on the next statement', async () => {
-    const later = await generate('inst-glass', LATER);
+  it('puts the later session on the next statement, leaving the first alone', async () => {
+    const later = await generate('inst-glass');
     expect(later.status).toBe(200);
     expect(later.data?.statement).toMatchObject({ grossCents: 15000, shareCents: 12000 });
     expect(later.data?.statement.entryIds.sort()).toEqual([
@@ -292,7 +325,7 @@ describe('class-instructor payouts', () => {
     // Void and regenerate: reg-g1's later session drops out, and the $40
     // already paid for it comes back off as an adjustment.
     await call('voidClassInstructorStatement', { id: later.id });
-    const regenerated = await generate('inst-glass', LATER);
+    const regenerated = await generate('inst-glass');
     expect(regenerated.status).toBe(200);
     expect(regenerated.data?.statement).toMatchObject({
       grossCents: 10000,
@@ -316,3 +349,196 @@ describe('class-instructor payouts', () => {
     expect(list.data?.paidThisYearByInstructor).toEqual({ 'inst-glass': 12000 });
   });
 });
+
+/**
+ * #344, the case that started it. An instructor on 75% teaches two
+ * one-session classes close together, each with eight paid seats at $65 and
+ * one refunded seat. She is paid $390 three days after the first class and
+ * $390 the day after the second. The portal must show $0 owed after each
+ * payment and end with two paid statements, not one figure for the month.
+ *
+ * Runs after the suite above and leaves its data in place: these fixtures
+ * use their own instructor and classes.
+ */
+describe('class-instructor payouts: paid per class', () => {
+  let admin: TestUser;
+
+  const FIRST_CLASS = daysAgo(10);
+  const SECOND_CLASS = daysAgo(3);
+  const FIRST_DAY = zonedDateKey(FIRST_CLASS);
+  const FIRST_PAID_ON = zonedDateKey(daysAgo(7));
+  const SECOND_PAID_ON = zonedDateKey(daysAgo(2));
+
+  async function call<Req, Res>(name: string, data: Req) {
+    return callFunction<Req, Res>({ functionName: route(name), data, idToken: admin.idToken });
+  }
+  const fern = async (throughDate?: string) => {
+    const result = await call<unknown, PreviewClassInstructorPayoutsResponse>(
+      'previewClassInstructorPayouts',
+      throughDate ? { throughDate } : {}
+    );
+    expect(result.status).toBe(200);
+    return result.data!.previews.find((p) => p.instructorId === 'inst-fern');
+  };
+  const generate = (throughDate?: string) =>
+    call<GenerateClassInstructorStatementRequest, GenerateClassInstructorStatementResponse>(
+      'generateClassInstructorStatement',
+      { instructorId: 'inst-fern', ...(throughDate && { throughDate }) }
+    );
+  const markPaid = (id: string, paidOn: string, paymentReference: string) =>
+    call<unknown, MarkClassInstructorStatementPaidResponse>('markClassInstructorStatementPaid', {
+      id,
+      paidOn,
+      paymentMethod: 'payroll',
+      paymentReference,
+    });
+
+  beforeAll(async () => {
+    admin = await createTestUser('per-class-admin@example.com', ADMIN_USER.password);
+    await setFirestoreDoc('admins', admin.uid, { userId: admin.uid, email: admin.email });
+
+    await setFirestoreDoc('instructors', 'inst-fern', {
+      name: 'Fern Alder',
+      email: 'fern.alder@example.com',
+      status: 'active',
+      payRate: 0.75,
+      payRateType: 'percentage',
+      createdAt: created,
+      updatedAt: created,
+    });
+    const klass = (name: string, at: Date) => ({
+      name,
+      description: 'A class.',
+      instructorId: 'inst-fern',
+      sessions: [{ dateTime: at }],
+      firstSessionAt: at,
+      durationMinutes: 120,
+      capacity: 9,
+      priceCents: 6500,
+      skillLevel: 'all-levels',
+      status: 'published',
+      registrationCount: 8,
+      createdAt: created,
+      updatedAt: created,
+    });
+    await setFirestoreDoc('classes', 'class-wreath', klass('Evergreen Wreaths', FIRST_CLASS));
+    await setFirestoreDoc('classes', 'class-ornament', klass('Felted Ornaments', SECOND_CLASS));
+
+    for (const classId of ['class-wreath', 'class-ornament']) {
+      for (let seat = 1; seat <= 8; seat++) {
+        const id = `${classId}-reg-${seat}`;
+        await setFirestoreDoc('registrations', id, registration(id, classId, 6500));
+      }
+      // The ninth seat was refunded before the class: it earns nothing.
+      const refundedId = `${classId}-reg-refunded`;
+      await setFirestoreDoc('registrations', refundedId, {
+        ...registration(refundedId, classId, 6500),
+        status: 'refunded',
+        refundedAt: daysAgo(12),
+        refundedAmountCents: 6890,
+      });
+    }
+  });
+
+  it('shows both classes owed before anything is recorded', async () => {
+    const owed = await fern();
+    expect(owed).toMatchObject({
+      payRate: 0.75,
+      grossCents: 104000,
+      totalOwedCents: 78000,
+      owedCents: 78000,
+      paidThisYearCents: 0,
+    });
+    expect(owed!.classes.map((c) => c.headcount)).toEqual([8, 8]);
+  });
+
+  it('records the first payment on its own statement, leaving only the second class owed', async () => {
+    // Up to the day of the first class: just that class.
+    expect(await fern(FIRST_DAY)).toMatchObject({ totalOwedCents: 39000, owedCents: 39000 });
+
+    const first = await generate(FIRST_DAY);
+    expect(first.status).toBe(200);
+    expect(first.data?.statement).toMatchObject({
+      status: 'pending',
+      payRate: 0.75,
+      grossCents: 52000,
+      totalOwedCents: 39000,
+    });
+    expect(first.data!.statement.classes.map((c) => c.className)).toEqual(['Evergreen Wreaths']);
+    expect(first.data!.statement.entryIds).toHaveLength(8);
+
+    const paid = await markPaid(first.data!.statement.id, FIRST_PAID_ON, 'PR-first-class');
+    expect(paid.data?.statement).toMatchObject({ status: 'paid', paidOn: FIRST_PAID_ON });
+
+    // As it stood after the first payment: nothing owed.
+    expect(await fern(FIRST_DAY)).toMatchObject({
+      totalOwedCents: 0,
+      owedCents: 0,
+      pendingStatements: [],
+    });
+    // And today: only the second class.
+    const now = await fern();
+    expect(now).toMatchObject({ totalOwedCents: 39000, owedCents: 39000 });
+    expect(now!.classes.map((c) => c.className)).toEqual(['Felted Ornaments']);
+  });
+
+  it('records the second payment in the same month, and owes nothing', async () => {
+    const second = await generate();
+    expect(second.status).toBe(200);
+    expect(second.data?.statement).toMatchObject({ grossCents: 52000, totalOwedCents: 39000 });
+    expect(second.data!.statement.classes.map((c) => c.className)).toEqual(['Felted Ornaments']);
+    // Not one session from the first statement is claimed again.
+    expect(second.data!.statement.entryIds.every((id) => id.includes('class-ornament'))).toBe(true);
+
+    // Generated, not yet marked paid: still owed.
+    expect(await fern()).toMatchObject({ totalOwedCents: 0, owedCents: 39000 });
+
+    await markPaid(second.data!.statement.id, SECOND_PAID_ON, 'PR-second-class');
+
+    const settled = await fern();
+    expect(settled).toMatchObject({ totalOwedCents: 0, owedCents: 0, pendingStatements: [], classes: [] });
+
+    // Nothing left to put on a third statement.
+    const third = await generate();
+    expect(third.status).toBe(400);
+    expect(message(third)).toMatch(/Nothing unpaid/);
+  });
+
+  it('keeps two paid statements, each with its own payment, and totals them for the year', async () => {
+    const list = await call<unknown, GetClassInstructorStatementsResponse>(
+      'getClassInstructorStatements',
+      { instructorId: 'inst-fern' }
+    );
+    const statements = list.data!.statements;
+    expect(statements).toHaveLength(2);
+    expect(statements.every((s) => s.status === 'paid' && s.totalOwedCents === 39000)).toBe(true);
+    expect(statements.map((s) => s.paidOn).sort()).toEqual([FIRST_PAID_ON, SECOND_PAID_ON].sort());
+    expect(statements.map((s) => s.paymentReference).sort()).toEqual([
+      'PR-first-class',
+      'PR-second-class',
+    ]);
+
+    // $780 in all, whichever calendar years the two paid days fall in.
+    const byYear = list.data!.paidByYearByInstructor['inst-fern'];
+    expect(Object.values(byYear).reduce((total, cents) => total + cents, 0)).toBe(78000);
+  });
+
+  it('takes a refund after a payout off the next statement', async () => {
+    // A seat from the first, already-paid class is refunded afterwards.
+    await setFirestoreDoc('registrations', 'class-wreath-reg-1', {
+      ...registration('class-wreath-reg-1', 'class-wreath', 6500),
+      status: 'refunded',
+      refundedAt: new Date(),
+      refundedAmountCents: 6890,
+    });
+    const owed = await fern();
+    // $65 × 75% = $48.75 comes back off whatever is paid next.
+    expect(owed).toMatchObject({ adjustmentsCents: -4875, totalOwedCents: -4875 });
+
+    // On its own it cannot be a statement; it waits for the next class.
+    const alone = await generate();
+    expect(alone.status).toBe(400);
+    expect(message(alone)).toMatch(/carry to the next statement/);
+  });
+});
+

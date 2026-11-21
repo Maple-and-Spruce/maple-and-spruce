@@ -61,7 +61,7 @@ describe('useClassInstructorPayouts', () => {
     mocks.routes = {
       'payouts/previewClassInstructorPayouts': vi
         .fn()
-        .mockResolvedValue({ data: { previews: [wirePreview], monthIsOver: true } }),
+        .mockResolvedValue({ data: { previews: [wirePreview] } }),
       'payouts/getClassInstructorStatements': vi.fn().mockResolvedValue({
         data: { statements: [wireStatement], paidThisYearByInstructor: { 'inst-1': 9000 } },
       }),
@@ -76,15 +76,15 @@ describe('useClassInstructorPayouts', () => {
     };
   });
 
-  it('loads the month preview and the statements, turning wire strings back into dates', async () => {
-    const { result } = renderHook(() => useClassInstructorPayouts({ month: '2026-10' }));
+  it('loads the preview and the statements, turning wire strings back into dates', async () => {
+    const { result } = renderHook(() => useClassInstructorPayouts());
     await waitFor(() => expect(result.current.previewState.status).toBe('success'));
     await waitFor(() => expect(result.current.statementsState.status).toBe('success'));
 
-    expect(mocks.routes['payouts/previewClassInstructorPayouts']).toHaveBeenCalledWith({ month: '2026-10' });
+    // No cutoff: everything that has finished.
+    expect(mocks.routes['payouts/previewClassInstructorPayouts']).toHaveBeenCalledWith({});
     const preview = result.current.previewState;
     if (preview.status !== 'success') throw new Error('unreachable');
-    expect(preview.data.monthIsOver).toBe(true);
     expect(preview.data.previews[0].classes[0].sessions[0].at).toBeInstanceOf(Date);
     expect(preview.data.previews[0].adjustments[0].refundedAt).toBeInstanceOf(Date);
     expect(preview.data.previews[0].adjustments[1].refundedAt).toBeUndefined();
@@ -99,7 +99,7 @@ describe('useClassInstructorPayouts', () => {
   it('reports failures as error state', async () => {
     mocks.routes['payouts/previewClassInstructorPayouts'].mockRejectedValue(new Error('boom'));
     mocks.routes['payouts/getClassInstructorStatements'].mockRejectedValue('nope');
-    const { result } = renderHook(() => useClassInstructorPayouts({ month: '2026-10' }));
+    const { result } = renderHook(() => useClassInstructorPayouts());
     await waitFor(() => expect(result.current.previewState).toEqual({ status: 'error', error: 'boom' }));
     await waitFor(() =>
       expect(result.current.statementsState).toEqual({ status: 'error', error: 'Failed to load statements' })
@@ -107,7 +107,7 @@ describe('useClassInstructorPayouts', () => {
   });
 
   it('generates, marks paid and voids, refreshing both lists each time', async () => {
-    const { result } = renderHook(() => useClassInstructorPayouts({ month: '2026-10' }));
+    const { result } = renderHook(() => useClassInstructorPayouts());
     await waitFor(() => expect(result.current.statementsState.status).toBe('success'));
     const preview = mocks.routes['payouts/previewClassInstructorPayouts'];
     const list = mocks.routes['payouts/getClassInstructorStatements'];
@@ -118,7 +118,6 @@ describe('useClassInstructorPayouts', () => {
     });
     expect(mocks.routes['payouts/generateClassInstructorStatement']).toHaveBeenCalledWith({
       instructorId: 'inst-1',
-      month: '2026-10',
     });
     expect(generated).toMatchObject({ id: 'stmt-1', createdAt: expect.any(Date) });
 
@@ -129,6 +128,29 @@ describe('useClassInstructorPayouts', () => {
     expect(mocks.routes['payouts/voidClassInstructorStatement']).toHaveBeenCalledWith({ id: 'stmt-2' });
     expect(preview).toHaveBeenCalledTimes(4);
     expect(list).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe('useClassInstructorPayouts with a through date', () => {
+  it('previews and generates only up to that day, and refetches when it changes', async () => {
+    const { result, rerender } = renderHook(
+      ({ throughDate }: { throughDate?: string }) => useClassInstructorPayouts({ throughDate }),
+      { initialProps: { throughDate: '2026-11-08' } as { throughDate?: string } }
+    );
+    await waitFor(() => expect(result.current.previewState.status).toBe('success'));
+    const preview = mocks.routes['payouts/previewClassInstructorPayouts'];
+    expect(preview).toHaveBeenLastCalledWith({ throughDate: '2026-11-08' });
+
+    await act(async () => {
+      await result.current.generateStatement('inst-1');
+    });
+    expect(mocks.routes['payouts/generateClassInstructorStatement']).toHaveBeenCalledWith({
+      instructorId: 'inst-1',
+      throughDate: '2026-11-08',
+    });
+
+    rerender({ throughDate: undefined });
+    await waitFor(() => expect(preview).toHaveBeenLastCalledWith({}));
   });
 });
 

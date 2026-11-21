@@ -8,7 +8,7 @@ import {
 } from '@maple/ts/domain';
 import type { GetClassInstructorStatementResponse } from '@maple/ts/firebase/api-types';
 import { StatementLinesTable } from './StatementLinesTable';
-import { formatDay, formatMonth, formatRate } from './payout-format';
+import { formatDay, formatRate, formatStatementPeriod } from './payout-format';
 
 export interface ClassInstructorStatementViewProps {
   statementState: RequestState<GetClassInstructorStatementResponse>;
@@ -78,7 +78,7 @@ export function ClassInstructorStatementView({ statementState }: ClassInstructor
             {statement.instructorName}
           </Typography>
           <Typography variant="h6" component="p" color="textSecondary">
-            Classes held in {formatMonth(statement.month)}
+            Classes held {formatStatementPeriod(statement)}
           </Typography>
         </Box>
         {statement.status === 'paid' && (
@@ -87,8 +87,8 @@ export function ClassInstructorStatementView({ statementState }: ClassInstructor
       </Stack>
       <Typography variant="body2" sx={{ mb: 2 }}>
         Your share is {formatRate(statement.payRate)} of what students paid for each class, after
-        discounts and before sales tax. A class that runs across months is split evenly by session,
-        and each session is paid in the month it was held.
+        discounts and before sales tax. A class with more than one session is split evenly by
+        session, and each session is paid after it is held.
       </Typography>
       <StatementLinesTable
         classes={statement.classes}

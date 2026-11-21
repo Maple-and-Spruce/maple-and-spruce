@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import {
+  mockPerClassStatementsResponse,
   mockStatementPaid,
   mockStatementPending,
   mockStatementsResponse,
@@ -42,7 +43,7 @@ export const ErrorState: Story = {
 };
 
 export const Empty: Story = {
-  args: { statementsState: { status: 'success', data: { statements: [], paidThisYearByInstructor: {} } } },
+  args: { statementsState: { status: 'success', data: { statements: [], paidThisYearByInstructor: {}, paidByYearByInstructor: {} } } },
   play: async ({ canvasElement }) => {
     expect(within(canvasElement).getByText(EMPTY_MESSAGE)).toBeInTheDocument();
   },
@@ -55,7 +56,7 @@ export const Statements: Story = {
     // Void statements are hidden by default.
     expect(canvas.getAllByRole('row')).toHaveLength(3);
     expect(canvas.getByText('Oct 3, 2026 · Square Payroll · PR-2026-10-A')).toBeInTheDocument();
-    expect(canvas.getByRole('link', { name: 'October 2026' })).toHaveAttribute(
+    expect(canvas.getByRole('link', { name: 'Oct 10 to Oct 28, 2026' })).toHaveAttribute(
       'href',
       '/payouts/instructor-statements/stmt-hazel-oct'
     );
@@ -63,6 +64,25 @@ export const Statements: Story = {
     expect(canvas.getAllByText('$288.00')).toHaveLength(2);
     // Only the pending statement can be paid or voided.
     expect(canvas.getAllByRole('button', { name: 'Mark paid' })).toHaveLength(1);
+  },
+};
+
+/** Paid per class (#344): one instructor, two statements in the same month. */
+export const TwoStatementsInOneMonth: Story = {
+  args: { statementsState: { status: 'success', data: mockPerClassStatementsResponse } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Each is told apart by the day its class was held, and carries its own payment.
+    expect(canvas.getByRole('link', { name: 'Nov 8, 2026' })).toHaveAttribute(
+      'href',
+      '/payouts/instructor-statements/stmt-fern-wreath'
+    );
+    expect(canvas.getByRole('link', { name: 'Nov 21, 2026' })).toBeInTheDocument();
+    expect(canvas.getByText('Nov 11, 2026 · Square Payroll · PR-2026-11-A')).toBeInTheDocument();
+    expect(canvas.getByText('Nov 22, 2026 · Square Payroll · PR-2026-11-B')).toBeInTheDocument();
+    // Both payments add up in the year-to-date figure.
+    expect(canvas.getAllByText('$780.00')).toHaveLength(2);
+    expect(canvas.queryByRole('button', { name: 'Mark paid' })).toBeNull();
   },
 };
 
@@ -77,7 +97,11 @@ export const ActionsCallBack: Story = {
   args: {
     statementsState: {
       status: 'success',
-      data: { statements: [mockStatementPending, mockStatementPaid], paidThisYearByInstructor: {} },
+      data: {
+        statements: [mockStatementPending, mockStatementPaid],
+        paidThisYearByInstructor: {},
+        paidByYearByInstructor: {},
+      },
     },
   },
   play: async ({ args, canvasElement }) => {

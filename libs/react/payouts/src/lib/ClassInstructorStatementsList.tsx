@@ -23,7 +23,7 @@ import {
   type RequestState,
 } from '@maple/ts/domain';
 import type { GetClassInstructorStatementsResponse } from '@maple/ts/firebase/api-types';
-import { formatDay, formatMoney, formatMonth } from './payout-format';
+import { formatDay, formatMoney, formatStatementPeriod } from './payout-format';
 
 export interface ClassInstructorStatementsListProps {
   statementsState: RequestState<GetClassInstructorStatementsResponse>;
@@ -50,7 +50,7 @@ function LoadingSkeleton() {
   );
 }
 
-/** Every class-instructor statement, newest month first. */
+/** Every class-instructor statement, newest first. An instructor can have several in a month. */
 export function ClassInstructorStatementsList({
   statementsState,
   onMarkPaid,
@@ -73,7 +73,7 @@ export function ClassInstructorStatementsList({
     return (
       <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
         <Typography variant="body1">No statements yet.</Typography>
-        <Typography variant="body2">Generate one from a finished month above.</Typography>
+        <Typography variant="body2">Generate one above once a class has finished.</Typography>
       </Box>
     );
   }
@@ -87,7 +87,7 @@ export function ClassInstructorStatementsList({
       >
         <TableHead>
           <TableRow>
-            <TableCell>Month</TableCell>
+            <TableCell>Classes held</TableCell>
             <TableCell>Instructor</TableCell>
             <TableCell align="right">Owed</TableCell>
             <TableCell>Status</TableCell>
@@ -100,7 +100,7 @@ export function ClassInstructorStatementsList({
           {statements.map((s) => (
             <TableRow key={s.id}>
               <TableCell>
-                <Link href={statementHref(s.id)}>{formatMonth(s.month)}</Link>
+                <Link href={statementHref(s.id)}>{formatStatementPeriod(s)}</Link>
               </TableCell>
               <TableCell>{s.instructorName}</TableCell>
               <TableCell align="right">{formatMoney(s.totalOwedCents)}</TableCell>

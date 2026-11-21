@@ -6,6 +6,21 @@
 
 ## Current Status
 
+### Class instructors paid per class, not only monthly (2026-11-21, #344)
+
+- The first contract instructor was paid twice in November, once per class, and the portal could
+  record neither: statements were one per month and waited for the month to end.
+- A statement can now be generated any time. It covers every finished session no statement has
+  claimed, or only those "held through" a chosen day (for recording a payment made earlier). A
+  later statement the same month picks up only what is left; the deterministic ledger ids still
+  stop a session being paid twice.
+- Each instructor card shows **Owed** (not on a statement yet, plus statements waiting to be marked
+  paid), **Paid this year**, and the pending statements with a Mark paid button. Statements are
+  named by the days their classes were held. A "Paid by year" table gives the 1099-NEC and
+  workers' comp figures.
+- No new function, no data migration: existing monthly statements read as before.
+- **Waiting on David:** review and merge (money, `lane:approval`).
+
 ### Class descriptions keep their formatting on the site (2026-11-16)
 
 - The class page showed every description as one paragraph: the text went to Webflow's Rich

@@ -15,11 +15,11 @@ import {
 import {
   ClassInstructorPayoutPreview,
   ClassInstructorStatementsList,
+  InstructorYearTotals,
   MarkStatementPaidDialog,
-  MonthStepper,
+  ThroughDatePicker,
   formatMoney,
-  formatMonth,
-  lastMonthKey,
+  formatStatementPeriod,
 } from '@maple/react/payouts';
 import { useClassInstructorPayouts } from '@maple/react/data';
 import type { ClassInstructorStatement } from '@maple/ts/domain';
@@ -27,13 +27,16 @@ import type { ClassInstructorStatement } from '@maple/ts/domain';
 export const statementHref = (id: string): string => `/payouts/instructor-statements/${id}`;
 
 /**
- * Class instructors tab on /payouts: what's owed for a month, and every
- * statement. Nothing here moves money — David pays in Square and records it.
+ * Class instructors tab on /payouts: what each instructor is owed and not yet
+ * paid, every statement, and what was paid each year. Nothing here moves
+ * money — David pays in Square and records it.
  */
 export function ClassInstructorPayoutsPanel() {
-  const [month, setMonth] = useState(() => lastMonthKey());
+  // Empty means "everything that has finished"; a day leaves later classes
+  // for another statement (recording a payment made a while ago).
+  const [throughDate, setThroughDate] = useState('');
   const { previewState, statementsState, generateStatement, markStatementPaid, voidStatement } =
-    useClassInstructorPayouts({ month });
+    useClassInstructorPayouts({ throughDate: throughDate || undefined });
   const [paying, setPaying] = useState<ClassInstructorStatement | null>(null);
   const [voiding, setVoiding] = useState<ClassInstructorStatement | null>(null);
   const [voidBusy, setVoidBusy] = useState(false);
@@ -52,19 +55,24 @@ export function ClassInstructorPayoutsPanel() {
   return (
     <>
       <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-        Contract instructors get their pay rate (usually 80%) of what students paid for each class,
-        after discounts and before sales tax. Each session is paid in the month it was held. Pay in
-        Square Payroll or Bill Pay, then mark the statement paid here.
+        Contract instructors get their pay rate of what students paid for each class, after
+        discounts and before sales tax. Pay whenever you like: after each class, weekly or monthly.
+        Generate a statement for the classes you are paying, pay it in Square Payroll, then mark it
+        paid here.
       </Typography>
 
       <Box sx={{ mb: 2 }}>
-        <MonthStepper month={month} onChange={setMonth} />
+        <ThroughDatePicker value={throughDate} onChange={setThroughDate} />
       </Box>
 
       <ClassInstructorPayoutPreview
         previewState={previewState}
         onGenerate={async (instructorId) => {
           await generateStatement(instructorId);
+        }}
+        onMarkPaid={(statementId) => {
+          if (statementsState.status !== 'success') return;
+          setPaying(statementsState.data.statements.find((s) => s.id === statementId) ?? null);
         }}
         statementHref={statementHref}
       />
@@ -79,6 +87,15 @@ export function ClassInstructorPayoutsPanel() {
         statementHref={statementHref}
       />
 
+      <Typography variant="h5" component="h2" sx={{ mt: 5, mb: 1 }}>
+        Paid by year
+      </Typography>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+        What was actually paid, by the day you paid it. Use these for the 1099-NEC and the
+        workers&apos; comp audit.
+      </Typography>
+      <InstructorYearTotals statementsState={statementsState} />
+
       <MarkStatementPaidDialog
         statement={paying}
         onClose={() => setPaying(null)}
@@ -90,7 +107,7 @@ export function ClassInstructorPayoutsPanel() {
         <DialogContent>
           {voiding && (
             <DialogContentText>
-              {voiding.instructorName}, {formatMonth(voiding.month)} ({formatMoney(voiding.totalOwedCents)}).
+              {voiding.instructorName}, classes held {formatStatementPeriod(voiding)} ({formatMoney(voiding.totalOwedCents)}).
               Its sessions go back to unpaid, so you can generate it again.
             </DialogContentText>
           )}

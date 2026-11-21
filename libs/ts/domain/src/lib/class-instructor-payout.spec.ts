@@ -4,13 +4,16 @@ import type { Instructor } from './instructor';
 import type { Registration } from './registration';
 import {
   buildClassInstructorStatementDraft,
+  buildOnDemandStatementDraft,
   classRefundEntryId,
   classSessionEntryId,
+  isPayoutDay,
   isPayoutMonth,
   isInStatementWindow,
-  isPayoutMonthOver,
   monthKeyInStudioZone,
   paidTotalForYear,
+  paidTotalsByYear,
+  statementCoverage,
   prorateAcrossSessions,
   registrationEarnsInstructorShare,
   sessionShareCents,
@@ -176,9 +179,15 @@ describe('month helpers', () => {
     expect(isInStatementWindow('2025-10', '2025-10', '2026-09')).toBe(true);
   });
 
-  it('knows when a month is over in studio time', () => {
-    expect(isPayoutMonthOver('2026-10', new Date('2026-11-01T03:30:00Z'))).toBe(false);
-    expect(isPayoutMonthOver('2026-10', new Date('2026-11-01T05:00:00Z'))).toBe(true);
+  it('accepts only real calendar days written YYYY-MM-DD', () => {
+    expect(isPayoutDay('2026-11-08')).toBe(true);
+    expect(isPayoutDay('2028-02-29')).toBe(true);
+    expect(isPayoutDay('2026-02-30')).toBe(false);
+    expect(isPayoutDay('2026-13-01')).toBe(false);
+    expect(isPayoutDay('2026-11')).toBe(false);
+    expect(isPayoutDay('11/08/2026')).toBe(false);
+    expect(isPayoutDay(20261108)).toBe(false);
+    expect(isPayoutDay(undefined)).toBe(false);
   });
 });
 
@@ -442,6 +451,263 @@ describe('buildClassInstructorStatementDraft', () => {
   });
 });
 
+describe('throughDate', () => {
+  const twoClasses = [
+    klass({ id: 'class-1', sessions: ['2026-10-07T22:00:00Z'] }),
+    klass({ id: 'class-2', name: 'Weaving', sessions: ['2026-10-21T22:00:00Z'] }),
+  ];
+  const registrationsByClass = {
+    'class-1': [reg({ id: 'reg-1', classId: 'class-1' })],
+    'class-2': [reg({ id: 'reg-2', classId: 'class-2' })],
+  };
+
+  it('leaves sessions held after that day for a later statement', () => {
+    const draft = build({ classes: twoClasses, registrationsByClass, throughDate: '2026-10-07' });
+    expect(draft.entries.map((e) => e.id)).toEqual(['class-session_reg-1_0']);
+    expect(draft.totalOwedCents).toBe(4000);
+    expect(build({ classes: twoClasses, registrationsByClass, throughDate: '2026-10-06' }).entries).toEqual([]);
+    expect(build({ classes: twoClasses, registrationsByClass, throughDate: '2026-10-21' }).entries).toHaveLength(2);
+  });
+
+  it('reads the session day in studio time', () => {
+    // 11:30 PM Oct 7 Eastern is Oct 8 in UTC; it still counts as Oct 7.
+    const late = [klass({ sessions: ['2026-10-08T03:30:00Z'] })];
+    expect(build({ classes: late, throughDate: '2026-10-07' }).entries).toHaveLength(1);
+  });
+
+  it('can only narrow: a session that has not ended is never included', () => {
+    const draft = build({
+      classes: twoClasses,
+      registrationsByClass,
+      throughDate: '2026-12-31',
+      now: new Date('2026-10-21T22:30:00Z'), // half an hour into the second class
+    });
+    expect(draft.entries.map((e) => e.id)).toEqual(['class-session_reg-1_0']);
+  });
+
+  it('splits a two-session class at the cutoff', () => {
+    const series = [klass({ sessions: ['2026-10-07T22:00:00Z', '2026-10-14T22:00:00Z'] })];
+    const first = build({ classes: series, throughDate: '2026-10-10' });
+    expect(first.entries.map((e) => e.id)).toEqual(['class-session_reg-1_0']);
+    expect(first.shareCents).toBe(2000);
+  });
+});
+
+describe('buildOnDemandStatementDraft', () => {
+  const onDemand = (overrides: Partial<Omit<BuildClassInstructorStatementInput, 'month'>> = {}) =>
+    buildOnDemandStatementDraft({
+      instructor: instructor(),
+      classes: [klass()],
+      registrationsByClass: { 'class-1': [reg()] },
+      existingEntries: [],
+      paidStatementIds: new Set(),
+      now: new Date('2026-11-21T17:00:00Z'),
+      ...overrides,
+    });
+
+  it('claims a class as soon as it has ended, in the month it is still running', () => {
+    const draft = onDemand({
+      classes: [klass({ sessions: ['2026-11-21T14:00:00Z'] })], // ended an hour ago
+    });
+    expect(draft.month).toBe('2026-11');
+    expect(draft.entries.map((e) => e.id)).toEqual(['class-session_reg-1_0']);
+    expect(draft.totalOwedCents).toBe(4000);
+  });
+
+  it('never claims a class that is still running or has not started', () => {
+    const draft = onDemand({
+      classes: [
+        klass({ id: 'class-1', sessions: ['2026-11-21T16:00:00Z'] }), // started an hour ago, 2 hours long
+        klass({ id: 'class-2', sessions: ['2026-11-28T16:00:00Z'] }),
+        klass({ id: 'class-3', sessions: ['2026-12-05T16:00:00Z'] }),
+      ],
+      registrationsByClass: {
+        'class-1': [reg({ id: 'reg-1', classId: 'class-1' })],
+        'class-2': [reg({ id: 'reg-2', classId: 'class-2' })],
+        'class-3': [reg({ id: 'reg-3', classId: 'class-3' })],
+      },
+    });
+    expect(draft.entries).toEqual([]);
+    expect(draft.totalOwedCents).toBe(0);
+  });
+
+  it('labels the statement with the month of the latest session it covers', () => {
+    // Generated in November for an October class: October, with nothing "earlier".
+    const october = onDemand();
+    expect(october.month).toBe('2026-10');
+    expect(october.classes[0].includesEarlierMonths).toBe(false);
+
+    // September and October together: October, and September is flagged as earlier.
+    const both = onDemand({
+      classes: [
+        klass({ id: 'class-1', sessions: ['2026-09-16T22:00:00Z'] }),
+        klass({ id: 'class-2', name: 'Weaving', sessions: ['2026-10-21T22:00:00Z'] }),
+      ],
+      registrationsByClass: {
+        'class-1': [reg({ id: 'reg-1', classId: 'class-1' })],
+        'class-2': [reg({ id: 'reg-2', classId: 'class-2' })],
+      },
+    });
+    expect(both.month).toBe('2026-10');
+    expect(both.classes.map((c) => c.includesEarlierMonths)).toEqual([true, false]);
+  });
+
+  it('labels a draft holding only adjustments with the current month', () => {
+    const draft = onDemand({
+      registrationsByClass: { 'class-1': [reg({ status: 'refunded', refundedAt: new Date('2026-11-10T15:00:00Z') })] },
+      existingEntries: [
+        entry({ id: classSessionEntryId('reg-1', 0), statementId: 'stmt-paid', shareCents: 4000 }),
+      ],
+      paidStatementIds: new Set(['stmt-paid']),
+    });
+    expect(draft.month).toBe('2026-11');
+    expect(draft.classes).toEqual([]);
+    expect(draft.totalOwedCents).toBe(-4000);
+  });
+
+  it('does not reach back before the payout start month', () => {
+    expect(onDemand({ classes: [klass({ sessions: ['2026-08-12T22:00:00Z'] })] }).entries).toEqual([]);
+  });
+
+  /**
+   * #344: an instructor on 75% teaches two one-session classes in one month,
+   * each with eight paid seats at $65 and one refunded seat, and is paid
+   * after each class rather than once the month has ended.
+   */
+  describe('paid per class, twice in one month', () => {
+    const fern = instructor({ id: 'inst-fern', name: 'Fern Alder', payRate: 0.75 });
+    const wreaths = klass({ id: 'class-wreath', name: 'Evergreen Wreaths', instructorId: 'inst-fern', sessions: ['2026-11-08T19:00:00Z'] });
+    const ornaments = klass({ id: 'class-ornament', name: 'Felted Ornaments', instructorId: 'inst-fern', sessions: ['2026-11-21T19:00:00Z'] });
+    const seats = (classId: string): Registration[] => [
+      ...Array.from({ length: 8 }, (_, i) =>
+        reg({ id: `${classId}-reg-${i + 1}`, classId, subtotalCents: 6500, pricePaidCents: 6890 })
+      ),
+      reg({
+        id: `${classId}-reg-refunded`,
+        classId,
+        subtotalCents: 6500,
+        pricePaidCents: 6890,
+        status: 'refunded',
+        refundedAt: new Date('2026-11-05T15:00:00Z'),
+      }),
+    ];
+    const registrationsByClass = { 'class-wreath': seats('class-wreath'), 'class-ornament': seats('class-ornament') };
+    const draftAt = (now: string, existingEntries: PayoutLedgerEntry[] = [], paid: string[] = []) =>
+      buildOnDemandStatementDraft({
+        instructor: fern,
+        classes: [wreaths, ornaments],
+        registrationsByClass,
+        existingEntries,
+        paidStatementIds: new Set(paid),
+        now: new Date(now),
+      });
+    const claim = (draft: ReturnType<typeof draftAt>, statementId: string): PayoutLedgerEntry[] =>
+      draft.entries.map((e) => ({ ...e, statementId, createdAt: created }));
+
+    it('owes $390 after the first class, and nothing once that is on a statement', () => {
+      const first = draftAt('2026-11-11T15:00:00Z');
+      expect(first.classes.map((c) => c.className)).toEqual(['Evergreen Wreaths']);
+      expect(first.classes[0].headcount).toBe(8);
+      expect(first.grossCents).toBe(52000);
+      expect(first.totalOwedCents).toBe(39000);
+      expect(first.entries).toHaveLength(8);
+
+      const after = draftAt('2026-11-11T16:00:00Z', claim(first, 'stmt-1'), ['stmt-1']);
+      expect(after.entries).toEqual([]);
+      expect(after.totalOwedCents).toBe(0);
+    });
+
+    it('owes only the second class after it is held, never the first again', () => {
+      const first = draftAt('2026-11-11T15:00:00Z');
+      const paidEntries = claim(first, 'stmt-1');
+
+      const second = draftAt('2026-11-22T15:00:00Z', paidEntries, ['stmt-1']);
+      expect(second.classes.map((c) => c.className)).toEqual(['Felted Ornaments']);
+      expect(second.totalOwedCents).toBe(39000);
+      const firstIds = new Set(first.entries.map((e) => e.id));
+      expect(second.entries.some((e) => firstIds.has(e.id))).toBe(false);
+
+      const settled = draftAt('2026-11-23T15:00:00Z', [...paidEntries, ...claim(second, 'stmt-2')], ['stmt-1', 'stmt-2']);
+      expect(settled.entries).toEqual([]);
+      expect(settled.totalOwedCents).toBe(0);
+    });
+
+    it('can record the first payment late, with both classes already finished', () => {
+      const late = buildOnDemandStatementDraft({
+        instructor: fern,
+        classes: [wreaths, ornaments],
+        registrationsByClass,
+        existingEntries: [],
+        paidStatementIds: new Set(),
+        now: new Date('2026-12-02T15:00:00Z'),
+        throughDate: '2026-11-08',
+      });
+      expect(late.classes.map((c) => c.className)).toEqual(['Evergreen Wreaths']);
+      expect(late.totalOwedCents).toBe(39000);
+    });
+
+    it('takes a refund after the first payment off the next statement', () => {
+      const first = draftAt('2026-11-11T15:00:00Z');
+      const paidEntries = claim(first, 'stmt-1');
+      const withRefund = {
+        ...registrationsByClass,
+        'class-wreath': registrationsByClass['class-wreath'].map((r) =>
+          r.id === 'class-wreath-reg-1'
+            ? { ...r, status: 'refunded' as const, refundedAt: new Date('2026-11-15T15:00:00Z') }
+            : r
+        ),
+      };
+      const second = buildOnDemandStatementDraft({
+        instructor: fern,
+        classes: [wreaths, ornaments],
+        registrationsByClass: withRefund,
+        existingEntries: paidEntries,
+        paidStatementIds: new Set(['stmt-1']),
+        now: new Date('2026-11-22T15:00:00Z'),
+      });
+      // $65 × 75% = $48.75, rounded as it was when it was paid.
+      expect(second.adjustments).toEqual([
+        expect.objectContaining({ registrationId: 'class-wreath-reg-1', shareCents: -4875 }),
+      ]);
+      expect(second.totalOwedCents).toBe(39000 - 4875);
+    });
+  });
+});
+
+describe('statementCoverage', () => {
+  const line = (sessions: string[]) => ({
+    classId: 'c',
+    className: 'A class',
+    totalSessions: sessions.length,
+    sessions: sessions.map((at, index) => ({ index, at: new Date(at) })),
+    includesEarlierMonths: false,
+    headcount: 1,
+    registrationIds: ['reg-1'],
+    grossCents: 0,
+    shareCents: 0,
+  });
+
+  it('gives the first and last studio day across every class', () => {
+    expect(
+      statementCoverage({
+        classes: [line(['2026-11-21T19:00:00Z']), line(['2026-11-08T19:00:00Z', '2026-11-15T19:00:00Z'])],
+      })
+    ).toEqual({ from: '2026-11-08', to: '2026-11-21' });
+  });
+
+  it('reads the day in studio time', () => {
+    // 11:30 PM Oct 31 Eastern.
+    expect(statementCoverage({ classes: [line(['2026-11-01T03:30:00Z'])] })).toEqual({
+      from: '2026-10-31',
+      to: '2026-10-31',
+    });
+  });
+
+  it('is undefined for a statement with no sessions', () => {
+    expect(statementCoverage({ classes: [] })).toBeUndefined();
+  });
+});
+
 describe('buildClassInstructorStatementDraft: private group hours', () => {
   // Three one-hour slots on Saturday Oct 10 (10, 11 AM and noon Eastern).
   const hours = ['2026-10-10T14:00:00Z', '2026-10-10T15:00:00Z', '2026-10-10T16:00:00Z'];
@@ -664,5 +930,21 @@ describe('paidTotalForYear', () => {
     expect(paidTotalForYear(statements, 'inst-1', 2026)).toBe(1400);
     expect(paidTotalForYear(statements, 'inst-1', 2027)).toBe(2000);
     expect(paidTotalForYear(statements, 'inst-2', 2026)).toBe(7777);
+  });
+
+  it('breaks what was paid down by the year it was paid in', () => {
+    expect(paidTotalsByYear(statements, 'inst-1')).toEqual({ '2026': 1400, '2027': 2000 });
+    expect(paidTotalsByYear(statements, 'inst-2')).toEqual({ '2026': 7777 });
+    expect(paidTotalsByYear(statements, 'nobody')).toEqual({});
+  });
+
+  it('counts two payments in one month as two payments', () => {
+    const perClass: ClassInstructorStatement[] = [
+      { ...base, id: 'a', instructorId: 'inst-1', month: '2026-11', status: 'paid', paidOn: '2026-11-11', totalOwedCents: 39000 },
+      { ...base, id: 'b', instructorId: 'inst-1', month: '2026-11', status: 'paid', paidOn: '2026-11-22', totalOwedCents: 39000 },
+      { ...base, id: 'c', instructorId: 'inst-1', month: '2026-11', status: 'void', totalOwedCents: 39000 },
+    ];
+    expect(paidTotalForYear(perClass, 'inst-1', 2026)).toBe(78000);
+    expect(paidTotalsByYear(perClass, 'inst-1')).toEqual({ '2026': 78000 });
   });
 });

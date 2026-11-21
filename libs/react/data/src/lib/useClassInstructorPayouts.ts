@@ -70,11 +70,14 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 /**
- * Class-instructor payouts for one month: the preview of what each instructor
- * is owed and hasn't been put on a statement, plus every statement. Generate,
- * mark paid and void refresh both.
+ * Class-instructor payouts: where each instructor stands (finished sessions
+ * not on a statement yet, statements waiting to be marked paid, paid this
+ * year), plus every statement. Generate, mark paid and void refresh both.
+ *
+ * `throughDate` (`YYYY-MM-DD`) leaves later sessions for another statement;
+ * omit it for everything that has finished.
  */
-export function useClassInstructorPayouts({ month }: { month: string }) {
+export function useClassInstructorPayouts({ throughDate }: { throughDate?: string } = {}) {
   const [previewState, setPreviewState] = useState<
     RequestState<PreviewClassInstructorPayoutsResponse>
   >({ status: 'idle' });
@@ -88,7 +91,7 @@ export function useClassInstructorPayouts({ month }: { month: string }) {
       const result = await route<
         PreviewClassInstructorPayoutsRequest,
         PreviewClassInstructorPayoutsResponse
-      >('previewClassInstructorPayouts')({ month });
+      >('previewClassInstructorPayouts')(throughDate ? { throughDate } : {});
       setPreviewState({
         status: 'success',
         data: { ...result.data, previews: result.data.previews.map(hydratePreview) },
@@ -97,7 +100,7 @@ export function useClassInstructorPayouts({ month }: { month: string }) {
       console.error('Failed to preview class-instructor payouts:', error);
       setPreviewState({ status: 'error', error: errorMessage(error, 'Failed to load payouts') });
     }
-  }, [month]);
+  }, [throughDate]);
 
   const fetchStatements = useCallback(async () => {
     setStatementsState({ status: 'loading' });
@@ -136,11 +139,14 @@ export function useClassInstructorPayouts({ month }: { month: string }) {
       const result = await route<
         GenerateClassInstructorStatementRequest,
         GenerateClassInstructorStatementResponse
-      >('generateClassInstructorStatement')({ instructorId, month });
+      >('generateClassInstructorStatement')({
+        instructorId,
+        ...(throughDate && { throughDate }),
+      });
       await refresh();
       return hydrateStatement(result.data.statement);
     },
-    [month, refresh]
+    [throughDate, refresh]
   );
 
   const markStatementPaid = useCallback(

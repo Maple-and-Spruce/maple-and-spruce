@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   formatDay,
+  formatDayRange,
   formatMoney,
   formatMonth,
   formatRate,
   formatSessionDate,
+  formatStatementPeriod,
   lastMonthKey,
   shiftMonth,
   todayKey,
@@ -37,5 +39,35 @@ describe('payout-format', () => {
     expect(formatSessionDate(new Date('2026-10-07T22:00:00Z'))).toBe('Oct 7');
     expect(formatDay('2026-11-05')).toBe('Nov 5, 2026');
     expect(todayKey(new Date(2026, 10, 5, 9))).toBe('2026-11-05');
+  });
+
+  it('writes a span of days as one phrase', () => {
+    expect(formatDayRange('2026-11-08', '2026-11-08')).toBe('Nov 8, 2026');
+    expect(formatDayRange('2026-11-08', '2026-11-21')).toBe('Nov 8 to Nov 21, 2026');
+    expect(formatDayRange('2026-12-29', '2027-01-05')).toBe('Dec 29, 2026 to Jan 5, 2027');
+  });
+
+  it('names a statement by the days its classes were held, or its month when it has none', () => {
+    const line = (at: string) => ({
+      classId: 'c',
+      className: 'A class',
+      totalSessions: 1,
+      sessions: [{ index: 0, at: new Date(at) }],
+      includesEarlierMonths: false,
+      headcount: 1,
+      registrationIds: ['reg-1'],
+      grossCents: 0,
+      shareCents: 0,
+    });
+    expect(formatStatementPeriod({ month: '2026-11', classes: [line('2026-11-08T19:00:00Z')] })).toBe(
+      'Nov 8, 2026'
+    );
+    expect(
+      formatStatementPeriod({
+        month: '2026-11',
+        classes: [line('2026-11-21T19:00:00Z'), line('2026-11-08T19:00:00Z')],
+      })
+    ).toBe('Nov 8 to Nov 21, 2026');
+    expect(formatStatementPeriod({ month: '2026-11', classes: [] })).toBe('November 2026');
   });
 });

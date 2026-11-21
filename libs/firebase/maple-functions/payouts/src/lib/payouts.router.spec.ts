@@ -107,12 +107,13 @@ const statement = {
   month: '2026-10',
   status: 'pending',
   totalOwedCents: 4000,
+  createdAt: new Date('2026-10-09T12:00:00Z'),
   classes: [
     {
       classId: 'class-1',
       className: 'Stained Glass Basics',
       totalSessions: 1,
-      sessions: [],
+      sessions: [{ index: 0, at: new Date('2026-10-07T22:00:00Z') }],
       includesEarlierMonths: false,
       headcount: 1,
       registrationIds: ['reg-1'],
@@ -143,40 +144,83 @@ describe('payouts router', () => {
   });
 
   describe('previewClassInstructorPayouts', () => {
-    it('rejects a malformed month', async () => {
-      await expect(routes.previewClassInstructorPayouts({ month: 'October' })).rejects.toThrow(
-        'YYYY-MM'
+    const preview = async (data: unknown = {}) =>
+      (await routes.previewClassInstructorPayouts(data))['previews'] as Record<string, unknown>[];
+
+    it('rejects a malformed through date', async () => {
+      await expect(routes.previewClassInstructorPayouts({ throughDate: 'October' })).rejects.toThrow(
+        'YYYY-MM-DD'
       );
+      await expect(
+        routes.previewClassInstructorPayouts({ throughDate: '2026-02-30' })
+      ).rejects.toThrow('YYYY-MM-DD');
     });
 
     it('returns each teaching instructor\'s unclaimed earnings, without the ledger entries', async () => {
-      const result = await routes.previewClassInstructorPayouts({ month: '2026-10' });
-      expect(result['monthIsOver']).toBe(true);
+      const result = await routes.previewClassInstructorPayouts({});
+      expect(result).not.toHaveProperty('throughDate');
       const previews = result['previews'] as Record<string, unknown>[];
       expect(previews).toHaveLength(1);
       expect(previews[0]).toMatchObject({
         instructorId: 'inst-1',
+        // A label: the month of the latest session covered, not the month it was asked in.
+        month: '2026-10',
         grossCents: 5000,
         shareCents: 4000,
         totalOwedCents: 4000,
+        pendingStatements: [],
+        owedCents: 4000,
+        paidThisYearCents: 0,
       });
       expect(previews[0]).not.toHaveProperty('entries');
+    });
+
+    it('needs no finished month: a class that ended this month is owed now', async () => {
+      // "Now" is Nov 5; this class was Nov 3.
+      mocks.classFindAll.mockResolvedValue([
+        { ...octoberClass, sessions: [{ dateTime: new Date('2026-11-03T23:00:00Z') }] },
+      ]);
+      const [owed] = await preview();
+      expect(owed).toMatchObject({ month: '2026-11', totalOwedCents: 4000, owedCents: 4000 });
+    });
+
+    it('never offers a session that has not ended', async () => {
+      mocks.classFindAll.mockResolvedValue([
+        { ...octoberClass, sessions: [{ dateTime: new Date('2026-11-05T14:30:00Z') }] },
+      ]);
+      expect(await preview()).toEqual([]);
+    });
+
+    it('leaves sessions after the through date for a later statement', async () => {
+      mocks.classFindAll.mockResolvedValue([
+        octoberClass,
+        { ...octoberClass, id: 'class-2', sessions: [{ dateTime: new Date('2026-11-03T23:00:00Z') }] },
+      ]);
+      mocks.registrationFindByClassId.mockImplementation(async (classId: string) => [
+        { ...registration, id: `reg-${classId}`, classId },
+      ]);
+
+      const everything = await preview();
+      expect(everything[0]).toMatchObject({ totalOwedCents: 8000 });
+
+      const result = await routes.previewClassInstructorPayouts({ throughDate: '2026-10-07' });
+      expect(result['throughDate']).toBe('2026-10-07');
+      const [upToOctober] = result['previews'] as { totalOwedCents: number; classes: { classId: string }[] }[];
+      expect(upToOctober.totalOwedCents).toBe(4000);
+      expect(upToOctober.classes.map((c) => c.classId)).toEqual(['class-1']);
     });
 
     it('says what an uncleared contractor is missing, without blocking anything', async () => {
       mocks.instructorFindAll.mockResolvedValue([
         { ...instructor, isContractor: true, readiness: { backgroundCheck: { clearedOn: '2026-09-02' } } },
       ]);
-      const result = await routes.previewClassInstructorPayouts({ month: '2026-10' });
-      const [preview] = result['previews'] as Record<string, unknown>[];
-      expect(preview['readinessMissing']).toEqual(['contractor-agreement', 'payment-setup']);
-      expect(preview['totalOwedCents']).toBe(4000);
+      const [owed] = await preview();
+      expect(owed['readinessMissing']).toEqual(['contractor-agreement', 'payment-setup']);
+      expect(owed['totalOwedCents']).toBe(4000);
     });
 
     it('says nothing about readiness for a cleared contractor or a non-contractor', async () => {
-      const [plain] = (await routes.previewClassInstructorPayouts({ month: '2026-10' }))[
-        'previews'
-      ] as Record<string, unknown>[];
+      const [plain] = await preview();
       expect(plain).not.toHaveProperty('readinessMissing');
 
       mocks.instructorFindAll.mockResolvedValue([
@@ -190,9 +234,7 @@ describe('payouts router', () => {
           },
         },
       ]);
-      const [cleared] = (await routes.previewClassInstructorPayouts({ month: '2026-10' }))[
-        'previews'
-      ] as Record<string, unknown>[];
+      const [cleared] = await preview();
       expect(cleared).not.toHaveProperty('readinessMissing');
     });
 
@@ -202,8 +244,7 @@ describe('payouts router', () => {
         { ...octoberClass, id: 'dec', sessions: [{ dateTime: new Date('2026-12-10T18:00:00Z') }] },
         { ...octoberClass, id: 'none', instructorId: undefined },
       ]);
-      const result = await routes.previewClassInstructorPayouts({ month: '2026-10' });
-      expect(result['previews']).toEqual([]);
+      expect(await preview()).toEqual([]);
       expect(mocks.registrationFindByClassId).not.toHaveBeenCalled();
     });
 
@@ -222,32 +263,69 @@ describe('payouts router', () => {
       ]);
       mocks.statementFindByIds.mockResolvedValue([{ id: 'stmt-2025', status: 'paid' }]);
 
-      const result = await routes.previewClassInstructorPayouts({ month: '2026-10' });
+      const [owed] = (await preview()) as { adjustmentsCents: number; shareCents: number }[];
       expect(mocks.registrationFindAll).toHaveBeenCalledWith({ status: 'refunded' });
       expect(mocks.registrationFindByClassId).toHaveBeenCalledTimes(1);
-      const [preview] = result['previews'] as { adjustmentsCents: number; shareCents: number }[];
-      expect(preview.adjustmentsCents).toBe(-4000);
-      expect(preview.shareCents).toBe(4000);
+      expect(owed.adjustmentsCents).toBe(-4000);
+      expect(owed.shareCents).toBe(4000);
     });
 
-    it('says when a month is still running', async () => {
-      const result = await routes.previewClassInstructorPayouts({ month: '2026-11' });
-      expect(result['monthIsOver']).toBe(false);
-    });
-
-    it('shows an instructor whose month is already on a statement', async () => {
+    it('counts a statement that is generated but not marked paid as still owed', async () => {
       mocks.ledgerFindByRegistrationIds.mockResolvedValue([
         { id: 'class-session_reg-1_0', kind: 'class-session', registrationId: 'reg-1', statementId: 'stmt-1', shareCents: 4000 },
       ]);
       mocks.statementFindAll.mockResolvedValue([statement, { ...statement, id: 'old', status: 'void' }]);
       mocks.statementFindByIds.mockResolvedValue([statement]);
 
-      const result = await routes.previewClassInstructorPayouts({ month: '2026-10' });
-      const previews = result['previews'] as Record<string, unknown>[];
+      const previews = await preview();
       expect(previews[0]).toMatchObject({
         totalOwedCents: 0,
-        existingStatement: { id: 'stmt-1', status: 'pending', totalOwedCents: 4000 },
+        owedCents: 4000,
+        paidThisYearCents: 0,
+        pendingStatements: [
+          { id: 'stmt-1', totalOwedCents: 4000, coversFrom: '2026-10-07', coversTo: '2026-10-07' },
+        ],
       });
+    });
+
+    it('shows a paid-up instructor as owed nothing, with what they were paid this year', async () => {
+      const paid = { ...statement, status: 'paid', paidOn: '2026-10-10' };
+      mocks.ledgerFindByRegistrationIds.mockResolvedValue([
+        { id: 'class-session_reg-1_0', kind: 'class-session', registrationId: 'reg-1', statementId: 'stmt-1', shareCents: 4000 },
+      ]);
+      mocks.statementFindAll.mockResolvedValue([
+        paid,
+        // Paid last year: not part of this year's figure.
+        { ...paid, id: 'stmt-2025', paidOn: '2025-12-30', totalOwedCents: 9999 },
+      ]);
+      mocks.statementFindByIds.mockResolvedValue([paid]);
+
+      const previews = await preview();
+      expect(previews).toHaveLength(1);
+      expect(previews[0]).toMatchObject({
+        instructorId: 'inst-1',
+        owedCents: 0,
+        totalOwedCents: 0,
+        pendingStatements: [],
+        paidThisYearCents: 4000,
+      });
+    });
+
+    it('still shows an instructor with a pending statement and no class left to draft from', async () => {
+      mocks.classFindAll.mockResolvedValue([]);
+      mocks.statementFindAll.mockResolvedValue([
+        { ...statement, instructorId: 'inst-gone', instructorName: 'Former Instructor', classes: [] },
+      ]);
+      const previews = await preview();
+      expect(previews).toEqual([
+        expect.objectContaining({
+          instructorId: 'inst-gone',
+          instructorName: 'Former Instructor',
+          classes: [],
+          owedCents: 4000,
+          pendingStatements: [{ id: 'stmt-1', totalOwedCents: 4000 }],
+        }),
+      ]);
     });
   });
 
@@ -255,50 +333,49 @@ describe('payouts router', () => {
     const generate = (data: unknown) => routes.generateClassInstructorStatement(data);
 
     it('validates the input', async () => {
-      await expect(generate({ month: '2026-10' })).rejects.toThrow('invalid');
-    });
-
-    it('refuses a month that is not over', async () => {
-      await expect(generate({ instructorId: 'inst-1', month: '2026-11' })).rejects.toThrow(
-        "isn't over yet"
-      );
+      await expect(generate({})).rejects.toThrow('invalid');
+      await expect(generate({ instructorId: 'inst-1', throughDate: 'Nov 8' })).rejects.toThrow('invalid');
     });
 
     it('refuses an unknown instructor', async () => {
       mocks.instructorFindById.mockResolvedValue(undefined);
-      await expect(generate({ instructorId: 'ghost', month: '2026-10' })).rejects.toThrow(
-        'Instructor ghost not found'
-      );
+      await expect(generate({ instructorId: 'ghost' })).rejects.toThrow('Instructor ghost not found');
     });
 
     it('refuses when there is nothing unpaid', async () => {
       mocks.registrationFindByClassId.mockResolvedValue([]);
-      await expect(generate({ instructorId: 'inst-1', month: '2026-10' })).rejects.toThrow(
+      await expect(generate({ instructorId: 'inst-1' })).rejects.toThrow('Nothing unpaid');
+    });
+
+    it('refuses a class that has not finished, however it is asked', async () => {
+      // "Now" is Nov 5 10:00 Eastern; the class starts at 9:30 and runs two hours.
+      mocks.classFindAll.mockResolvedValue([
+        { ...octoberClass, sessions: [{ dateTime: new Date('2026-11-05T14:30:00Z') }] },
+      ]);
+      await expect(generate({ instructorId: 'inst-1' })).rejects.toThrow('Nothing unpaid');
+      await expect(generate({ instructorId: 'inst-1', throughDate: '2026-12-31' })).rejects.toThrow(
         'Nothing unpaid'
       );
+      expect(mocks.statementGenerate).not.toHaveBeenCalled();
     });
 
     it('refuses an instructor with no percentage rate', async () => {
       mocks.instructorFindById.mockResolvedValue({ ...instructor, payRateType: 'flat', payRate: 5000 });
-      await expect(generate({ instructorId: 'inst-1', month: '2026-10' })).rejects.toThrow(
-        'no percentage pay rate'
-      );
+      await expect(generate({ instructorId: 'inst-1' })).rejects.toThrow('no percentage pay rate');
     });
 
-    it('refuses when refunds cancel out the month', async () => {
+    it('refuses when refunds cancel out what is owed', async () => {
       mocks.registrationFindByClassId.mockResolvedValue([{ ...registration, status: 'refunded' }]);
       mocks.ledgerFindByRegistrationIds.mockResolvedValue([
         { id: 'class-session_reg-1_0', kind: 'class-session', registrationId: 'reg-1', statementId: 'stmt-sep', shareCents: 4000 },
       ]);
       mocks.statementFindByIds.mockResolvedValue([{ id: 'stmt-sep', status: 'paid' }]);
-      await expect(generate({ instructorId: 'inst-1', month: '2026-10' })).rejects.toThrow(
-        'carry to the next statement'
-      );
+      await expect(generate({ instructorId: 'inst-1' })).rejects.toThrow('carry to the next statement');
     });
 
     it('generates from the draft with its rate', async () => {
       mocks.statementGenerate.mockResolvedValue({ kind: 'created', statement });
-      const result = await generate({ instructorId: 'inst-1', month: '2026-10' });
+      const result = await generate({ instructorId: 'inst-1' });
 
       expect(mocks.classFindAll).toHaveBeenCalledWith({ instructorId: 'inst-1' });
       const draft = mocks.statementGenerate.mock.calls[0][0];
@@ -307,26 +384,45 @@ describe('payouts router', () => {
       expect(result).toEqual({ statement });
     });
 
-    it('explains a statement that already exists', async () => {
-      mocks.statementGenerate.mockResolvedValue({ kind: 'statement-exists', statementId: 'stmt-1' });
-      await expect(generate({ instructorId: 'inst-1', month: '2026-10' })).rejects.toThrow(
-        'already exists (stmt-1)'
-      );
+    it('generates a second statement in a month that already has one', async () => {
+      // The first class is on a paid statement; a later class the same month is not.
+      const second = { ...octoberClass, id: 'class-2', sessions: [{ dateTime: new Date('2026-10-21T22:00:00Z') }] };
+      mocks.classFindAll.mockResolvedValue([octoberClass, second]);
+      mocks.registrationFindByClassId.mockImplementation(async (classId: string) => [
+        { ...registration, id: classId === 'class-1' ? 'reg-1' : 'reg-2', classId },
+      ]);
+      mocks.ledgerFindByRegistrationIds.mockResolvedValue([
+        { id: 'class-session_reg-1_0', kind: 'class-session', registrationId: 'reg-1', statementId: 'stmt-1', shareCents: 4000 },
+      ]);
+      mocks.statementFindByIds.mockResolvedValue([{ ...statement, status: 'paid' }]);
+      mocks.statementGenerate.mockResolvedValue({ kind: 'created', statement });
+
+      await generate({ instructorId: 'inst-1' });
+      const draft = mocks.statementGenerate.mock.calls[0][0];
+      expect(draft.entries.map((e: { id: string }) => e.id)).toEqual(['class-session_reg-2_0']);
+      expect(draft.totalOwedCents).toBe(4000);
     });
 
-    it('says a live statement already exists before looking for work', async () => {
-      mocks.statementFindAll.mockResolvedValue([{ ...statement, id: 'old', status: 'void' }, statement]);
-      await expect(generate({ instructorId: 'inst-1', month: '2026-10' })).rejects.toThrow(
-        'already exists (stmt-1)'
+    it('claims only the sessions up to the through date', async () => {
+      const second = { ...octoberClass, id: 'class-2', sessions: [{ dateTime: new Date('2026-10-21T22:00:00Z') }] };
+      mocks.classFindAll.mockResolvedValue([octoberClass, second]);
+      mocks.registrationFindByClassId.mockImplementation(async (classId: string) => [
+        { ...registration, id: classId === 'class-1' ? 'reg-1' : 'reg-2', classId },
+      ]);
+      mocks.statementGenerate.mockResolvedValue({ kind: 'created', statement });
+
+      await generate({ instructorId: 'inst-1', throughDate: '2026-10-07' });
+      const draft = mocks.statementGenerate.mock.calls[0][0];
+      expect(draft.entries.map((e: { id: string }) => e.id)).toEqual(['class-session_reg-1_0']);
+
+      await expect(generate({ instructorId: 'inst-1', throughDate: '2026-10-06' })).rejects.toThrow(
+        'Nothing unpaid for this instructor up to 2026-10-06'
       );
-      expect(mocks.statementGenerate).not.toHaveBeenCalled();
     });
 
     it('explains losing a race to another generate', async () => {
       mocks.statementGenerate.mockResolvedValue({ kind: 'already-claimed', entryIds: ['x'] });
-      await expect(generate({ instructorId: 'inst-1', month: '2026-10' })).rejects.toThrow(
-        'refresh and try again'
-      );
+      await expect(generate({ instructorId: 'inst-1' })).rejects.toThrow('refresh and try again');
     });
   });
 
@@ -350,6 +446,11 @@ describe('payouts router', () => {
       expect(result).toEqual({
         statements: [statement],
         paidThisYearByInstructor: { 'inst-1': 1000, 'inst-2': 300 },
+        // Every year, so last year's 1099 figure is still there in January.
+        paidByYearByInstructor: {
+          'inst-1': { '2026': 1000, '2025': 9999 },
+          'inst-2': { '2026': 300 },
+        },
       });
     });
   });

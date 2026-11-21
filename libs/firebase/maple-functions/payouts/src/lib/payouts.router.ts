@@ -2,9 +2,10 @@
  * payouts — what M&S owes the people it pays, as one Cloud Function (ADR-029).
  *
  * Three kinds of payee:
- * - Class instructors are paid a monthly statement covering the class
- *   sessions they taught (see `class-instructor-payout.ts` in the domain lib
- *   for the policy).
+ * - Class instructors are paid by statement, made whenever David chooses
+ *   (per class, weekly, monthly), covering the finished class sessions no
+ *   earlier statement has claimed (see `class-instructor-payout.ts` in the
+ *   domain lib for the policy).
  * - Consigning artists are paid for their sales (`artist-payouts.ts`).
  * - Lesson teachers' earnings are reported, not yet recorded
  *   (`teacher-payouts.ts`).
@@ -31,9 +32,10 @@ import {
 } from '@maple/firebase/database';
 import {
   instructorReadiness,
-  isPayoutMonth,
-  isPayoutMonthOver,
+  isPayoutDay,
+  monthKeyInStudioZone,
   paidTotalForYear,
+  paidTotalsByYear,
   statementStaleReasons,
   zonedDateKey,
   type ClassInstructorStatement,
@@ -43,7 +45,6 @@ import {
   markClassInstructorStatementPaidValidation,
 } from '@maple/ts/validation';
 import type {
-  ClassInstructorPayoutPreview,
   GeneratePayoutRequest,
   GeneratePayoutResponse,
   GetPayoutsRequest,
@@ -65,7 +66,7 @@ import type {
   VoidClassInstructorStatementRequest,
   VoidClassInstructorStatementResponse,
 } from '@maple/ts/firebase/api-types';
-import { buildDrafts, loadPayoutMonthData } from './class-instructor-payout-data';
+import { buildDrafts, buildPreviews, loadPayoutMonthData } from './class-instructor-payout-data';
 import {
   generateArtistPayout,
   getArtistPayouts,
@@ -81,54 +82,24 @@ function unwrap(outcome: StatementTransitionOutcome, id: string, verb: string): 
   return outcome.statement;
 }
 
-function throwStatementExists(month: string, statementId: string): never {
-  throwFailedPrecondition(
-    `A statement for ${month} already exists (${statementId}); void it to regenerate`
-  );
-}
-
 export const payouts = Functions.router('payouts', {
   previewClassInstructorPayouts: Functions.endpoint
     .requiringRole(Role.Admin)
     .asRoute<PreviewClassInstructorPayoutsRequest, PreviewClassInstructorPayoutsResponse>(
       async (data) => {
-        if (!isPayoutMonth(data.month)) throwInvalidArgument('Month must be YYYY-MM');
+        if (data.throughDate !== undefined && !isPayoutDay(data.throughDate)) {
+          throwInvalidArgument('Through date must be YYYY-MM-DD');
+        }
         const now = new Date();
-        const [monthData, existing] = await Promise.all([
-          loadPayoutMonthData(data.month),
-          ClassInstructorStatementRepository.findAll({ month: data.month }),
+        const [monthData, statements] = await Promise.all([
+          loadPayoutMonthData(monthKeyInStudioZone(now)),
+          ClassInstructorStatementRepository.findAll(),
         ]);
-        const drafts = await buildDrafts(data.month, monthData, now);
-        const live = new Map(
-          existing.filter((s) => s.status !== 'void').map((s) => [s.instructorId, s])
-        );
-
-        const instructorById = new Map(monthData.instructors.map((i) => [i.id, i]));
-
-        const previews: ClassInstructorPayoutPreview[] = drafts
-          .filter((d) => d.entries.length > 0 || live.has(d.instructorId))
-          .map(({ entries: _entries, ...draft }) => {
-            const statement = live.get(draft.instructorId);
-            const instructor = instructorById.get(draft.instructorId);
-            const readiness = instructor ? instructorReadiness(instructor) : undefined;
-            return {
-              ...draft,
-              ...(statement && {
-                existingStatement: {
-                  id: statement.id,
-                  status: statement.status,
-                  totalOwedCents: statement.totalOwedCents,
-                },
-              }),
-              // A warning only: generating a statement is unaffected.
-              ...(readiness?.kind === 'not-ready' && {
-                readinessMissing: readiness.missing,
-              }),
-            };
-          })
-          .sort((a, b) => a.instructorName.localeCompare(b.instructorName));
-
-        return { previews, monthIsOver: isPayoutMonthOver(data.month, now) };
+        const drafts = await buildDrafts(monthData, now, data.throughDate);
+        return {
+          previews: buildPreviews(drafts, statements, monthData.instructors, now),
+          ...(data.throughDate !== undefined && { throughDate: data.throughDate }),
+        };
       }
     ),
 
@@ -138,25 +109,20 @@ export const payouts = Functions.router('payouts', {
     .asRoute<GenerateClassInstructorStatementRequest, GenerateClassInstructorStatementResponse>(
       async (data) => {
         const now = new Date();
-        if (!isPayoutMonthOver(data.month, now)) {
-          throwFailedPrecondition(`${data.month} isn't over yet; generate its statement once it is`);
-        }
-
-        const [monthData, existing] = await Promise.all([
-          loadPayoutMonthData(data.month, data.instructorId),
-          ClassInstructorStatementRepository.findAll({
-            instructorId: data.instructorId,
-            month: data.month,
-          }),
-        ]);
+        const monthData = await loadPayoutMonthData(
+          monthKeyInStudioZone(now),
+          data.instructorId
+        );
         if (monthData.instructors.length === 0) throwNotFound('Instructor', data.instructorId);
-        // Checked again inside the transaction; this just gives the clearer message.
-        const live = existing.find((s) => s.status !== 'void');
-        if (live) throwStatementExists(data.month, live.id);
 
-        const [draft] = await buildDrafts(data.month, monthData, now);
+        // Only sessions that have ended, and that no statement has claimed.
+        const [draft] = await buildDrafts(monthData, now, data.throughDate);
         if (!draft || draft.entries.length === 0) {
-          throwFailedPrecondition('Nothing unpaid for this instructor in that month');
+          throwFailedPrecondition(
+            data.throughDate
+              ? `Nothing unpaid for this instructor up to ${data.throughDate}`
+              : 'Nothing unpaid for this instructor yet'
+          );
         }
         if (draft.missingRateConfig || draft.payRate === undefined) {
           throwFailedPrecondition(
@@ -165,15 +131,17 @@ export const payouts = Functions.router('payouts', {
         }
         if (draft.totalOwedCents <= 0) {
           throwFailedPrecondition(
-            'Refund adjustments cancel out this month\'s earnings; they carry to the next statement'
+            'Refund adjustments cancel out what is owed so far; they carry to the next statement'
           );
         }
 
+        // The transaction refuses if any of these sessions was claimed since
+        // the draft was built, so a double click or two admins cannot pay a
+        // session twice.
         const outcome = await ClassInstructorStatementRepository.generate({
           ...draft,
           payRate: draft.payRate,
         });
-        if (outcome.kind === 'statement-exists') throwStatementExists(data.month, outcome.statementId);
         if (outcome.kind === 'already-claimed') {
           throwFailedPrecondition(
             'Some of these sessions were just put on another statement; refresh and try again'
@@ -197,11 +165,13 @@ export const payouts = Functions.router('payouts', {
         const year = Number(zonedDateKey(new Date()).slice(0, 4));
         const paid = await ClassInstructorStatementRepository.findAll({ status: 'paid' });
         const paidThisYearByInstructor: Record<string, number> = {};
+        const paidByYearByInstructor: Record<string, Record<string, number>> = {};
         for (const instructorId of new Set(paid.map((s) => s.instructorId))) {
           paidThisYearByInstructor[instructorId] = paidTotalForYear(paid, instructorId, year);
+          paidByYearByInstructor[instructorId] = paidTotalsByYear(paid, instructorId);
         }
 
-        return { statements, paidThisYearByInstructor };
+        return { statements, paidThisYearByInstructor, paidByYearByInstructor };
       }
     ),
 

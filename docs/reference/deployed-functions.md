@@ -195,6 +195,8 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   `payouts/previewClassInstructorPayouts`, `payouts/generateClassInstructorStatement`,
   `payouts/getClassInstructorStatements`, `payouts/getClassInstructorStatement`,
   `payouts/markClassInstructorStatementPaid`, `payouts/voidClassInstructorStatement`.
+  Preview and generate take an optional `throughDate` instead of a month (#344): a statement
+  can be made any time for the finished sessions no statement has claimed.
   It computes and records; it never moves money.
   - Artist consignment payouts (legacy #313), formerly `getPayouts` / `generatePayout` /
     `markPayoutPaid`: `payouts/getArtistPayouts` (filters: artistId, status),
