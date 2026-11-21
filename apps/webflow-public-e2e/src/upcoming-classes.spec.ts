@@ -91,11 +91,35 @@ test.describe('/upcoming-classes', () => {
       isMobile(testInfo.project.name),
       'The row CTA is hidden on phones; the sticky bar covers it',
     );
-    const row = visibleRows(page).first();
+    // A class that has started stays listed for the day with a "View class"
+    // link instead, covered below.
+    const row = visibleRows(page)
+      .and(page.locator(':not(.msx-closed)'))
+      .first();
+    test.skip((await row.count()) === 0, 'Every listed class has started');
     const cta = row.locator('.msx-cta');
     await expect(cta).toBeVisible();
     await cta.click();
     await expect(page).toHaveURL(/\/classes\/[^/#?]+#register$/);
+  });
+
+  test('started class: row links to the class page, not the form', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      isMobile(testInfo.project.name),
+      'The row CTA is hidden on phones; the sticky bar covers it',
+    );
+    const row = visibleRows(page).and(page.locator('.msx-closed')).first();
+    test.skip(
+      (await row.count()) === 0,
+      'No started class is listed right now',
+    );
+    await expect(row).toContainText('Registration closed');
+    const cta = row.locator('.msx-cta');
+    await expect(cta).toHaveText('View class');
+    await cta.click();
+    await expect(page).toHaveURL(/\/classes\/[^/#?]+$/);
   });
 
   test('phone: sticky bar links to registration, no sideways scroll', async ({

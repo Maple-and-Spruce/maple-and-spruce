@@ -22,10 +22,16 @@ export function expectClassRedesign(baseURL: string | undefined): boolean {
 }
 
 export interface ListedClasses {
-  /** Path of the first listed class, e.g. `/classes/<slug>`. */
+  /**
+   * Path of the first listed class still taking sign-ups, e.g.
+   * `/classes/<slug>`. A class stays on the list for the rest of the day it
+   * starts, with registration closed, so the first card is not always this.
+   */
   first: string | null;
-  /** Path of the first listed class that is full (`.msx-full`), if any. */
+  /** Path of the first full class that has not started (`.msx-full`), if any. */
   full: string | null;
+  /** Path of the first class that has started (`.msx-closed`), if any. */
+  closed: string | null;
 }
 
 /** Load the listing once and wait for its page script to have run. */
@@ -52,6 +58,11 @@ export async function discoverClasses(
       .first()
       .waitFor({ state: 'attached', timeout: 15_000 })
       .catch(() => undefined);
+    // `msx-full` / `msx-closed` are added by the page script, so wait for it.
+    await page
+      .locator('.cls-card-grid.msx')
+      .waitFor({ state: 'attached', timeout: 15_000 })
+      .catch(() => undefined);
     return await page.evaluate(() => {
       const path = (card: Element | null | undefined): string | null => {
         const href = card
@@ -62,9 +73,14 @@ export async function discoverClasses(
       const cards = Array.from(
         document.querySelectorAll('.cls-card-grid .cls-card'),
       );
+      const closed = (c: Element): boolean =>
+        c.classList.contains('msx-closed');
       return {
-        first: path(cards[0]),
-        full: path(cards.find((c) => c.classList.contains('msx-full'))),
+        first: path(cards.find((c) => !closed(c))),
+        full: path(
+          cards.find((c) => c.classList.contains('msx-full') && !closed(c)),
+        ),
+        closed: path(cards.find(closed)),
       };
     });
   } finally {
