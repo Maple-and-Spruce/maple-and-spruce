@@ -6,6 +6,27 @@
 
 ## Current Status
 
+### Past class pages stay up (2026-11-21)
+
+- **Categories first.** An inventory of prod found 64 classes and 5 categories, none with a
+  description. No category had been created since August, so every newer kind of class had none
+  (19 of 64). Katie's goal is to link closely related offerings, so categories stay narrow
+  ("<craft> <kind>": Stained Glass TryIt / Studio Series / Workshop / Pumpkins / Holiday, Hammered
+  Copper Jewelry, Basket Weaving TryIt, ...) and get no descriptions. Applied with an untracked
+  one-off script: 2 renames (fixing "Stain Glass"), 6 new categories (11 total), 27 classes refiled.
+- **Past pages stay live.** `expirePastClassPages` now restores past class pages (clears the
+  draft flag and publishes) instead of unpublishing them, so past offerings stay up for search,
+  AI answers, aggregators and prospective instructors. It keeps its name because the library
+  name is the deploy filter.
+- **Class page past mode.** `class-page-embed.html` shows a past class as a record: "Past class"
+  tag, date with year, "This class ran on ...", "See upcoming classes", "Ask when it runs again",
+  and the same-category list as "Coming up". Price, seats, registration and phone bar are hidden.
+- **Before merging:** in the Designer, bind `data-start` on `.cls-hero-content` to `date-time`,
+  remove the `is-full` visibility condition from `.cls-related-block`, and paste the new embed.
+  Without `data-start`, a class more than ~6 months old reads as next year's and looks bookable.
+- **Still to do:** a past-classes index page, and checking that no other Webflow list of classes
+  (home page, instructor pages) shows past classes now that they stay live.
+
 ### Class instructors paid per class, not only monthly (2026-11-21, #344)
 
 - The first contract instructor was paid twice in November, once per class, and the portal could
