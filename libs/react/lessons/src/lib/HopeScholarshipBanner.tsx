@@ -27,6 +27,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import StarsIcon from '@mui/icons-material/Stars';
 import type { HopeProduct } from '@maple/ts/domain';
 import { formatHopePrice, resolveHopeLessonRate } from '@maple/ts/domain';
+import { CopyHopeMessageButton } from './HopeShareLinks';
 
 export interface HopeScholarshipBannerProps {
   /** The student's EMA product id, if one is set. */
@@ -75,6 +76,8 @@ export function HopeScholarshipBanner({
             variant="outlined"
             label={`EMA product ${rate.product.emaProductId}`}
           />
+          {/* The family orders this product themselves, so give them its name. */}
+          <CopyHopeMessageButton product={rate.product} />
         </Box>
       ) : (
         <Box sx={{ mb: 1 }}>

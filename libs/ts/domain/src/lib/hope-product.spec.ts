@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { resolveHopeLessonRate, type HopeProduct } from './hope-product';
+import {
+  HOPE_STOREFRONT_URL,
+  hopeFamilyMessage,
+  resolveHopeLessonRate,
+  type HopeProduct,
+} from './hope-product';
 
 const product = (over: Partial<HopeProduct> = {}): HopeProduct => ({
   id: 'prod-1',
@@ -43,5 +48,26 @@ describe('resolveHopeLessonRate', () => {
     expect(
       resolveHopeLessonRate({ hopeProductId: 'prod-1' }, new Map()).rateCents
     ).toBeUndefined();
+  });
+});
+
+describe('hopeFamilyMessage', () => {
+  it('gives the storefront link and the exact product name to search for', () => {
+    const message = hopeFamilyMessage(product());
+    expect(message).toContain(HOPE_STOREFRONT_URL);
+    expect(message).toContain('"Suzuki Violin Lesson - 30 min"');
+    expect(message).toContain('$32.50 per lesson');
+  });
+
+  it('still gives the link when no product is chosen', () => {
+    const message = hopeFamilyMessage();
+    expect(message).toContain(HOPE_STOREFRONT_URL);
+    expect(message).toContain('Products & Services');
+    expect(message).not.toContain('per lesson');
+  });
+
+  it('sends the parent link, not the provider view', () => {
+    expect(HOPE_STOREFRONT_URL).toContain('/esa_parent/');
+    expect(HOPE_STOREFRONT_URL).not.toContain('active_tab');
   });
 });

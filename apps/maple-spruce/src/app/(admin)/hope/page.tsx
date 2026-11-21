@@ -15,6 +15,7 @@ import type {
 import {
   BackfillLessonsDialog,
   HopeProductsCard,
+  HopeShareLinks,
   HopeStudentBilling,
 } from '@maple/react/lessons';
 import { formatHopePrice } from '@maple/ts/domain';
@@ -134,6 +135,9 @@ export default function HopePage() {
           Record past lessons
         </Button>
       </Stack>
+      <Box sx={{ mt: 2 }}>
+        <HopeShareLinks productsState={productsState} />
+      </Box>
       {notice && (
         <Alert severity="warning" sx={{ my: 2 }} onClose={() => setNotice(null)}>
           {notice}

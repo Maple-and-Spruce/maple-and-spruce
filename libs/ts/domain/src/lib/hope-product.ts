@@ -83,3 +83,42 @@ export function resolveHopeLessonRate(
 export function formatHopePrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
+
+/**
+ * The studio's page in the Hope Scholarship Marketplace, as a parent sees it.
+ *
+ * Families cannot find us by searching the Marketplace, and the portal has no
+ * link to a single product, so what gets sent is this page plus the exact
+ * product name to search for on its Products & Services tab. It only opens for
+ * a signed-in parent; signed out it goes to the Hope sign-in page.
+ */
+export const HOPE_STOREFRONT_URL =
+  'https://app.hopescholarshipwv.com/esa/esa_parent/esa_vendors/17203';
+
+/**
+ * A ready-to-send note telling a family how to order lessons through Hope:
+ * the storefront link, and, given a product, its exact name and price.
+ */
+export function hopeFamilyMessage(
+  product?: Pick<HopeProduct, 'name' | 'priceCents'>
+): string {
+  const lines = [
+    'To order lessons with Maple & Spruce through your Hope Scholarship, sign in to your Hope account, then open our page:',
+    '',
+    HOPE_STOREFRONT_URL,
+    '',
+    'If Hope takes you to your dashboard instead, click the link again once you are signed in.',
+  ];
+  if (product) {
+    lines.push(
+      '',
+      `On the Products & Services tab, search for "${product.name}" and order that one (${formatHopePrice(product.priceCents)} per lesson). Order as many lessons as you would like to cover.`
+    );
+  } else {
+    lines.push(
+      '',
+      'Our lessons are listed on the Products & Services tab. Let us know if you are not sure which one to order.'
+    );
+  }
+  return lines.join('\n');
+}
