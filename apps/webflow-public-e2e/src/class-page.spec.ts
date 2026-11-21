@@ -5,8 +5,9 @@
  * READ-ONLY: the registration widget is only waited for, never filled. No
  * button inside it is clicked.
  *
- * Runs against the first listed class and, when the calendar has one, a full
- * class (whose CTA turns into the waitlist).
+ * Runs against the first listed class still taking sign-ups and, when the
+ * calendar has one, a full class (whose CTA turns into the waitlist) and a
+ * class that has started (registration closed; it stays listed for the day).
  */
 import { test, expect, type Page } from '@playwright/test';
 import {
@@ -23,7 +24,7 @@ const WIDGET_READY = /Your Information|Join waitlist|first-come, first-served/i;
 // Cold-starting callables make the widget slow on the first hit of the day.
 const WIDGET_TIMEOUT = 30_000;
 
-let listed: ListedClasses = { first: null, full: null };
+let listed: ListedClasses = { first: null, full: null, closed: null };
 
 test.beforeAll(async ({ browser }) => {
   listed = await discoverClasses(browser);
@@ -108,6 +109,33 @@ for (const { kind, pick } of KINDS) {
     });
   });
 }
+
+test.describe('class page: started class', () => {
+  test.beforeEach(async ({ page }) => {
+    test.skip(
+      !listed.closed,
+      'No started class on /upcoming-classes right now',
+    );
+    await page.goto(listed.closed as string, { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('h1.cls-class-name')).toBeVisible();
+  });
+
+  test('widget says registration is closed', async ({ page }) => {
+    await expect(page.locator('#register code-island')).toContainText(
+      /Registration is closed/i,
+      { timeout: WIDGET_TIMEOUT },
+    );
+  });
+
+  test('CTA points back to the listing', async ({ page, baseURL }) => {
+    await skipUnlessRedesigned(page, baseURL);
+    await expect(page.locator('body')).toHaveClass(/(^|\s)cpx-closed(\s|$)/);
+    const cta = page.locator('.cls-register-btn');
+    await expect(cta).toHaveAttribute('href', '/upcoming-classes');
+    await expect(cta).toHaveText('See upcoming classes');
+    await expectNoHorizontalOverflow(page);
+  });
+});
 
 async function skipUnlessRedesigned(
   page: Page,
