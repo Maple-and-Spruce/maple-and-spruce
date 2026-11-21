@@ -70,6 +70,12 @@ export {
   type BackfillLessonsDialogProps,
 } from './lib/BackfillLessonsDialog';
 export { HopeScholarshipBanner } from './lib/HopeScholarshipBanner';
+export {
+  HopeShareLinks,
+  CopyHopeMessageButton,
+  type HopeShareLinksProps,
+  type CopyHopeMessageButtonProps,
+} from './lib/HopeShareLinks';
 export { generateWeeklyDates, type SeriesCadence } from './lib/series-dates';
 export { formatCents } from './lib/format-cents';
 export {
