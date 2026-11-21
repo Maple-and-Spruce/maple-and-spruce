@@ -151,6 +151,18 @@ Two Designer settings make this work:
   element out of the page entirely, and the block used to be bound to `is-full`. The script now
   shows it only on full or past classes.
 
+Both were set on 2026-11-21 (via the Webflow MCP) and published.
+
+**Past classes index (`/past-classes`, page `6b020d7417a30df16ff29ea9`).** A duplicate of
+/upcoming-classes whose Classes list is filtered to `date-time` on or before yesterday (Webflow
+offers only `<=` / `>=` on dates) and `is-dev-environment` off, sorted newest first. The list
+section carries `data-msx-mode="past"`, which puts `webflow-embed.html` in past mode: months
+always show their year, and there is no price, seat count, booking button, "Next up" tag, featured
+card or sticky bar. The Policies section is hidden. /upcoming-classes links to it ("See classes we
+have run before") beside the calendar link. Both pages carry the same `webflow-embed.html`.
+A Studio Series that has started but not finished is listed here (its first date has passed);
+its page says registration is closed rather than "Past class".
+
 **Editing any embed means editing it in Webflow and keeping its file here in
 sync.** These files are the source of truth the embeds point to.
 
