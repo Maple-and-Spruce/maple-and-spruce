@@ -223,13 +223,14 @@ carries it until then.
 5. Top 10 backlog by score
 6. At most three process changes to propose, each as its own `type:process` PR
 
-**The Decisions page.** The same run opens one GitHub issue, "Decisions — week
-of <date>", labelled `for:david`, and closes last week's (anything unanswered
-carries over). The cloud routines have no Notion access, so a scheduled task on
-David's Mac copies that issue to a page under Notion → Claude Ops →
-[M&S Decisions](https://app.notion.com/p/41117805570781249870d61fc75509b2)
-on Monday morning, and a recurring Monday 9am reminder in David's Claude Review
-list points there. Plain language, no jargon, no customer data, grouped as:
+**The Decisions page.** The same run writes one page for David and Katie under
+Notion → Claude Ops →
+[M&S Decisions](https://app.notion.com/p/41117805570781249870d61fc75509b2),
+titled "Decisions — week of <date>", and opens a GitHub issue with the same
+title and content, labelled `for:david`, as the public record. It closes last
+week's issue; anything unanswered carries over. A recurring Monday 9am reminder
+in David's Claude Review list points to the Notion hub. Plain language, no
+jargon, no customer data, grouped as:
 
 - **Try these** (flags ready to turn on in dev, with what Katie will see)
 - **Turn these on** (flags Katie has tried, ready for prod)
@@ -239,15 +240,20 @@ list points there. Plain language, no jargon, no customer data, grouped as:
 
 Each item: one line on what it is, the recommended answer, and what happens if
 nobody answers (usually: nothing ships, and it stays on next week's page).
-Answers are recorded back on the GitHub issue or PR by whoever reads them next.
 
-Answers given in Notion are copied back to the issue by the next interactive
-session or by the Mac task the following week.
+**Answers come back to GitHub.** Before writing the new page, the Retro reads
+last week's page and its comments, and posts each answer on the issue or PR it
+belongs to (`<!-- retro -->`, then "Answer from the Decisions page"). The
+Groomer treats those exactly like David's own replies. Turning a flag on stays
+a job for David by hand; the Retro lists any that were asked for at the top of
+the new page.
 
 ## Running in a routine
 
 The Groomer, Builder and Retro are Claude Code routines on David's account
-(claude.ai/code/routines), with no connectors: GitHub only.
+(claude.ai/code/routines). The Groomer and Builder have no connectors: GitHub
+only, through `gh`. The Retro also has the Notion and GitHub connectors, and
+writes in Notion only to the Decisions pages.
 
 - **Check access first.** Before any work, run
   `gh api repos/Maple-and-Spruce/maple-and-spruce --jq .full_name`. If it fails,
@@ -263,12 +269,11 @@ The Groomer, Builder and Retro are Claude Code routines on David's account
   anything else becomes a question on the Decisions issue.
 - **End with a short recap**: what was done, links, and anything stuck.
 
-| Routine                      | When (Eastern)                                        | Model  |
-| ---------------------------- | ----------------------------------------------------- | ------ |
-| Groomer                      | Daily, 5:00am                                         | Sonnet |
-| Builder                      | Weekdays, 6:00am                                      | Opus   |
-| Retro                        | Sundays, 8:00pm (its PR merges with Monday's Builder) | Sonnet |
-| Decisions copy (David's Mac) | Mondays, 8:30am                                       | —      |
+| Routine | When (Eastern)                                        | Model  |
+| ------- | ----------------------------------------------------- | ------ |
+| Groomer | Daily, 5:00am                                         | Sonnet |
+| Builder | Weekdays, 6:00am                                      | Opus   |
+| Retro   | Sundays, 8:00pm (its PR merges with Monday's Builder) | Sonnet |
 
 ## Budget
 
