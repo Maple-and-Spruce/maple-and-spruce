@@ -37,6 +37,23 @@
    "Register" / "Join Waitlist" heading above it is hidden. */
 .cpx.cpx-closed #register > .w-container{display:none!important}
 .cpx-ask{font-family:Archivo,sans-serif;font-size:14px;font-weight:600;color:#4A3728}
+/* Other dates: Webflow shows this block on full classes; once its visibility condition is removed
+   in the Designer, the script decides instead (full or past classes only). */
+.cpx:not(.cpx-full):not(.cpx-past) .cls-related-block{display:none!important}
+/* Past class (its last session has ended): a record of what ran, not a sales page. */
+.cpx.cpx-past .cls-pr,.cpx.cpx-past .cls-sidebar-col{display:none!important}
+.cpx.cpx-past .cls-two-col{grid-template-columns:minmax(0,1fr)!important}
+.cpx-tag.is-past{background:#4A3728;color:#FBFAF6}
+.cpx-past-panel{border-top:1px solid #E4E1D6;padding:18px 0 0;display:flex;flex-direction:column;gap:14px}
+.cpx-past-panel p{margin:0;font-family:Georgia,Times,"Times New Roman",serif;font-size:17px;line-height:1.55;color:#4A4740}
+.cpx-past-panel .cls-related-block{display:block!important;margin:6px 0 0!important;padding:0!important}
+.cpx-past-panel .cls-related-block .cls-section-title{font-family:Archivo,sans-serif!important;font-size:12px!important;font-weight:700!important;letter-spacing:.1em!important;text-transform:uppercase!important;color:#56664A!important;margin:0 0 8px!important}
+.cpx-past-panel .cls-related-grid{display:flex!important;flex-direction:column;gap:8px}
+.cpx-past-panel .cls-related-card-link{display:block;background:#F6F4EE;border-radius:12px;padding:12px 14px;text-decoration:none!important;color:#4A3728!important}
+.cpx-past-panel .cls-related-card-link *{text-decoration:none!important}
+.cpx.cpx-past .cpx-past-panel .cls-register-btn{background:#56664A!important;color:#fff!important;border-color:#56664A!important}
+.cpx-past-panel .cls-related-name{font-family:Georgia,serif;font-size:16px;color:#4A3728}
+.cpx-past-panel .cls-related-meta,.cpx-past-panel .cls-related-spots{font-family:Archivo,sans-serif;font-size:13px;color:#55524A}
 /* Details band */
 .cpx .cls-body-section{background:#F6F4EE!important;padding:48px 24px 56px!important}
 .cpx .cls-body-container{max-width:1008px!important;margin:0 auto!important;padding:0!important;width:auto!important}
@@ -165,6 +182,13 @@
     }
     return new Date(guess);
   }
+  // `data-start` (any date the browser can parse) -> its year at the studio, or null.
+  function studioYear(v) {
+    var t = Date.parse(v || '');
+    if (isNaN(t)) return null;
+    var y = +new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric' }).format(new Date(t));
+    return y > 2000 && y < 2200 ? y : null;
+  }
   // "6:00 PM" (or "Nov 9 6:00 PM") -> { h: 18, m: 0 }
   function clockOf(t) {
     var m = /(\d{1,2}):(\d{2})\s*([AP]M)/i.exec(t || '');
@@ -229,12 +253,33 @@
     if (full) document.body.classList.add('cpx-full');
     var times = timeRange(D('time'), minutes);
     var days = dates.map(parseDay).filter(Boolean);
+    // The CMS date list has no year, so parseDay guesses one (good within ~6 months). `data-start`,
+    // bound to the CMS `date-time` field, gives the real year of the first session; later sessions
+    // move into the next year when the month goes backwards.
+    var startYear = studioYear(D('start'));
+    if (startYear && days.length) {
+      var y = startYear;
+      days = days.map(function (d, i) {
+        if (i > 0 && d.getMonth() < days[i - 1].getMonth()) y++;
+        return new Date(y, d.getMonth(), d.getDate());
+      });
+    }
+    // Past once the last session has ended. That session's own time if the list carries one
+    // ("Dec 19 10:00 AM"), else the class time; with no time at all, the end of that day.
+    var lastDay = days[days.length - 1];
+    var lastClock = clockOf(dates[dates.length - 1]) || clockOf(D('time'));
+    var endsAt = !lastDay ? null : lastClock
+      ? new Date(studioInstant(lastDay.getFullYear(), lastDay.getMonth(), lastDay.getDate(), lastClock.h, lastClock.m).getTime() + (minutes || 0) * 60000)
+      : studioInstant(lastDay.getFullYear(), lastDay.getMonth(), lastDay.getDate(), 23, 59);
+    var past = !!endsAt && endsAt <= new Date();
+    if (past) document.body.classList.add('cpx-past');
     // Registration closes when the first session starts, as on the server (isClassRegistrationOpen).
     // "Varies" puts the first time in the dates list instead. A private-hours class stays open while
     // any hour is ahead, so it is left to the widget, which knows every hour.
     var firstClock = clockOf(D('time')) || clockOf(dates[0]);
     var closed = !hours && !!days.length && !!firstClock &&
       studioInstant(days[0].getFullYear(), days[0].getMonth(), days[0].getDate(), firstClock.h, firstClock.m) <= new Date();
+    if (past) closed = true;
     if (closed) document.body.classList.add('cpx-full', 'cpx-closed');
 
     // ---- Hero: media left, decision right
@@ -252,6 +297,7 @@
     if (gallery) media.appendChild(gallery);
 
     var tags = el('div', 'cpx-tags');
+    if (past) tags.appendChild(el('span', 'cpx-tag is-past', 'Past class'));
     tags.appendChild(el('span', 'cpx-tag' + (series ? ' is-series' : ''), series ? 'Studio Series' : workshop ? 'Workshop' : 'Try It'));
     var level = D('level');
     if (level && !/^[0-9a-f]{20,}$/i.test(level)) tags.appendChild(el('span', 'cpx-tag is-level', level));
@@ -279,6 +325,7 @@
     } else {
       dateText = D('dates');
     }
+    if (past && days.length) dateText += ', ' + lastDay.getFullYear();
     fact('date', 'Dates', dateText);
     fact('time', 'Time', /varies/i.test(times) ? 'Times vary by session' : times + (days.length > 1 && !hours ? ' each week' : ''));
     if (D('instructor')) fact('who', 'Instructor', 'Taught by ' + D('instructor'));
@@ -286,7 +333,9 @@
     fact('where', 'Location', !loc || /maple\s*&\s*spruce/i.test(loc) ? 'Maple & Spruce, 688 Beulah Rd, Morgantown' : loc);
     top.appendChild(facts);
 
-    if (pr) {
+    if (past) {
+      buy.appendChild(pastPanel());
+    } else if (pr) {
       var price = pr.querySelector('.cls-price-v2');
       var btn = pr.querySelector('.cls-register-btn');
       var row = el('div', 'cpx-price-row');
@@ -318,6 +367,46 @@
       }
       buy.appendChild(pr);
     }
+    // What a past class shows where the price and booking would be: when it ran, where to go next,
+    // and the template's list of other dates in the same category (or a note when there are none).
+    function pastPanel() {
+      var panel = el('div', 'cpx-past-panel');
+      var when = days.length > 1
+        ? 'from ' + MONTHS[days[0].getMonth()] + ' ' + days[0].getDate() + ' to ' + MONTHS[lastDay.getMonth()] + ' ' + lastDay.getDate() + ', ' + lastDay.getFullYear()
+        : days.length === 1 ? 'on ' + fmtDay(days[0]) + ', ' + days[0].getFullYear() : '';
+      panel.appendChild(el('p', null, 'This class ran ' + (when ? when + '. ' : 'in the past. ') +
+        'It is here to show the kind of thing we make together at the studio.'));
+      var actions = el('div', 'cpx-actions');
+      var up = el('a', 'cls-register-btn', 'See upcoming classes');
+      up.href = '/upcoming-classes';
+      actions.appendChild(up);
+      var ask = el('a', 'cpx-ask', 'Ask when it runs again');
+      ask.href = 'mailto:katie@mapleandsprucefolkarts.com?subject=' + encodeURIComponent('When will ' + name + ' run again?');
+      actions.appendChild(ask);
+      panel.appendChild(actions);
+
+      var related = document.querySelector('.cls-related-block');
+      if (related) {
+        var heading = related.querySelector('.cls-section-title');
+        if (heading) heading.textContent = 'Coming up';
+        var here = location.pathname.replace(/\/$/, '');
+        var cards = related.querySelectorAll('.cls-related-card');
+        var shown = 0;
+        for (var i = 0; i < cards.length; i++) {
+          var link = cards[i].querySelector('a');
+          var href = link ? (link.getAttribute('href') || '').replace(/\/$/, '') : '';
+          if (href === here) cards[i].style.display = 'none'; else shown++;
+        }
+        if (!shown) {
+          var list = related.querySelector('.w-dyn-list');
+          if (list) list.style.display = 'none';
+          related.appendChild(el('p', null, 'Nothing like this is on the calendar right now.'));
+        }
+        panel.appendChild(related);
+      }
+      return panel;
+    }
+
     grid.appendChild(media); grid.appendChild(top); grid.appendChild(buy);
     hero.appendChild(grid);
     if (back) hero.insertBefore(back, grid);
@@ -383,7 +472,7 @@
       var card = document.querySelector('.cls-instructor-card');
       if (card && (card.textContent || '').trim()) {
         var iw = el('div', 'cpx-instructor');
-        iw.appendChild(el('div', 'cpx-label', 'Your instructor'));
+        iw.appendChild(el('div', 'cpx-label', past ? 'Instructor' : 'Your instructor'));
         iw.appendChild(card);
         main.appendChild(iw);
       }
@@ -391,7 +480,7 @@
 
     // ---- Phone booking bar (CSS shows it under 992px)
     var reg = document.getElementById('register');
-    if (reg && pr) {
+    if (reg && pr && !past) {
       var mb = el('div', 'cpx-mbar');
       var mt = el('div');
       var priceEl = pr.querySelector('.cls-price-v2');

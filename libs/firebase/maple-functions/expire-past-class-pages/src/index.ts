@@ -1,5 +1,5 @@
 export { expirePastClassPages } from './lib/expire-past-class-pages';
 export {
-  findExpiredLiveClasses,
+  findPastClassesToRestore,
   isClassPast,
 } from './lib/expire-past-class-pages.logic';

@@ -1,20 +1,22 @@
 /**
  * Expire Past Class Pages Scheduled Function
  *
- * Runs daily at 3:30 AM ET and unpublishes the Webflow CMS item for any class
- * whose last session has already finished.
+ * Runs daily at 3:30 AM ET and makes sure every past class still has a live
+ * Webflow page: a published class whose last session has finished, and whose
+ * item is not live, is put back (draft flag cleared, item published).
  *
- * Why this exists: every class offering syncs to its own Webflow CMS item, and
- * each non-draft item publishes a `/classes/{slug}` detail page. Nothing ever
- * took those pages back down, so past classes accumulated in the live site and
- * the auto-generated sitemap — 19 of 28 live class pages were already in the
- * past when this was written. That is thin, near-duplicate content for Google
- * and a dead end for anyone who lands on one.
+ * Why the name no longer fits: until 2026-11 this sweep did the opposite and
+ * unpublished past class pages, so every past offering became a 404. Past
+ * pages are now kept as a record of what the studio has run (search, AI
+ * answers, aggregators, prospective instructors); the class page embed shows
+ * them as past, with no registration, and points to upcoming classes. The
+ * function keeps its name because the library name is the deploy filter:
+ * renaming it would deploy a second function and leave this one running, still
+ * unpublishing, until someone deleted it by hand.
  *
- * Unpublishing (not deleting) is deliberate: Webflow's live-delete endpoint
- * sets `isDraft = true` and keeps the CMS item, so the class retains its
- * `webflowItemId` and slug. A class rescheduled into the future republishes on
- * its next sync with the same URL.
+ * Most past pages never go down in the first place, since nothing unpublishes
+ * them any more. This catches the ones the old sweep took down, and any item
+ * left as a draft by a failed or partial sync.
  *
  * The selection logic lives in `./expire-past-class-pages.logic` — barrel-free
  * so its spec doesn't drag the repository layer into the coverage report.
@@ -30,7 +32,7 @@ import {
 } from '@maple/firebase/webflow';
 import { ClassRepository } from '@maple/firebase/database';
 import { FirebaseProject } from '@maple/firebase/functions';
-import { findExpiredLiveClasses } from './expire-past-class-pages.logic';
+import { findPastClassesToRestore } from './expire-past-class-pages.logic';
 
 // Define secrets INLINE to avoid cold start delays
 const webflowSecretParams = WEBFLOW_SECRET_NAMES.map((name) =>
@@ -41,7 +43,7 @@ const webflowStringParams = WEBFLOW_STRING_NAMES.map((name) =>
 );
 
 /**
- * Unpublish Webflow detail pages for classes that have already happened.
+ * Keep Webflow detail pages live for classes that have already happened.
  */
 export const expirePastClassPages = onSchedule(
   {
@@ -53,8 +55,8 @@ export const expirePastClassPages = onSchedule(
   async () => {
     // Dev and prod share one Webflow site (WEBFLOW_SITE_ID is identical in
     // .env.dev and .env.prod). Dev classes are already synced as drafts, so
-    // this sweep has nothing to do there — and refusing to run keeps a dev
-    // deploy from ever unpublishing a live production class page.
+    // this sweep has nothing to do there, and refusing to run keeps a dev
+    // deploy from ever touching a production class page.
     if (FirebaseProject.isDev) {
       console.log('Dev environment: skipping past-class page sweep.');
       return;
@@ -76,28 +78,28 @@ export const expirePastClassPages = onSchedule(
       webflow.classService.listLiveItemIdsByFirebaseId(),
     ]);
 
-    const expired = findExpiredLiveClasses(
+    const toRestore = findPastClassesToRestore(
       classes,
       liveItemIdsByFirebaseId,
       now
     );
 
-    if (expired.length === 0) {
-      console.log('No past class pages to unpublish.', {
+    if (toRestore.length === 0) {
+      console.log('No past class pages to restore.', {
         classesChecked: classes.length,
         livePages: liveItemIdsByFirebaseId.size,
       });
       return;
     }
 
-    await webflow.classService.unpublishItems(
-      expired.map((entry) => entry.webflowItemId)
+    await webflow.classService.restoreItems(
+      toRestore.map((entry) => entry.webflowItemId)
     );
 
-    console.log(`Unpublished ${expired.length} past class page(s).`, {
+    console.log(`Restored ${toRestore.length} past class page(s).`, {
       classesChecked: classes.length,
       livePages: liveItemIdsByFirebaseId.size,
-      unpublished: expired.map((entry) => ({
+      restored: toRestore.map((entry) => ({
         classId: entry.classId,
         name: entry.name,
       })),
