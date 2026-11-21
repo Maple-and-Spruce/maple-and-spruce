@@ -79,6 +79,7 @@ const instructor = {
   name: 'Test Instructor',
   email: 'instructor@example.com',
   status: 'active',
+  isContractor: true,
   payRateType: 'percentage',
   payRate: 0.8,
   createdAt: created,
@@ -163,6 +164,23 @@ describe('payouts router', () => {
       expect(previews[0]).not.toHaveProperty('entries');
     });
 
+    it('leaves out classes taught by the owner or staff: there is nothing to pay them', async () => {
+      const owner = { ...instructor, id: 'owner', isContractor: false, payRate: undefined, payRateType: undefined };
+      const staff = { ...instructor, id: 'staff', isContractor: undefined };
+      mocks.instructorFindAll.mockResolvedValue([instructor, owner, staff]);
+      mocks.classFindAll.mockResolvedValue([
+        octoberClass,
+        { ...octoberClass, id: 'owner-class', instructorId: 'owner' },
+        { ...octoberClass, id: 'staff-class', instructorId: 'staff' },
+      ]);
+
+      const result = await routes.previewClassInstructorPayouts({ month: '2026-10' });
+      const previews = result['previews'] as Record<string, unknown>[];
+      expect(previews.map((p) => p['instructorId'])).toEqual(['inst-1']);
+      // No "Rate not set" nag, and the owner's registrations aren't even read.
+      expect(mocks.registrationFindByClassId.mock.calls).toEqual([['class-1']]);
+    });
+
     it('says what an uncleared contractor is missing, without blocking anything', async () => {
       mocks.instructorFindAll.mockResolvedValue([
         { ...instructor, isContractor: true, readiness: { backgroundCheck: { clearedOn: '2026-09-02' } } },
@@ -173,12 +191,7 @@ describe('payouts router', () => {
       expect(preview['totalOwedCents']).toBe(4000);
     });
 
-    it('says nothing about readiness for a cleared contractor or a non-contractor', async () => {
-      const [plain] = (await routes.previewClassInstructorPayouts({ month: '2026-10' }))[
-        'previews'
-      ] as Record<string, unknown>[];
-      expect(plain).not.toHaveProperty('readinessMissing');
-
+    it('says nothing about readiness for a cleared contractor', async () => {
       mocks.instructorFindAll.mockResolvedValue([
         {
           ...instructor,
@@ -262,6 +275,14 @@ describe('payouts router', () => {
       await expect(generate({ instructorId: 'inst-1', month: '2026-11' })).rejects.toThrow(
         "isn't over yet"
       );
+    });
+
+    it('refuses to generate for someone who is not a contract instructor', async () => {
+      mocks.instructorFindById.mockResolvedValue({ ...instructor, isContractor: false });
+      await expect(generate({ instructorId: 'inst-1', month: '2026-10' })).rejects.toThrow(
+        'Only contract instructors are paid through statements'
+      );
+      expect(mocks.statementGenerate).not.toHaveBeenCalled();
     });
 
     it('refuses an unknown instructor', async () => {
