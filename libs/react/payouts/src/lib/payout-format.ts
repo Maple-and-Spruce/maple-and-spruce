@@ -1,4 +1,8 @@
-import { monthKeyInStudioZone } from '@maple/ts/domain';
+import {
+  monthKeyInStudioZone,
+  statementCoverage,
+  type ClassInstructorStatementDraft,
+} from '@maple/ts/domain';
 
 /** "$1,234.50", or "−$40.00" for a negative amount (a refund clawback). */
 export function formatMoney(cents: number): string {
@@ -54,6 +58,39 @@ export function formatDay(day: string): string {
     year: 'numeric',
     timeZone: 'UTC',
   });
+}
+
+/** `2026-11-05` → "Nov 5" (a calendar day, no timezone shift). */
+function formatDayShort(day: string): string {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+/**
+ * Two days as one phrase: "Nov 8, 2026" when they are the same day,
+ * "Nov 8 to Nov 15, 2026" within a year, both years spelled out otherwise.
+ */
+export function formatDayRange(from: string, to: string): string {
+  if (from === to) return formatDay(from);
+  return from.slice(0, 4) === to.slice(0, 4)
+    ? `${formatDayShort(from)} to ${formatDay(to)}`
+    : `${formatDay(from)} to ${formatDay(to)}`;
+}
+
+/**
+ * The days a statement's sessions were held, which is what tells two
+ * statements in one month apart. Falls back to the month for a statement
+ * with no sessions on it.
+ */
+export function formatStatementPeriod(
+  statement: Pick<ClassInstructorStatementDraft, 'classes' | 'month'>
+): string {
+  const coverage = statementCoverage(statement);
+  return coverage ? formatDayRange(coverage.from, coverage.to) : formatMonth(statement.month);
 }
 
 /** Today as `YYYY-MM-DD` in the browser's timezone, for a date input's default. */

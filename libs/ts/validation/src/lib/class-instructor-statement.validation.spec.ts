@@ -5,20 +5,29 @@ import {
 } from './class-instructor-statement.validation';
 
 describe('generateClassInstructorStatementValidation', () => {
-  it('passes with an instructor and a month', () => {
+  it('passes with just an instructor, or with a through date too', () => {
+    expect(generateClassInstructorStatementValidation({ instructorId: 'i1' }).isValid()).toBe(true);
     expect(
-      generateClassInstructorStatementValidation({ instructorId: 'i1', month: '2026-10' }).isValid()
+      generateClassInstructorStatementValidation({ instructorId: 'i1', throughDate: '2026-11-08' }).isValid()
     ).toBe(true);
   });
 
   it('requires an instructor', () => {
-    const result = generateClassInstructorStatementValidation({ month: '2026-10' });
+    const result = generateClassInstructorStatementValidation({ throughDate: '2026-11-08' });
     expect(result.getErrors('instructorId')).toContain('Instructor is required');
   });
 
-  it.each(['2026-13', '2026-1', 'October', '', undefined])('rejects month %s', (month) => {
-    const result = generateClassInstructorStatementValidation({ instructorId: 'i1', month });
-    expect(result.getErrors('month')).toContain('Month must be YYYY-MM');
+  it.each(['2026-13-01', '2026-02-30', '2026-11', 'Nov 8', ''])('rejects through date %s', (throughDate) => {
+    const result = generateClassInstructorStatementValidation({ instructorId: 'i1', throughDate });
+    expect(result.getErrors('throughDate')).toContain('Through date must be a real date (YYYY-MM-DD)');
+  });
+
+  it('rejects a through date that is not a string', () => {
+    const result = generateClassInstructorStatementValidation({
+      instructorId: 'i1',
+      throughDate: 20261108 as unknown as string,
+    });
+    expect(result.hasErrors('throughDate')).toBe(true);
   });
 });
 

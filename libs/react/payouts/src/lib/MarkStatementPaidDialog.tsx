@@ -25,7 +25,7 @@ import {
 } from '@maple/ts/domain';
 import type { MarkClassInstructorStatementPaidRequest } from '@maple/ts/firebase/api-types';
 import { markClassInstructorStatementPaidValidation } from '@maple/ts/validation';
-import { formatMonth, formatMoney, todayKey } from './payout-format';
+import { formatMoney, formatStatementPeriod, todayKey } from './payout-format';
 
 export interface MarkStatementPaidDialogProps {
   /** The statement being paid; the dialog is open while this is set. */
@@ -102,9 +102,9 @@ export function MarkStatementPaidDialog({ statement, onClose, onSubmit }: MarkSt
       <DialogContent>
         {statement && (
           <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-            {statement.instructorName}, {formatMonth(statement.month)}:{' '}
+            {statement.instructorName}, classes held {formatStatementPeriod(statement)}:{' '}
             <strong>{formatMoney(statement.totalOwedCents)}</strong>. Pay it in Square first; this only
-            records that you did.
+            records that you did. Use the day you paid, even if that was a while ago.
           </Typography>
         )}
         {submitError.value && (

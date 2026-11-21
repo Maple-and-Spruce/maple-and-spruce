@@ -19,7 +19,7 @@ type Story = StoryObj<typeof MarkStatementPaidDialog>;
 export const Open: Story = {
   play: async () => {
     const dialog = await screen.findByRole('dialog');
-    expect(dialog).toHaveTextContent('Hazel Marsh, October 2026');
+    expect(dialog).toHaveTextContent('Hazel Marsh, classes held Oct 10 to Oct 28, 2026');
     expect(dialog).toHaveTextContent('$368.00');
   },
 };

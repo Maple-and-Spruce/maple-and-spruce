@@ -21,21 +21,23 @@ import type {
   PreviewClassInstructorPayoutsResponse,
 } from '@maple/ts/firebase/api-types';
 import { StatementLinesTable } from './StatementLinesTable';
-import { formatMoney } from './payout-format';
+import { formatDay, formatDayRange, formatMoney } from './payout-format';
 
 export interface ClassInstructorPayoutPreviewProps {
   previewState: RequestState<PreviewClassInstructorPayoutsResponse>;
   onGenerate: (instructorId: string) => Promise<void>;
+  /** Open the mark-paid dialog for a statement waiting to be paid. */
+  onMarkPaid: (statementId: string) => void;
   /** Link to an existing statement. */
   statementHref: (id: string) => string;
 }
 
 /** Why Generate is off for this instructor, if it is. */
-function blockedReason(preview: Preview, monthIsOver: boolean): string | undefined {
-  if (preview.existingStatement) return undefined;
-  if (!monthIsOver) return 'The month isn\'t over yet.';
+function blockedReason(preview: Preview): string | undefined {
   if (preview.missingRateConfig) return 'Set a percentage pay rate on this instructor first.';
-  if (preview.totalOwedCents <= 0) return 'Refunds cancel out this month; they carry to the next statement.';
+  if (preview.totalOwedCents <= 0) {
+    return 'Refunds cancel out what is owed so far; they carry to the next statement.';
+  }
   return undefined;
 }
 
@@ -73,23 +75,65 @@ function LoadingSkeleton() {
   );
 }
 
-function PreviewCard({
+function PendingStatements({
   preview,
-  monthIsOver,
-  onGenerate,
+  onMarkPaid,
   statementHref,
 }: {
   preview: Preview;
-  monthIsOver: boolean;
+  onMarkPaid: (statementId: string) => void;
+  statementHref: (id: string) => string;
+}) {
+  if (preview.pendingStatements.length === 0) return null;
+  return (
+    <Box sx={{ mb: 2 }}>
+      <Typography variant="subtitle2" component="h4" sx={{ mb: 0.5 }}>
+        Waiting to be marked paid
+      </Typography>
+      <Stack spacing={0.5} component="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
+        {preview.pendingStatements.map((statement) => (
+          <Stack
+            key={statement.id}
+            component="li"
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: 'center' }}
+          >
+            <Link href={statementHref(statement.id)} sx={{ flex: 1 }}>
+              {statement.coversFrom && statement.coversTo
+                ? `Classes held ${formatDayRange(statement.coversFrom, statement.coversTo)}`
+                : 'Statement'}
+              : {formatMoney(statement.totalOwedCents)}
+            </Link>
+            <Button size="small" variant="outlined" onClick={() => onMarkPaid(statement.id)}>
+              Mark paid
+            </Button>
+          </Stack>
+        ))}
+      </Stack>
+    </Box>
+  );
+}
+
+function PreviewCard({
+  preview,
+  onGenerate,
+  onMarkPaid,
+  statementHref,
+}: {
+  preview: Preview;
   onGenerate: (instructorId: string) => Promise<void>;
+  onMarkPaid: (statementId: string) => void;
   statementHref: (id: string) => string;
 }) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const reason = blockedReason(preview, monthIsOver);
   const hasUnclaimed = preview.classes.length > 0 || preview.adjustments.length > 0;
+  const reason = hasUnclaimed ? blockedReason(preview) : undefined;
 
   const generate = async () => {
+    // Synchronous guard: a double click must not ask for two statements.
+    if (generating) return;
     setGenerating(true);
     setError(null);
     try {
@@ -102,15 +146,13 @@ function PreviewCard({
   };
 
   return (
-    <Card variant="outlined">
+    <Card variant="outlined" component="section" aria-label={preview.instructorName}>
       <CardContent>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1}
-          sx={{
-            alignItems: { sm: 'center' },
-            mb: 1
-          }}>
+          sx={{ alignItems: { sm: 'center' }, mb: 1 }}
+        >
           <Typography variant="h6" component="h3" sx={{ flex: 1 }}>
             {preview.instructorName}
           </Typography>
@@ -118,53 +160,59 @@ function PreviewCard({
             <Chip size="small" icon={<WarningAmberIcon />} label="Rate not set" color="warning" variant="outlined" />
           )}
           <NotClearedChip preview={preview} />
-          {preview.existingStatement ? (
-            <Stack direction="row" spacing={1} sx={{
-              alignItems: 'center'
-            }}>
-              <Chip
-                size="small"
-                label={`Statement ${preview.existingStatement.status}`}
-                color={preview.existingStatement.status === 'paid' ? 'success' : 'default'}
-              />
-              <Link href={statementHref(preview.existingStatement.id)}>
-                {formatMoney(preview.existingStatement.totalOwedCents)} — view statement
-              </Link>
-            </Stack>
-          ) : (
-            <Button
-              variant="contained"
-              onClick={generate}
-              disabled={Boolean(reason) || generating}
-            >
-              {generating ? 'Generating…' : `Generate statement (${formatMoney(preview.totalOwedCents)})`}
-            </Button>
-          )}
+          <Box sx={{ textAlign: { sm: 'right' } }}>
+            <Typography variant="h6" component="p" sx={{ fontWeight: 700 }}>
+              Owed {formatMoney(preview.owedCents)}
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Paid this year {formatMoney(preview.paidThisYearCents)}
+            </Typography>
+          </Box>
         </Stack>
 
-        {reason && (
-          <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-            {reason}
-          </Typography>
-        )}
         {error && (
           <Alert severity="error" sx={{ mb: 1 }}>
             {error}
           </Alert>
         )}
 
+        <PendingStatements preview={preview} onMarkPaid={onMarkPaid} statementHref={statementHref} />
+
         {hasUnclaimed ? (
-          <StatementLinesTable
-            classes={preview.classes}
-            adjustments={preview.adjustments}
-            payRate={preview.payRate}
-            grossCents={preview.grossCents}
-            totalOwedCents={preview.totalOwedCents}
-            totalLabel={preview.existingStatement ? 'Not yet on a statement' : 'Total owed'}
-          />
+          <>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              sx={{ alignItems: { sm: 'center' }, mb: 0.5 }}
+            >
+              <Typography variant="subtitle2" component="h4" sx={{ flex: 1 }}>
+                Taught and not on a statement yet
+              </Typography>
+              <Button variant="contained" onClick={generate} disabled={Boolean(reason) || generating}>
+                {generating
+                  ? 'Generating…'
+                  : `Generate statement (${formatMoney(preview.totalOwedCents)})`}
+              </Button>
+            </Stack>
+            {reason && (
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                {reason}
+              </Typography>
+            )}
+            <StatementLinesTable
+              classes={preview.classes}
+              adjustments={preview.adjustments}
+              payRate={preview.payRate}
+              grossCents={preview.grossCents}
+              totalOwedCents={preview.totalOwedCents}
+              totalLabel="Not yet on a statement"
+            />
+          </>
         ) : (
           <Typography variant="body2" color="textSecondary">
-            Everything this month is on the statement.
+            {preview.pendingStatements.length > 0
+              ? 'Every finished class is on a statement.'
+              : 'Nothing owed. Every finished class has been paid.'}
           </Typography>
         )}
       </CardContent>
@@ -173,12 +221,14 @@ function PreviewCard({
 }
 
 /**
- * What each instructor is owed for the month and hasn't been put on a
- * statement yet, with a Generate button per instructor.
+ * Where each instructor stands: what they are owed and not yet paid, the
+ * statements waiting to be marked paid, and the finished sessions that are
+ * not on a statement yet, with a Generate button per instructor.
  */
 export function ClassInstructorPayoutPreview({
   previewState,
   onGenerate,
+  onMarkPaid,
   statementHref,
 }: ClassInstructorPayoutPreviewProps) {
   if (previewState.status === 'idle' || previewState.status === 'loading') {
@@ -188,11 +238,11 @@ export function ClassInstructorPayoutPreview({
     return <Alert severity="error">Failed to load class payouts: {previewState.error}</Alert>;
   }
 
-  const { previews, monthIsOver } = previewState.data;
+  const { previews, throughDate } = previewState.data;
   if (previews.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
-        <Typography variant="body1">No class sessions to pay for this month.</Typography>
+        <Typography variant="body1">No class sessions to pay yet.</Typography>
         <Typography variant="body2">
           Instructors are paid for sessions that have ended, in classes with an instructor set.
         </Typography>
@@ -202,18 +252,18 @@ export function ClassInstructorPayoutPreview({
 
   return (
     <Stack spacing={2}>
-      {!monthIsOver && (
+      {throughDate && (
         <Alert severity="info">
-          This month isn&apos;t over yet. The figures so far are shown; statements can be generated
-          once it ends.
+          Showing classes held through {formatDay(throughDate)}. Later classes are left for another
+          statement.
         </Alert>
       )}
       {previews.map((preview) => (
         <PreviewCard
           key={preview.instructorId}
           preview={preview}
-          monthIsOver={monthIsOver}
           onGenerate={onGenerate}
+          onMarkPaid={onMarkPaid}
           statementHref={statementHref}
         />
       ))}

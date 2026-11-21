@@ -259,7 +259,7 @@ Closes the last follow-up under legacy epic #10. Aggregates what Katie owes each
 
 ### Class-Instructor Payouts (Complete, 3 PRs)
 
-Contract instructors get `payRate` (0.8) of what the student paid for the class, after discount and before tax. Revenue is split evenly across sessions, and each session is paid in the month it was held. Statements are generated monthly and marked paid by hand; the app never moves money. See the domain module's header for the full policy.
+Contract instructors get `payRate` (0.75 or 0.8) of what the student paid for the class, after discount and before tax. Revenue is split evenly across sessions, and each session is payable once it has ended. Statements are generated on demand (per class, weekly or monthly, #344) and marked paid by hand; the app never moves money. See the domain module's header for the full policy.
 
 | Feature | Status | Location |
 |---------|--------|----------|
@@ -273,6 +273,7 @@ Contract instructors get `payRate` (0.8) of what the student paid for the class,
 | Integration suite (split across months, double generate, race, void + regenerate, refund after payment, gating) + role matrix | **Complete** (PR 2) | `apps/functions-integration-tests-payouts/` |
 | `useClassInstructorPayouts` / `useClassInstructorStatement` hooks (router routes, date hydration) | **Complete** (PR 3) | `libs/react/data/src/lib/useClassInstructorPayouts.ts` |
 | `MonthStepper`, `ClassInstructorPayoutPreview`, `ClassInstructorStatementsList`, `MarkStatementPaidDialog`, `ClassInstructorStatementView` (4 loading states each, 41 play tests) | **Complete** (PR 3) | `libs/react/payouts/` |
+| Statements on demand (#344): generate any time for every finished, unclaimed session, optionally "classes held through" a day; several statements per instructor per month; per-instructor owed (unclaimed + pending statements) and paid this year; paid-by-calendar-year table for the 1099-NEC / workers' comp; `MonthStepper` removed, `ThroughDatePicker` + `InstructorYearTotals` added; integration test of two per-class payments in one month | **Complete** (#344) | `buildOnDemandStatementDraft` in `class-instructor-payout.ts`, `payouts.router.ts`, `class-instructor-payout-data.ts`, `libs/react/payouts/`, `apps/functions-integration-tests-payouts/` |
 | `/payouts` tabs (Lesson teachers / Class instructors, `?tab=classes`) | **Complete** (PR 3) | `apps/maple-spruce/src/app/(admin)/payouts/page.tsx` |
 | Printable statement (Print / Save PDF, admin chrome hidden in print) | **Complete** (PR 3) | `apps/maple-spruce/src/app/(admin)/payouts/instructor-statements/[id]/page.tsx` |
 

@@ -1736,9 +1736,9 @@ what it pays for:
 - `class-session_{registrationId}_{sessionIndex}`: one registration's share of one session
 - `class-refund_{registrationId}`: the clawback when a paid-out registration is later refunded
 
-Generating a statement is one Firestore transaction. It reads the instructor's statements for the
-month and every proposed entry id, then refuses if a live statement exists or if any entry already
-exists. Otherwise it writes the statement and all of its entries. Voiding a pending statement
+Generating a statement is one Firestore transaction. It reads every proposed entry id and refuses
+if any entry already exists (until #344 it also refused a second live statement for the month; see
+Consequences). Otherwise it writes the statement and all of its entries. Voiding a pending statement
 deletes its entries in the same kind of transaction, which releases them to be claimed again.
 Statements carry snapshots of their lines, so they read the same forever.
 
@@ -1771,6 +1771,13 @@ would claim. The transaction decides whether it may.
   one is not reconciled.
 - Refunds made directly in the Square dashboard are invisible: only `cancelRegistration` records
   `refundedAt`.
+- **Amended 2026-11-21 (#344): statements are on demand.** David pays some instructors after
+  each class, so a statement is no longer one per instructor per month and no longer waits for
+  the month to end. Generate claims every finished session no statement holds (optionally only
+  up to a `throughDate`), and `month` became a label: the month of the latest session covered.
+  The transaction dropped its "a live statement exists for this month" refusal; the ledger ids
+  were always the real guard and still are. Two statements racing for the same sessions read the
+  same entry ids, and only one can create them.
 - The artist-payout path was brought up to the same guarantee when it moved onto the `payouts`
   router (#145), without a ledger: a sale is already one payable unit, so its `payoutId` stamp is
   the claim. `PayoutRepository.generate` reads every sale, refuses if any is stamped, and writes

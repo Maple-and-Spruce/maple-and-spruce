@@ -1,6 +1,10 @@
 /**
  * Class-instructor payout statements and the ledger that keeps them honest.
  *
+ * An instructor can have any number of statements, several in one month:
+ * David pays per class, weekly or monthly (#344). What stops a session being
+ * paid twice is the ledger, not a one-statement-per-month rule.
+ *
  * `payoutLedgerEntries` holds one document per payable unit, at a
  * deterministic id (`class-session_{registrationId}_{sessionIndex}`,
  * `class-refund_{registrationId}`). Generating a statement writes the
@@ -125,7 +129,6 @@ export interface ClassInstructorStatementFilters {
 /** Why generate refused, when it did. */
 export type GenerateStatementOutcome =
   | { kind: 'created'; statement: ClassInstructorStatement }
-  | { kind: 'statement-exists'; statementId: string }
   | { kind: 'already-claimed'; entryIds: string[] };
 
 export type StatementTransitionOutcome =
@@ -162,7 +165,10 @@ export const ClassInstructorStatementRepository = {
     return docs.map(docToStatement).filter((s): s is ClassInstructorStatement => s !== undefined);
   },
 
-  /** Newest month first, then by instructor name. Equality filters only, so no composite index. */
+  /**
+   * Newest month first, then by instructor name, then newest first within an
+   * instructor's month. Equality filters only, so no composite index.
+   */
   async findAll(filters: ClassInstructorStatementFilters = {}): Promise<ClassInstructorStatement[]> {
     let query: FirebaseFirestore.Query = db.collection(STATEMENTS);
     if (filters.instructorId) query = query.where('instructorId', '==', filters.instructorId);
@@ -174,15 +180,18 @@ export const ClassInstructorStatementRepository = {
       .filter((s): s is ClassInstructorStatement => s !== undefined)
       .sort(
         (a, b) =>
-          b.month.localeCompare(a.month) || a.instructorName.localeCompare(b.instructorName)
+          b.month.localeCompare(a.month) ||
+          a.instructorName.localeCompare(b.instructorName) ||
+          b.createdAt.getTime() - a.createdAt.getTime()
       );
   },
 
   /**
    * Write the statement and claim its ledger entries, atomically.
    *
-   * Refuses when the instructor already has a live statement for the month,
-   * or when any entry has been claimed since the draft was built.
+   * Refuses when any entry has been claimed since the draft was built. That
+   * is the whole guard: two generates racing for the same sessions read the
+   * same entry ids, and only one transaction can create them.
    */
   async generate(
     draft: ClassInstructorStatementDraft & { payRate: number }
@@ -190,19 +199,9 @@ export const ClassInstructorStatementRepository = {
     const database = getDb();
     const statementRef = database.collection(STATEMENTS).doc();
     const entryRefs = draft.entries.map((e) => database.collection(LEDGER).doc(e.id));
-    const sameMonth = database
-      .collection(STATEMENTS)
-      .where('instructorId', '==', draft.instructorId)
-      .where('month', '==', draft.month);
-
     const outcome = await database.runTransaction<
       Exclude<GenerateStatementOutcome, { kind: 'created' }> | { kind: 'created' }
     >(async (tx) => {
-      const existing = (await tx.get(sameMonth)).docs.find(
-        (d) => d.data()['status'] !== 'void'
-      );
-      if (existing) return { kind: 'statement-exists', statementId: existing.id };
-
       const claimed = entryRefs.length > 0 ? await tx.getAll(...entryRefs) : [];
       const taken = claimed.filter((d) => d.exists).map((d) => d.id);
       if (taken.length > 0) return { kind: 'already-claimed', entryIds: taken };

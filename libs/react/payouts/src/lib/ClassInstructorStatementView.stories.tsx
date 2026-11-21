@@ -39,7 +39,7 @@ export const Pending: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(canvas.getByRole('heading', { name: 'Hazel Marsh' })).toBeInTheDocument();
-    expect(canvas.getByText('Classes held in October 2026')).toBeInTheDocument();
+    expect(canvas.getByText('Classes held Oct 10 to Oct 28, 2026')).toBeInTheDocument();
     expect(canvas.getByText('Share (80%)')).toBeInTheDocument();
     expect(canvas.getByText('−$40.00')).toBeInTheDocument();
     expect(canvas.getByText('$368.00')).toBeInTheDocument();
