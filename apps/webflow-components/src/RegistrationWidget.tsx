@@ -22,6 +22,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import { httpsCallable } from 'firebase/functions';
 import { theme } from '@maple/react/theme';
 import {
+  EmailTypoHint,
   FreeCancellationNote,
   RegistrationCheckoutForm,
 } from '@maple/react/registrations';
@@ -254,6 +255,7 @@ function SoldOutPanel({
                   : 'Join waitlist'}
               </Button>
             </Stack>
+            <EmailTypoHint email={email} onAccept={setEmail} />
             {waitlistState.status === 'error' && (
               <Alert severity="error" sx={{ mt: 1.5 }}>
                 {waitlistState.message}

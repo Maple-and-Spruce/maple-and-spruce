@@ -15,5 +15,7 @@ export {
   RegistrationNoteLine,
   registrationNoteText,
 } from './lib/RegistrationNoteLine';
+export { EmailTypoHint } from './lib/EmailTypoHint';
+export type { EmailTypoHintProps } from './lib/EmailTypoHint';
 export { FreeCancellationNote } from './lib/FreeCancellationNote';
 export type { FreeCancellationNoteProps } from './lib/FreeCancellationNote';

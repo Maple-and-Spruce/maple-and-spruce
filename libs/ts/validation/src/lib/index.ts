@@ -47,6 +47,7 @@ export {
   classWaitlistValidation,
   type ClassWaitlistValidationInput,
 } from './class-waitlist.validation';
+export { suggestEmailCorrection } from './email-typo';
 
 // Phase 4: Music Lessons
 export { studentValidation } from './student.validation';
