@@ -18,7 +18,7 @@ import {
   setFirestoreDoc,
   getFirestoreDoc,
   deleteFirestoreDoc,
-  listFirestoreDocs,
+  listMail,
   EMULATOR_CONFIG,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
@@ -213,7 +213,7 @@ describe('syncClassCategoryToWebflow trigger', () => {
     }
 
     async function alertMails() {
-      const mails = await listFirestoreDocs('mail');
+      const mails = await listMail({ includeSyncAlerts: true });
       return mails.filter((m) =>
         String(
           (m.data['message'] as Record<string, unknown> | undefined)?.[

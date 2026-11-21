@@ -14,7 +14,7 @@ import {
   clearAuthEmulator,
   clearFirestoreEmulator,
   setFirestoreDoc,
-  listFirestoreDocs,
+  listMail,
   callFunction,
 } from '@maple/firebase/integration-test-utils';
 
@@ -70,7 +70,7 @@ describe('Craft Club self-service', () => {
     expect(reqResult.status).toBe(200);
 
     // 2. Pull the single-use token out of the queued email.
-    const token = tokenFromMail(await listFirestoreDocs('mail'));
+    const token = tokenFromMail(await listMail());
 
     // 3. Exchange it for a session.
     const start = await callFunction<{ token: string }, SessionResult>({
@@ -122,7 +122,7 @@ describe('Craft Club self-service', () => {
       data: { email: 'nobody-unknown@test.com' },
     });
     expect(result.status).toBe(200);
-    const mail = await listFirestoreDocs('mail');
+    const mail = await listMail();
     expect(
       mail.some((d) => d.data['to'] === 'nobody-unknown@test.com')
     ).toBe(false);
