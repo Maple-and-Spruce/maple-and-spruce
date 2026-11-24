@@ -47,6 +47,10 @@ import {
   errorMessageFor,
 } from '@maple/ts/domain';
 import type { Discount } from '@maple/ts/domain';
+import {
+  MusicTogetherPayError,
+  MusicTogetherRegisterAgainNote,
+} from './MusicTogetherPayError';
 import type {
   GetPublicMusicTogetherSectionRequest,
   GetPublicMusicTogetherSectionResponse,
@@ -399,6 +403,10 @@ export function MusicTogetherRegistrationWidget({
 
   const [busy, setBusy] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+  // Set when the server said this child is already signed up with this email
+  // and the family chose to register again anyway. Cleared when the email or
+  // the children change, since the choice was about those.
+  const [registerAgain, setRegisterAgain] = useState(false);
   const [cardReady, setCardReady] = useState(false);
   const tokenizeRef = useRef<(() => Promise<CardTokenizeResult>) | null>(null);
 
@@ -609,6 +617,10 @@ export function MusicTogetherRegistrationWidget({
     setDiscountError(null);
   }, []);
 
+  useEffect(() => {
+    setRegisterAgain(false);
+  }, [email, children]);
+
   const handlePay = useCallback(async () => {
     if (!tokenizeRef.current || section == null) return;
     setPayError(null);
@@ -662,6 +674,7 @@ export function MusicTogetherRegistrationWidget({
         metaAttribution: readMetaAttribution(
           typeof window !== 'undefined' ? window : null
         ),
+        ...(registerAgain ? { registerAgain: true } : {}),
       });
       setState({
         status: 'confirmed',
@@ -708,6 +721,7 @@ export function MusicTogetherRegistrationWidget({
     privacyConsent,
     cardOnFileAuth,
     appliedDiscount,
+    registerAgain,
     // Read for the Meta `value` on InitiateCheckout / Purchase — a stale
     // reference here would report the pre-sibling-discount total.
     familyPrice,
@@ -800,7 +814,15 @@ export function MusicTogetherRegistrationWidget({
               </Alert>
             ) : (
               <>
-                {payError && <Alert severity="error">{payError}</Alert>}
+                {payError && (
+                  <MusicTogetherPayError
+                    message={payError}
+                    onRegisterAgain={() => {
+                      setRegisterAgain(true);
+                      setPayError(null);
+                    }}
+                  />
+                )}
 
                 {/* Enrolling adult */}
                 <Box>
@@ -1166,30 +1188,35 @@ export function MusicTogetherRegistrationWidget({
                       // Native button with inline brand styling — in Shadow DOM
                       // this is portaled to the light DOM where MUI's emotion
                       // theme can't reach it. Mirrors the Craft Club widget.
-                      <button
-                        type="button"
-                        onClick={handlePay}
-                        disabled={payDisabled}
-                        style={{
-                          width: '100%',
-                          padding: '14px 24px',
-                          fontSize: '16px',
-                          fontWeight: 600,
-                          fontFamily: fonts.button,
-                          color: '#D5D6C8',
-                          backgroundColor: payDisabled ? '#8a7b6e' : '#4A3728',
-                          border: 'none',
-                          borderRadius: '8px',
-                          cursor: payDisabled ? 'not-allowed' : 'pointer',
-                          opacity: payDisabled ? 0.7 : 1,
-                          transition: 'background-color 0.2s, opacity 0.2s',
-                          letterSpacing: '0.02em',
-                        }}
-                      >
-                        {busy
-                          ? 'Registering…'
-                          : `Register — ${formatMoney(amountNowCents)}`}
-                      </button>
+                      <>
+                        {registerAgain && !payError && (
+                          <MusicTogetherRegisterAgainNote />
+                        )}
+                        <button
+                          type="button"
+                          onClick={handlePay}
+                          disabled={payDisabled}
+                          style={{
+                            width: '100%',
+                            padding: '14px 24px',
+                            fontSize: '16px',
+                            fontWeight: 600,
+                            fontFamily: fonts.button,
+                            color: '#D5D6C8',
+                            backgroundColor: payDisabled ? '#8a7b6e' : '#4A3728',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: payDisabled ? 'not-allowed' : 'pointer',
+                            opacity: payDisabled ? 0.7 : 1,
+                            transition: 'background-color 0.2s, opacity 0.2s',
+                            letterSpacing: '0.02em',
+                          }}
+                        >
+                          {busy
+                            ? 'Registering…'
+                            : `Register — ${formatMoney(amountNowCents)}`}
+                        </button>
+                      </>
                     }
                   />
                   {!formValid && missingFields.length > 0 && (

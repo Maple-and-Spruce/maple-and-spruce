@@ -220,6 +220,13 @@ export interface CreateMusicTogetherRegistrationRequest {
    * CAPI `Purchase` event by `sendMusicTogetherConversion`.
    */
   metaAttribution?: MetaAttributionPayload;
+  /**
+   * The family saw that this child is already signed up for the section with
+   * this email and chose to register again. Without it, the repeat is refused
+   * so an impatient double submission can never charge twice. It does not get
+   * past a signup by the same email that is still being paid for.
+   */
+  registerAgain?: boolean;
 }
 
 export interface CreateMusicTogetherRegistrationResponse {

@@ -329,6 +329,107 @@ describe('createMusicTogetherRegistration', () => {
  * charge taken at registration would let the family be billed full price four
  * weeks later, after the widget told them otherwise.
  */
+/**
+ * A slow checkout invites a second press of pay, a reload or a second tab.
+ * Each used to be a new registration and a new charge, since the payment
+ * idempotency key is per registration doc. One parent enrolling a second
+ * child in the same section is real, so that still goes through.
+ */
+describe('createMusicTogetherRegistration — repeat signups', () => {
+  const SECTION_ID = 'sec-repeat';
+  const signup = (
+    overrides: Partial<CreateMusicTogetherRegistrationRequest> = {}
+  ) => family({ sectionId: SECTION_ID, email: 'repeat@test.com', ...overrides });
+  const held = async () =>
+    (await listFirestoreDocs('musicTogetherRegistrations')).filter(
+      (r) =>
+        r.data['sectionId'] === SECTION_ID &&
+        ['pending', 'confirmed'].includes(String(r.data['status']))
+    );
+
+  beforeAll(async () => {
+    await clearAuthEmulator();
+    await clearFirestoreEmulator();
+    await setFirestoreDoc('musicTogetherSections', SECTION_ID, sectionDoc());
+  });
+
+  afterAll(async () => {
+    await clearAuthEmulator();
+    await clearFirestoreEmulator();
+  });
+
+  it('refuses the same child by the same email, lets a sibling through, and lets the family register again on purpose', async () => {
+    const first = await callFunction<
+      CreateMusicTogetherRegistrationRequest,
+      CreateMusicTogetherRegistrationResponse
+    >({ functionName: 'createMusicTogetherRegistration', data: signup() });
+    expect(first.status).toBe(200);
+
+    // Same family, email in other case: an impatient second submission.
+    const second = await callFunction<CreateMusicTogetherRegistrationRequest>({
+      functionName: 'createMusicTogetherRegistration',
+      data: signup({ email: 'Repeat@Test.com' }),
+    });
+    expect(second.status).not.toBe(200);
+    expect(JSON.stringify(second.error)).toContain(
+      'already signed up for this section'
+    );
+    expect(await held()).toHaveLength(1);
+
+    // A sibling, same parent and email: a real second signup.
+    const sibling = await callFunction<
+      CreateMusicTogetherRegistrationRequest,
+      CreateMusicTogetherRegistrationResponse
+    >({
+      functionName: 'createMusicTogetherRegistration',
+      data: signup({ children: [{ name: 'River', dob: '2024-05-02' }] }),
+    });
+    expect(sibling.status).toBe(200);
+
+    // The family meant it: the same child again goes through.
+    const again = await callFunction<
+      CreateMusicTogetherRegistrationRequest,
+      CreateMusicTogetherRegistrationResponse
+    >({
+      functionName: 'createMusicTogetherRegistration',
+      data: signup({ registerAgain: true }),
+    });
+    expect(again.status).toBe(200);
+    const regs = await held();
+    expect(regs).toHaveLength(3);
+    expect(regs.every((r) => r.data['status'] === 'confirmed')).toBe(true);
+  });
+
+  it('refuses while an earlier payment by that email is still going through, even when asked to register again', async () => {
+    await setFirestoreDoc('musicTogetherRegistrations', 'repeat-in-flight', {
+      sectionId: SECTION_ID,
+      parentNames: ['In Flight'],
+      children: [{ name: 'Sky', dob: new Date('2023-04-01') }],
+      email: 'inflight@test.com',
+      paymentPlan: 'full',
+      status: 'pending',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const before = (await listFirestoreDocs('musicTogetherRegistrations')).length;
+
+    const result = await callFunction<CreateMusicTogetherRegistrationRequest>({
+      functionName: 'createMusicTogetherRegistration',
+      data: signup({
+        email: 'inflight@test.com',
+        children: [{ name: 'Wren', dob: '2025-06-03' }],
+        registerAgain: true,
+      }),
+    });
+    expect(result.status).not.toBe(200);
+    expect(JSON.stringify(result.error)).toContain('still going through');
+    // Nothing written, so nothing charged.
+    expect((await listFirestoreDocs('musicTogetherRegistrations')).length).toBe(
+      before
+    );
+  });
+});
+
 describe('createMusicTogetherRegistration — discount codes', () => {
   function discountDoc(overrides: Record<string, unknown> = {}) {
     return {

@@ -57,6 +57,9 @@ import {
   mtApplyDiscount,
   isDiscountValid,
   isDiscountForProgram,
+  findMtRepeatSignup,
+  MT_ALREADY_ENROLLED_MESSAGE,
+  MT_SIGNUP_IN_PROGRESS_MESSAGE,
 } from '@maple/ts/domain';
 import type { MusicTogetherFamilyPrice } from '@maple/ts/domain';
 import { musicTogetherRegistrationValidation } from '@maple/ts/validation';
@@ -384,6 +387,38 @@ export const createMusicTogetherRegistration = Functions.endpoint
           .where('status', 'in', [...MT_CAPACITY_STATUSES])
       );
       const discountSnap = discountRef ? await tx.get(discountRef) : undefined;
+
+      // One signup per child per section, unless the family says they mean
+      // it. A slow checkout invites a second press of pay, a reload or a
+      // second tab, and each would otherwise be a new registration and a new
+      // charge (the payment idempotency key is per registration doc). Same
+      // snapshot as the capacity check, so no new index and no race: two
+      // requests from one family cannot both pass inside this transaction.
+      // Checked before capacity, so a repeat on a now-full section is told
+      // the truth rather than "full".
+      const repeat = findMtRepeatSignup(
+        existing.docs.map((doc) => {
+          const held = doc.data();
+          return {
+            email: held.email,
+            status: held.status,
+            createdAt: held.createdAt?.toDate?.() ?? held.createdAt ?? null,
+            children: held.children,
+          };
+        }),
+        {
+          email: data.email,
+          children: data.children,
+          registerAgain: data.registerAgain === true,
+        },
+        now
+      );
+      if (repeat === 'in-progress') {
+        throw new Error(MT_SIGNUP_IN_PROGRESS_MESSAGE);
+      }
+      if (repeat === 'already-enrolled') {
+        throw new Error(MT_ALREADY_ENROLLED_MESSAGE);
+      }
 
       if (existing.size >= section.capacityFamilies) {
         // Full — the widget switches to the waitlist (Phase 5).

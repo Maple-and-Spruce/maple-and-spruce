@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Functions } from '@maple/firebase/functions';
+import {
+  MT_ALREADY_ENROLLED_MESSAGE,
+  MT_SIGNUP_IN_PROGRESS_MESSAGE,
+} from '@maple/ts/domain';
 
 const mocks = vi.hoisted(() => ({
   capturedHandler: null as
@@ -11,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   createCardOnFile: vi.fn(),
   createPayment: vi.fn(),
   txGetSize: 0,
+  /** Signups already holding a spot in the section, as the transaction reads them. */
+  heldDocs: [] as Record<string, unknown>[],
   txSet: vi.fn(),
   regUpdate: vi.fn(),
   mailAdd: vi.fn(),
@@ -123,7 +129,10 @@ vi.mock('@maple/firebase/database', () => {
                 exists: mocks.discountDocData !== undefined,
                 data: () => mocks.discountDocData,
               }
-            : { size: mocks.txGetSize },
+            : {
+                size: Math.max(mocks.txGetSize, mocks.heldDocs.length),
+                docs: mocks.heldDocs.map((held) => ({ data: () => held })),
+              },
         set: mocks.txSet,
         update: mocks.txUpdate,
       }),
@@ -199,6 +208,7 @@ describe('createMusicTogetherRegistration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.txGetSize = 0;
+    mocks.heldDocs = [];
     mocks.discountFindByCode.mockResolvedValue(undefined);
     mocks.discountDocData = undefined;
     mocks.createPayment.mockResolvedValue({
@@ -429,6 +439,80 @@ describe('createMusicTogetherRegistration', () => {
       /full/i
     );
     expect(mocks.createPayment).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A slow checkout invites a second press of pay, a reload or a second tab.
+   * Each used to be a new registration and a new charge (the idempotency key
+   * is per registration doc).
+   */
+  describe('repeat signups', () => {
+    const recent = () => new Date(Date.now() - 60 * 1000);
+    const held = (overrides: Record<string, unknown> = {}) => ({
+      email: 'jamie@example.com',
+      status: 'confirmed',
+      createdAt: { toDate: () => new Date(Date.now() - 86_400_000) },
+      children: [{ name: 'Sky', dob: new Date('2023-04-01') }],
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+    });
+
+    it('refuses the same child by the same email, without charging', async () => {
+      mocks.heldDocs = [held()];
+      await expect(
+        run({ ...baseFamily, email: 'Jamie@Example.com', paymentPlan: 'full' })
+      ).rejects.toThrow(MT_ALREADY_ENROLLED_MESSAGE);
+      expect(mocks.txSet).not.toHaveBeenCalled();
+      expect(mocks.createPayment).not.toHaveBeenCalled();
+    });
+
+    it('says so even when the section has since filled', async () => {
+      mocks.heldDocs = [held()];
+      mocks.txGetSize = 8;
+      await expect(run({ ...baseFamily, paymentPlan: 'full' })).rejects.toThrow(
+        MT_ALREADY_ENROLLED_MESSAGE
+      );
+    });
+
+    it('goes through when the family chooses Register again', async () => {
+      mocks.heldDocs = [held()];
+      await run({ ...baseFamily, paymentPlan: 'full', registerAgain: true });
+      expect(mocks.createPayment).toHaveBeenCalledTimes(1);
+    });
+
+    it('lets a sibling sign up with the same email', async () => {
+      mocks.heldDocs = [held()];
+      await run({
+        ...baseFamily,
+        children: [{ name: 'River', dob: '2024-02-01' }],
+        paymentPlan: 'full',
+      });
+      expect(mocks.createPayment).toHaveBeenCalledTimes(1);
+    });
+
+    it('refuses anything by that email while an earlier payment is still going through', async () => {
+      mocks.heldDocs = [held({ status: 'pending', createdAt: recent() })];
+      await expect(
+        run({
+          ...baseFamily,
+          children: [{ name: 'River', dob: '2024-02-01' }],
+          paymentPlan: 'full',
+          registerAgain: true,
+        })
+      ).rejects.toThrow(MT_SIGNUP_IN_PROGRESS_MESSAGE);
+      expect(mocks.createPayment).not.toHaveBeenCalled();
+    });
+
+    it('ignores other families in the section', async () => {
+      mocks.heldDocs = [
+        held({ email: 'other@example.com', status: 'pending', createdAt: recent() }),
+      ];
+      await run({ ...baseFamily, paymentPlan: 'full' });
+      expect(mocks.createPayment).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('404s an unknown section before any Square call', async () => {
