@@ -34,14 +34,6 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 /**
- * How recently a pending hold for the same buyer + class counts as a duplicate
- * submit (lost-response retry / back-then-resubmit) rather than a new checkout.
- * Short so a genuine later retry isn't blocked; the reaper clears real
- * abandonments on its own (longer) TTL.
- */
-const DEDUP_WINDOW_MS = 2 * 60 * 1000;
-
-/**
  * Build the buyer's post-payment return URL. Honors the client's `returnUrl`
  * only when its origin is in the CORS allowlist (open-redirect guard), and
  * appends `?reg=<registrationId>` so the class page can look the registration
@@ -109,30 +101,9 @@ export const createRegistrationCheckoutLink = Functions.endpoint
         Record<(typeof SQUARE_STRING_NAMES)[number], string>
     );
 
-    // Dedup: if this buyer already has a very recent pending hold for this
-    // class, don't reserve a second spot — that would self-block capacity (the
-    // buyer's own hold reads as "full") and double-consume a single-use
-    // discount. A rapid duplicate is a lost-response retry or a back-then-
-    // resubmit; reject it clearly rather than stacking holds. The reaper clears
-    // genuinely abandoned holds within the TTL.
-    const recentHolds = (
-      await RegistrationRepository.findAll({
-        customerEmail: data.customerEmail,
-        status: 'pending',
-      })
-    ).filter(
-      (r) =>
-        r.classId === data.classId &&
-        r.createdAt &&
-        new Date(r.createdAt).getTime() >= Date.now() - DEDUP_WINDOW_MS
-    );
-    if (recentHolds.length > 0) {
-      throw new Error(
-        'A checkout for this class is already in progress. Please check your ' +
-          'email, or try again in a couple of minutes.'
-      );
-    }
-
+    // A second hold by the same buyer for this class (a lost-response retry,
+    // back-then-resubmit, or a hold that may already be paid on Square's page)
+    // is refused inside the reservation transaction itself.
     // Validate, price, and atomically reserve a `pending` spot (shared with the
     // inline card flow so both paths reserve identically).
     const {

@@ -357,6 +357,87 @@ describe('createRegistration', () => {
     });
   });
 
+  /**
+   * A slow checkout invites a second press of pay, a reload or a second tab.
+   * Each used to be a new registration and a new charge on the same card.
+   */
+  describe('One registration per email per class', () => {
+    const REPEAT_CLASS_ID = 'test-reg-repeat-class';
+    const request = (
+      overrides: Partial<CreateRegistrationRequest> = {}
+    ): CreateRegistrationRequest => ({
+      classId: REPEAT_CLASS_ID,
+      customerEmail: 'repeat@test.com',
+      customerName: 'Repeat Buyer',
+      quantity: 1,
+      paymentNonce: 'cnon:card-nonce-ok',
+      ...overrides,
+    });
+    const mine = async () =>
+      (await listFirestoreDocs('registrations')).filter(
+        (r) => r.data['classId'] === REPEAT_CLASS_ID
+      );
+
+    beforeAll(async () => {
+      await setFirestoreDoc('classes', REPEAT_CLASS_ID, {
+        ...TEST_CLASS,
+        name: 'Repeat Workshop',
+        capacity: 10,
+      });
+    });
+
+    it('refuses a second registration by the same email without charging, and allows it when the buyer chooses to', async () => {
+      const first = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({ functionName: 'createRegistration', data: request() });
+      expect(first.status).toBe(200);
+
+      // Same email, other case: an impatient second submission.
+      const second = await callFunction<CreateRegistrationRequest>({
+        functionName: 'createRegistration',
+        data: request({ customerEmail: 'Repeat@Test.com' }),
+      });
+      expect(second.status).not.toBe(200);
+      expect(JSON.stringify(second.error)).toContain(
+        'already registered for this class'
+      );
+      expect(await mine()).toHaveLength(1);
+
+      // The family meant it (another child): it goes through.
+      const again = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({
+        functionName: 'createRegistration',
+        data: request({ registerAgain: true }),
+      });
+      expect(again.status).toBe(200);
+      expect(again.data?.registration.status).toBe('confirmed');
+      const regs = await mine();
+      expect(regs).toHaveLength(2);
+      expect(regs.every((r) => r.data['status'] === 'confirmed')).toBe(true);
+    });
+
+    it('refuses while an earlier payment by that email is still pending, even when asked to register again', async () => {
+      await setFirestoreDoc('registrations', 'repeat-pending-hold', {
+        classId: REPEAT_CLASS_ID,
+        customerEmail: 'inflight@test.com',
+        customerName: 'In Flight',
+        quantity: 1,
+        status: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      const result = await callFunction<CreateRegistrationRequest>({
+        functionName: 'createRegistration',
+        data: request({ customerEmail: 'inflight@test.com', registerAgain: true }),
+      });
+      expect(result.status).not.toBe(200);
+      expect(JSON.stringify(result.error)).toContain('still going through');
+    });
+  });
+
   describe('Capacity enforcement', () => {
     const SMALL_CLASS_ID = 'test-reg-small-class';
 

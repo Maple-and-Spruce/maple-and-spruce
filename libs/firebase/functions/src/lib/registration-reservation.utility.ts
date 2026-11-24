@@ -45,6 +45,11 @@ import {
 import { registrationValidation } from '@maple/ts/validation';
 import type { CreateRegistrationRequest } from '@maple/ts/firebase/api-types';
 import type { AgreementTemplate, Class } from '@maple/ts/domain';
+import {
+  ALREADY_REGISTERED_MESSAGE,
+  REGISTRATION_IN_PROGRESS_MESSAGE,
+  sameEmail,
+} from '@maple/ts/domain';
 import { randomBytes } from 'crypto';
 
 /**
@@ -402,6 +407,29 @@ export async function reserveClassRegistration(
       : undefined;
 
     // === Validation ===
+    // One registration per buyer per class, unless they say they mean it.
+    // A slow checkout invites a second press of pay, a reload or a second
+    // tab, and each would otherwise be a new registration and a new charge.
+    // Same snapshot as the capacity check, so no new index and no race: two
+    // requests from one buyer cannot both pass inside this transaction.
+    // A private hour is left out: the hour itself is already one-per-booking,
+    // and booking a different hour is a different purchase.
+    if (!slotStart) {
+      const sameBuyer = existingSnapshot.docs
+        .map((doc) => doc.data())
+        .filter((held) => sameEmail(held.customerEmail, data.customerEmail));
+      // A pending one is being paid right now (card in flight, or a Square
+      // checkout page open). Paying again could charge twice, so this is
+      // refused even when the buyer asks to register again. The stale-hold
+      // reaper frees an abandoned one after its TTL.
+      if (sameBuyer.some((held) => held.status === 'pending')) {
+        throw new Error(REGISTRATION_IN_PROGRESS_MESSAGE);
+      }
+      if (sameBuyer.length > 0 && !data.registerAgain) {
+        throw new Error(ALREADY_REGISTERED_MESSAGE);
+      }
+    }
+
     if (slotStart) {
       // One active registration per hour. Same query as seats (no new index):
       // the hour is matched here rather than in a where clause.

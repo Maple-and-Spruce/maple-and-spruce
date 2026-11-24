@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
-import type { PublicClass } from '@maple/ts/domain';
+import {
+  ALREADY_REGISTERED_MESSAGE,
+  REGISTRATION_IN_PROGRESS_MESSAGE,
+  type PublicClass,
+} from '@maple/ts/domain';
 import type {
   CalculateRegistrationCostResponse,
   CreateRegistrationResponse,
@@ -190,6 +194,100 @@ export const PaymentUnconfirmed: Story = {
     await expect(await canvas.findByRole('alert')).not.toHaveTextContent(
       'Still not going through?'
     );
+    await expect(
+      canvas.queryByRole('button', { name: /Square's checkout page/ })
+    ).toBeNull();
+  },
+};
+
+/**
+ * The email is already registered for this class. The form says so, offers
+ * no card advice, and only sends a second registration once the buyer
+ * chooses Register again and then pays.
+ */
+export const AlreadyRegistered: Story = {
+  args: { onSubmit: refuse(ALREADY_REGISTERED_MESSAGE) },
+  play: async ({ canvasElement, args }) => {
+    const submit = args.onSubmit as ReturnType<typeof fn>;
+    const { canvas, pay } = await fillAndPay(canvasElement);
+    const alert = await canvas.findByRole('alert');
+    await expect(alert).toHaveTextContent('already registered for this class');
+    await expect(submit).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ registerAgain: true })
+    );
+
+    // Pressing pay again without choosing still does not register again.
+    await userEvent.click(pay);
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
+    await expect(await canvas.findByRole('alert')).not.toHaveTextContent(
+      'Still not going through?'
+    );
+    await expect(submit).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ registerAgain: true })
+    );
+
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Register again' })
+    );
+    await expect(canvas.queryByRole('alert')).toBeNull();
+    await expect(await canvas.findByRole('status')).toHaveTextContent(
+      'second registration and a second charge'
+    );
+
+    submit.mockImplementationOnce(
+      async () =>
+        ({
+          registration: { pricePaidCents: 5300 },
+          confirmationNumber: 'MS-TEST02',
+        }) as unknown as CreateRegistrationResponse
+    );
+    await userEvent.click(pay);
+    await waitFor(() => expect(args.onSuccess).toHaveBeenCalledTimes(1));
+    await expect(submit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ registerAgain: true })
+    );
+  },
+};
+
+/** Changing the email drops the choice to register again. */
+export const RegisterAgainResetsOnNewEmail: Story = {
+  args: { onSubmit: refuse(ALREADY_REGISTERED_MESSAGE) },
+  play: async ({ canvasElement, args }) => {
+    const submit = args.onSubmit as ReturnType<typeof fn>;
+    const { canvas, pay } = await fillAndPay(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Register again' })
+    );
+    await userEvent.type(canvas.getByLabelText(/Email Address/), 'x');
+    await expect(canvas.queryByRole('status')).toBeNull();
+    await userEvent.click(pay);
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
+    await expect(submit).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ registerAgain: true })
+    );
+  },
+};
+
+/**
+ * A payment by this email is still going through. There is no way past it
+ * and no suggestion of another card or Square's page.
+ */
+export const RegistrationInProgress: Story = {
+  args: {
+    onSubmit: refuse(REGISTRATION_IN_PROGRESS_MESSAGE),
+    onHostedCheckout: fn(() => new Promise<{ checkoutUrl: string }>(() => undefined)),
+  },
+  play: async ({ canvasElement, args }) => {
+    const { canvas, pay } = await fillAndPay(canvasElement);
+    const alert = await canvas.findByRole('alert');
+    await expect(alert).toHaveTextContent('still going through');
+    await userEvent.click(pay);
+    await waitFor(() => expect(args.onSubmit).toHaveBeenCalledTimes(2));
+    const again = await canvas.findByRole('alert');
+    await expect(again).not.toHaveTextContent('Still not going through?');
+    await expect(
+      canvas.queryByRole('button', { name: 'Register again' })
+    ).toBeNull();
     await expect(
       canvas.queryByRole('button', { name: /Square's checkout page/ })
     ).toBeNull();

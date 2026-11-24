@@ -50,6 +50,10 @@ import {
 } from './registration-reservation.utility';
 import type { RegistrationReservationInput } from './registration-reservation.utility';
 import type { Class } from '@maple/ts/domain';
+import {
+  ALREADY_REGISTERED_MESSAGE,
+  REGISTRATION_IN_PROGRESS_MESSAGE,
+} from '@maple/ts/domain';
 
 const NOW = new Date('2030-06-01T12:00:00Z');
 // Saturday 2030-06-15, 10 and 11 AM Eastern (EDT = UTC-4).
@@ -101,6 +105,18 @@ function request(
     groupSize: 5,
     ...overrides,
   } as RegistrationReservationInput;
+}
+
+/** A seat-class request (no hour, no group size). */
+function seatRequest(
+  overrides: Partial<RegistrationReservationInput> = {}
+): RegistrationReservationInput {
+  return request({
+    classId: 'class-seats',
+    slotStart: undefined,
+    groupSize: undefined,
+    ...overrides,
+  });
 }
 
 /** A transaction query snapshot over the given active registrations. */
@@ -238,14 +254,6 @@ describe('reserveClassRegistration: seats', () => {
     mocks.findClass.mockResolvedValue(seatClass());
   });
 
-  const seatRequest = (overrides: Partial<RegistrationReservationInput> = {}) =>
-    request({
-      classId: 'class-seats',
-      slotStart: undefined,
-      groupSize: undefined,
-      ...overrides,
-    });
-
   it('rejects a slotStart on a seat class', async () => {
     await expect(
       reserveClassRegistration(
@@ -279,6 +287,72 @@ describe('reserveClassRegistration: seats', () => {
     expect(result.pricePaidCents).toBe(9000);
     const payload = mocks.txnSet.mock.calls[0][1];
     expect(payload).toMatchObject({ slotStart: null, groupSize: null, quantity: 2 });
+  });
+});
+
+describe('reserveClassRegistration: one registration per buyer', () => {
+  beforeEach(() => {
+    mocks.findClass.mockResolvedValue(seatClass({ capacity: 10 }));
+  });
+
+  it('refuses a second registration by the same email, ignoring case and spaces', async () => {
+    mocks.txnGet.mockResolvedValue(
+      snapshot([
+        { quantity: 1, status: 'confirmed', customerEmail: ' Robin@Example.com ' },
+      ])
+    );
+    await expect(reserveClassRegistration(seatRequest(), 6)).rejects.toThrow(
+      ALREADY_REGISTERED_MESSAGE
+    );
+    expect(mocks.txnSet).not.toHaveBeenCalled();
+  });
+
+  it('registers again when the buyer says they mean it', async () => {
+    mocks.txnGet.mockResolvedValue(
+      snapshot([
+        { quantity: 1, status: 'confirmed', customerEmail: 'robin@example.com' },
+      ])
+    );
+    await reserveClassRegistration(seatRequest({ registerAgain: true }), 6);
+    expect(mocks.txnSet).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses while a payment by the same email is still going through, even when asked to register again', async () => {
+    mocks.txnGet.mockResolvedValue(
+      snapshot([
+        { quantity: 1, status: 'pending', customerEmail: 'robin@example.com' },
+      ])
+    );
+    await expect(
+      reserveClassRegistration(seatRequest({ registerAgain: true }), 6)
+    ).rejects.toThrow(REGISTRATION_IN_PROGRESS_MESSAGE);
+    expect(mocks.txnSet).not.toHaveBeenCalled();
+  });
+
+  it('lets a different email register', async () => {
+    mocks.txnGet.mockResolvedValue(
+      snapshot([
+        { quantity: 1, status: 'confirmed', customerEmail: 'sam@example.com' },
+      ])
+    );
+    await reserveClassRegistration(seatRequest(), 6);
+    expect(mocks.txnSet).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves a private hour to the one-booking-per-hour rule', async () => {
+    mocks.findClass.mockResolvedValue(privateHoursClass());
+    mocks.txnGet.mockResolvedValue(
+      snapshot([
+        {
+          quantity: 1,
+          status: 'confirmed',
+          customerEmail: 'robin@example.com',
+          slotStart: timestamp(new Date(HOUR_10.getTime() + 60 * 60 * 1000)),
+        },
+      ])
+    );
+    await reserveClassRegistration(request(), 6);
+    expect(mocks.txnSet).toHaveBeenCalledTimes(1);
   });
 });
 

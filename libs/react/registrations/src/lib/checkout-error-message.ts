@@ -9,6 +9,7 @@
  * charged.
  */
 import { customerFacingMessage } from './customer-facing-message';
+import { isRegistrationInProgressMessage } from '@maple/ts/domain';
 
 /** Something failed and we know nothing more. */
 export const CHECKOUT_FALLBACK_MESSAGE =
@@ -48,7 +49,10 @@ const PAID_PREFIX = 'Your payment went through';
  */
 export function mayAlreadyBePaid(message: string): boolean {
   return (
-    message === CHECKOUT_UNCONFIRMED_MESSAGE || message.startsWith(PAID_PREFIX)
+    message === CHECKOUT_UNCONFIRMED_MESSAGE ||
+    message.startsWith(PAID_PREFIX) ||
+    // An earlier payment by this email is still going through.
+    isRegistrationInProgressMessage(message)
   );
 }
 
