@@ -21,14 +21,19 @@ import {
   formatSessions,
   freeCancellationUntil,
   isPrivateHoursClass,
+  classCalendarEntries,
+  googleCalendarUrl,
+  outlookCalendarUrl,
   type Attendee,
   type Class,
 } from '@maple/ts/domain';
 import { isE2ETestEmail } from './email.utility';
-import {
-  confirmationCalendarAttachments,
-  type MailAttachment,
-} from './calendar-attachment.utility';
+
+interface CalendarLink {
+  label: string;
+  google: string;
+  outlook: string;
+}
 
 export interface RegistrationConfirmationInput {
   /**
@@ -165,25 +170,36 @@ export async function queueRegistrationConfirmation(
         )
       : undefined;
 
-    // Every session as an .ics, so the mail client offers "Add to Calendar"
-    // whatever browser the buyer checked out in. A failure here must not cost
-    // the buyer their confirmation email.
-    let calendarAttachments: MailAttachment[] = [];
+    // Google / Outlook links per session. No .ics attachment: iCloud's
+    // filter has rejected a confirmation carrying one, and calendar
+    // attachments are a common phishing vehicle that filters distrust.
+    // A failure here must not cost the buyer their confirmation email.
+    let calendarLinks: CalendarLink[] | undefined;
     try {
-      calendarAttachments = confirmationCalendarAttachments(
-        classEntity,
-        input.confirmationNumber,
-        input.slotStart instanceof Date
-          ? input.slotStart.toISOString()
-          : input.slotStart
-      );
+      const entries = classCalendarEntries({
+        name: classEntity.name,
+        sessions: classEntity.sessions ?? [],
+        durationMinutes: classEntity.durationMinutes,
+        location: classEntity.location,
+        confirmationNumber: input.confirmationNumber,
+        // A private hour is the one hour booked, not every open hour.
+        slotStart:
+          input.slotStart && isPrivateHoursClass(classEntity)
+            ? input.slotStart
+            : undefined,
+      });
+      calendarLinks =
+        entries.length > 0
+          ? entries.map((entry, i) => ({
+              label:
+                entries.length > 1 ? `Session ${i + 1}` : 'Your class',
+              google: googleCalendarUrl(entry),
+              outlook: outlookCalendarUrl(entry),
+            }))
+          : undefined;
     } catch (calendarError) {
-      console.error('Failed to build confirmation .ics:', calendarError);
+      console.error('Failed to build confirmation calendar links:', calendarError);
     }
-    const calendarMessage =
-      calendarAttachments.length > 0
-        ? { message: { attachments: calendarAttachments } }
-        : {};
 
     // Attendees with an email get their own confirmation; those without
     // become a "remind your N friends" prompt to the registrant.
@@ -212,7 +228,6 @@ export async function queueRegistrationConfirmation(
       `registration-confirmation-${input.idempotencyKey}`,
       {
         to: email,
-        ...calendarMessage,
         template: {
           name: 'registration-confirmation',
           data: {
@@ -221,6 +236,7 @@ export async function queueRegistrationConfirmation(
             classDate,
             classDuration,
             classLocation,
+            calendarLinks,
             confirmationNumber: input.confirmationNumber,
             freeCancellationUntil: cancelDeadline
               ? formatFreeCancellationDeadline(cancelDeadline)
@@ -274,8 +290,7 @@ export async function queueRegistrationConfirmation(
           `registration-confirmation-${input.idempotencyKey}-attendee-${index}`,
           {
             to: attendee.email?.trim(),
-            ...calendarMessage,
-            template: {
+                template: {
               name: 'registration-confirmation-attendee',
               data: {
                 attendeeName: attendee.name?.trim() || undefined,
@@ -284,6 +299,7 @@ export async function queueRegistrationConfirmation(
                 classDate,
                 classDuration,
                 classLocation,
+                calendarLinks,
                 materialsIncluded: classEntity.materialsIncluded,
                 whatToBring: classEntity.whatToBring,
               },

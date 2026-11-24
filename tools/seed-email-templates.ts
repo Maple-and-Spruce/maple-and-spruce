@@ -140,6 +140,17 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
     <p><a href="{{receiptUrl}}" style="color: #6B7B5E; font-weight: bold;">View Payment Receipt</a></p>
     {{/if}}
 
+    {{#if calendarLinks}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Add to your calendar</strong><br>
+      {{#each calendarLinks}}
+      <p style="margin: 8px 0;">{{label}}:
+        <a href="{{google}}" style="color: #6B7B5E; font-weight: bold;">Google</a> &middot;
+        <a href="{{outlook}}" style="color: #6B7B5E; font-weight: bold;">Outlook</a></p>
+      {{/each}}
+    </div>
+    {{/if}}
+
     {{#if materialsIncluded}}
     <div class="highlight-box">
       <strong style="color: #4A3728;">Materials Included</strong><br>
@@ -452,6 +463,17 @@ const registrationConfirmationAttendeeHtml = `<!DOCTYPE html>
         <td>{{classLocation}}</td>
       </tr>
     </table>
+
+    {{#if calendarLinks}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Add to your calendar</strong><br>
+      {{#each calendarLinks}}
+      <p style="margin: 8px 0;">{{label}}:
+        <a href="{{google}}" style="color: #6B7B5E; font-weight: bold;">Google</a> &middot;
+        <a href="{{outlook}}" style="color: #6B7B5E; font-weight: bold;">Outlook</a></p>
+      {{/each}}
+    </div>
+    {{/if}}
 
     {{#if materialsIncluded}}
     <div class="highlight-box">

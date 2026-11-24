@@ -4,8 +4,9 @@
  * A downloaded .ics only reaches a calendar in some browsers. Safari on iPhone
  * opens it in Calendar, but Chrome, Firefox, Edge and in-app browsers on iOS
  * (Instagram, Facebook) just offer to save the file. So the widget also offers
- * Google and Outlook links, which work anywhere, and the confirmation email
- * carries the same .ics as an attachment.
+ * Google and Outlook links, which work anywhere. The confirmation email
+ * carries the same Google / Outlook links (no .ics attachment: iCloud's filter
+ * has rejected a confirmation carrying one).
  *
  * The event building itself lives in `@maple/ts/domain` (class-calendar), shared
  * with the confirmation email.
