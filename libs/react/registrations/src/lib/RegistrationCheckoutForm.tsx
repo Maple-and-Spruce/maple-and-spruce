@@ -45,7 +45,12 @@ import type {
   PreviewGiftCardForClassResponse,
 } from '@maple/ts/firebase/api-types';
 import { registrationValidation } from '@maple/ts/validation';
-import { freeCancellationUntil, groupPrivateHoursByDay } from '@maple/ts/domain';
+import {
+  freeCancellationUntil,
+  groupPrivateHoursByDay,
+  isAlreadyRegisteredMessage,
+  isRegistrationInProgressMessage,
+} from '@maple/ts/domain';
 import { FreeCancellationNote } from './FreeCancellationNote';
 import { PrivateHourPicker } from './PrivateHourPicker';
 import { HourWaitlistForm, type HourWaitlistStatus } from './HourWaitlistForm';
@@ -195,6 +200,8 @@ interface RegistrationCheckoutFormProps {
     /** Fresh gift card token, only when a gift card is applied (#301). */
     giftCardNonce?: string;
     agreements?: InlineAgreementSigningData[];
+    /** The buyer chose to register again with an email already registered. */
+    registerAgain?: boolean;
   }) => Promise<CreateRegistrationResponse>;
   /**
    * Offer "Have a gift card?" (#301). When omitted, no gift card field is
@@ -222,6 +229,7 @@ interface RegistrationCheckoutFormProps {
     discountCode?: string;
     notes?: string;
     agreements?: InlineAgreementSigningData[];
+    registerAgain?: boolean;
   }) => Promise<{ checkoutUrl: string }>;
   onSuccess: (details: {
     confirmationNumber: string;
@@ -318,6 +326,10 @@ export function RegistrationCheckoutForm({
   // more than the same message again (prod showed families retrying the same
   // declined card up to six times).
   const failedPayAttempts = useSignal(0);
+  // Set when the server said this email is already registered for the class
+  // and the buyer chose to register again anyway. Cleared when the email
+  // changes, since the choice was about that email.
+  const registerAgain = useSignal(false);
   const payErrorRef = useRef<HTMLDivElement | null>(null);
   const isCardReady = useSignal(false);
   // Set when the embedded Square card form fails to initialize (e.g. Safari
@@ -662,6 +674,7 @@ export function RegistrationCheckoutForm({
         paymentNonce: nonce,
         ...(giftCardNonce ? { giftCardNonce } : {}),
         agreements: agreementsData,
+        ...(registerAgain.value ? { registerAgain: true } : {}),
       });
 
       const paid = result.registration;
@@ -862,6 +875,7 @@ export function RegistrationCheckoutForm({
         discountCode: discountCode.value.trim() || undefined,
         notes: notes.value.trim() || undefined,
         agreements: agreementsData,
+        ...(registerAgain.value ? { registerAgain: true } : {}),
       });
 
       // Hand the buyer off to Square's hosted page.
@@ -985,12 +999,37 @@ export function RegistrationCheckoutForm({
     !cardInitFailed.value &&
     // Never suggest another card or another way to pay when this one may
     // have gone through.
-    !mayAlreadyBePaid(submitErrorText ?? '');
+    !mayAlreadyBePaid(submitErrorText ?? '') &&
+    // Not a card problem: the server refused a second registration.
+    !isAlreadyRegisteredMessage(submitErrorText ?? '') &&
+    !isRegistrationInProgressMessage(submitErrorText ?? '');
+  const offerRegisterAgain = isAlreadyRegisteredMessage(submitErrorText ?? '');
   const offerHostedAfterFailure =
     showRepeatFailureHelp && !!onHostedCheckout && !appliedGiftCard.value;
 
   // Plain elements with inline styles: inside Webflow this is portaled out of
   // the shadow root with the pay button, where MUI's styles do not reach.
+  // After choosing Register again, say plainly what pressing pay will do.
+  const registerAgainNote =
+    registerAgain.value && !submitErrorText ? (
+      <div
+        role="status"
+        style={{
+          marginBottom: 12,
+          padding: '12px 14px',
+          borderRadius: 8,
+          backgroundColor: '#FFF4E5',
+          color: '#663C00',
+          fontFamily: fonts.body,
+          fontSize: 15,
+          lineHeight: 1.45,
+        }}
+      >
+        You are registering again with an email that is already signed up for
+        this class. Paying now makes a second registration and a second charge.
+      </div>
+    ) : null;
+
   const payError = submitErrorText ? (
     <div
       ref={payErrorRef}
@@ -1007,6 +1046,30 @@ export function RegistrationCheckoutForm({
       }}
     >
       <div style={{ fontWeight: 600 }}>{submitErrorText}</div>
+      {offerRegisterAgain && (
+        <div style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            onClick={() => {
+              registerAgain.value = true;
+              submitError.value = null;
+            }}
+            style={{
+              padding: 0,
+              border: 'none',
+              background: 'none',
+              color: 'inherit',
+              font: 'inherit',
+              fontWeight: 600,
+              textDecoration: 'underline',
+              cursor: 'pointer',
+            }}
+          >
+            Register again
+          </button>{' '}
+          (this is a new registration, and it is paid for separately)
+        </div>
+      )}
       {showRepeatFailureHelp && (
         <div style={{ marginTop: 8 }}>
           Still not going through? Your bank may be blocking the charge. A
@@ -1128,7 +1191,10 @@ export function RegistrationCheckoutForm({
             label="Email Address"
             type="email"
             value={customerEmail.value}
-            onChange={(e) => (customerEmail.value = e.target.value)}
+            onChange={(e) => {
+              customerEmail.value = e.target.value;
+              registerAgain.value = false;
+            }}
             error={!!getFieldError('customerEmail')}
             helperText={
               getFieldError('customerEmail') ||
@@ -1523,6 +1589,7 @@ export function RegistrationCheckoutForm({
               // Card form couldn't initialize (e.g. Safari ITP) — offer Square's
               // hosted checkout instead of a dead-ended, disabled pay button.
               (<Box>
+                {registerAgainNote}
                 {payError}
                 <Typography
                   variant="body2"
@@ -1569,6 +1636,7 @@ export function RegistrationCheckoutForm({
                   disabled={isSubmitting.value}
                 />
               )}
+              {registerAgainNote}
               {payError}
               <button
                 type="button"

@@ -6,6 +6,26 @@
 
 ## Current Status
 
+### One registration per email per class (2026-11-23)
+
+- **Why:** a customer registered and paid twice for the same class after a slow checkout
+  (Katie refunded the second by hand). #345 already stops one request from charging twice, but
+  a second press of pay, a reload or a second tab is a new request, a new registration and a
+  new charge.
+- **Server:** `reserveClassRegistration` now refuses, inside the same transaction as the capacity
+  check (same snapshot, no new index), a second registration for a seat class by an email
+  (case-insensitive) that already holds one. A `pending` one (card in flight, or a Square
+  checkout page open) is always refused: "still going through, check your email". A `confirmed`
+  one is refused unless the request carries `registerAgain: true`. Private hours are left to
+  their one-booking-per-hour rule. Covers the inline card and hosted-checkout paths; the hosted
+  path's 2-minute dedup (checked outside the transaction) is gone, superseded.
+- **Checkout form:** "already registered" shows a **Register again** link (another child, a
+  friend); choosing it shows a note that paying makes a second registration and charge, and the
+  flag is dropped if the email changes. Neither refusal counts as a card failure, so no "your bank
+  may be blocking it" or Square-page offer.
+- **Trade-off:** a buyer who leaves Square's hosted page without paying waits for the stale-hold
+  reaper (15 min TTL) before trying again with the same email, since that hold may already be paid.
+
 ### Past class pages stay up (2026-11-21)
 
 - **Categories first.** An inventory of prod found 64 classes and 5 categories, none with a

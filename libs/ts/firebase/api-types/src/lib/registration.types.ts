@@ -167,6 +167,13 @@ export interface CreateRegistrationRequest {
    * registration so the server-side GA4 `purchase` joins the buyer's session.
    */
   gaAttribution?: GaAttributionPayload;
+  /**
+   * The buyer saw that this email is already registered for the class and
+   * chose to register again (another child, a friend). Without it, a second
+   * registration by the same email is refused so an impatient double
+   * submission can never charge twice.
+   */
+  registerAgain?: boolean;
 }
 
 export interface CreateRegistrationResponse {
@@ -219,6 +226,8 @@ export interface CreateRegistrationCheckoutLinkRequest {
   metaAttribution?: MetaAttributionPayload;
   /** Browser-captured GA4 client + session ids (see CreateRegistrationRequest). */
   gaAttribution?: GaAttributionPayload;
+  /** See CreateRegistrationRequest.registerAgain. */
+  registerAgain?: boolean;
 }
 
 export interface CreateRegistrationCheckoutLinkResponse {
