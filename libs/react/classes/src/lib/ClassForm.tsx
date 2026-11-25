@@ -355,6 +355,10 @@ export function ClassForm({
 
   const isEdit = !!classItem;
   const isPrivateHours = useComputed(() => format.value === 'privateHours');
+  // Seat registrants paid for the class's dates, so those lock once anyone
+  // registers. A private hour is booked one at a time: hours can still be
+  // added or taken away, and updateClass refuses to drop one that is booked.
+  const scheduleLocked = hasRegistrations && !isPrivateHours.value;
 
   // ============================================================
   // COMPOSE SESSIONS from date+time signals
@@ -952,7 +956,7 @@ export function ClassForm({
               </Alert>
             )}
 
-            {hasRegistrations && (
+            {hasRegistrations && !isPrivateHours.value && (
               <Alert severity="info">
                 {registrationCount}{' '}
                 {registrationCount === 1
@@ -962,6 +966,14 @@ export function ClassForm({
                 instructor, and location are locked because customers paid
                 with those expectations. Cancel and re-issue the class if
                 you need to change them.
+              </Alert>
+            )}
+
+            {hasRegistrations && isPrivateHours.value && (
+              <Alert severity="info">
+                Some hours are already booked. You can still add or remove
+                hours, but a booked hour can't be removed. Duration, price, instructor, and location are locked
+                because customers paid with those expectations.
               </Alert>
             )}
 
@@ -1164,7 +1176,7 @@ export function ClassForm({
               {/* Calendar */}
               <DateCalendar
                 disablePast
-                disabled={hasRegistrations}
+                disabled={scheduleLocked}
                 onChange={handleDateClick}
                 slots={{
                   day: (props) => (
@@ -1188,7 +1200,7 @@ export function ClassForm({
                         day: 'numeric',
                       })}
                       onDelete={
-                        hasRegistrations ? undefined : () => removeDate(d)
+                        scheduleLocked ? undefined : () => removeDate(d)
                       }
                       size="small"
                     />
@@ -1214,7 +1226,7 @@ export function ClassForm({
                             (useDifferentStartTimes.value = e.target.checked)
                           }
                           size="small"
-                          disabled={hasRegistrations}
+                          disabled={scheduleLocked}
                         />
                       }
                       label="Use different start times for each date"
@@ -1225,7 +1237,7 @@ export function ClassForm({
                     <StartTimeEditor
                       times={startTimes.value}
                       onChange={(next) => (startTimes.value = next)}
-                      disabled={hasRegistrations}
+                      disabled={scheduleLocked}
                       testId="private-hour-start-times"
                     />
                   ) : (
@@ -1247,7 +1259,7 @@ export function ClassForm({
                           <StartTimeEditor
                             times={startTimesForDate(key)}
                             onChange={(next) => setStartTimesForDate(key, next)}
-                            disabled={hasRegistrations}
+                            disabled={scheduleLocked}
                             testId={`private-hour-start-times-${key}`}
                           />
                         </Box>
@@ -1277,7 +1289,7 @@ export function ClassForm({
                             (useDifferentTimes.value = e.target.checked)
                           }
                           size="small"
-                          disabled={hasRegistrations}
+                          disabled={scheduleLocked}
                         />
                       }
                       label="Use different times for each date"
@@ -1290,7 +1302,7 @@ export function ClassForm({
                       label="Time (all dates)"
                       value={sharedTime.value}
                       onChange={(v) => (sharedTime.value = v)}
-                      disabled={hasRegistrations}
+                      disabled={scheduleLocked}
                       slotProps={{
                         textField: {
                           size: 'small',
@@ -1336,7 +1348,7 @@ export function ClassForm({
                                   perDateTimes.value = newMap;
                                 }
                               }}
-                              disabled={hasRegistrations}
+                              disabled={scheduleLocked}
                               slotProps={{
                                 textField: {
                                   size: 'small',

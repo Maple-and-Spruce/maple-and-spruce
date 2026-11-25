@@ -974,3 +974,49 @@ export const SwitchToPerDateStartTimes: Story = {
     });
   },
 };
+
+/**
+ * Once a private-hours class has bookings, its hours can still be changed:
+ * removing a start time drops those hours, and updateClass is what refuses
+ * to drop one that is booked. Price and the rest stay locked.
+ */
+export const EditPrivateHoursWithBookings: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: mockClassPrivateHours,
+    registrationCount: 1,
+    onSubmit: fn(),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    expect(canvas.getByText(/a booked hour can't be removed/i)).toBeInTheDocument();
+    expect(canvas.queryByText(/cancel and re-issue the class/i)).toBeNull();
+    expect(canvas.getByLabelText(/price per group/i)).toBeDisabled();
+
+    // Drop the later start time from every date.
+    const deleteIcons = within(
+      canvas.getByTestId('private-hour-start-times')
+    ).getAllByTestId('CancelIcon');
+    await userEvent.click(deleteIcons[1]);
+
+    await waitFor(() => {
+      expect(canvas.getByText(/3 bookable hours/i)).toBeInTheDocument();
+    });
+
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+    // Only the earlier start time is left, on each of the three dates.
+    const earlierHours = mockClassPrivateHours.sessions.filter(
+      (s, i, all) =>
+        s.dateTime.getUTCHours() ===
+        Math.min(...all.map((x) => x.dateTime.getUTCHours()))
+    );
+    expect(earlierHours).toHaveLength(3);
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ sessions: earlierHours })
+      );
+    });
+  },
+};
