@@ -11,11 +11,18 @@ import {
 import userEvent from '@testing-library/user-event';
 import { useEffect } from 'react';
 import type { PublicMusicTogetherSection } from '@maple/ts/firebase/api-types';
+import {
+  MT_ALREADY_ENROLLED_MESSAGE,
+  MT_SIGNUP_IN_PROGRESS_MESSAGE,
+} from '@maple/ts/domain';
 
 // Canned section returned by getPublicMusicTogetherSection for the next render.
 let nextSection: PublicMusicTogetherSection = makeSection();
 // Canned discount returned by lookupDiscount (undefined = unknown code).
 let nextDiscount: unknown = undefined;
+// Messages createMusicTogetherRegistration rejects with, one per call, before
+// it starts succeeding.
+let registrationErrors: string[] = [];
 // Records the last payload sent to each callable, by name.
 const calls: Record<string, unknown> = {};
 
@@ -63,6 +70,8 @@ vi.mock('firebase/functions', () => ({
         return Promise.resolve({ data: { section: nextSection } });
       }
       if (name === 'createMusicTogetherRegistration') {
+        const refusal = registrationErrors.shift();
+        if (refusal) return Promise.reject(new Error(refusal));
         const plan = (payload as { paymentPlan: string }).paymentPlan;
         return Promise.resolve({
           data: {
@@ -169,6 +178,7 @@ describe('MusicTogetherRegistrationWidget', () => {
   beforeEach(() => {
     nextSection = makeSection();
     nextDiscount = undefined;
+    registrationErrors = [];
     for (const k of Object.keys(calls)) delete calls[k];
   });
   afterEach(() => {
@@ -333,6 +343,93 @@ describe('MusicTogetherRegistrationWidget', () => {
     expect(payload.children).toHaveLength(1);
     expect(payload.children[0].name).toBe('Baby Doe');
     expect(payload.children[0].dob).toMatch(/^2024-03-15/);
+  });
+
+  /**
+   * The server refuses an impatient second signup for the same child. The
+   * family can still mean it, so the refusal offers Register again, and only
+   * then does the request say so.
+   */
+  it('offers Register again when this child is already signed up, and sends it only after the family chooses it', async () => {
+    registrationErrors = [MT_ALREADY_ENROLLED_MESSAGE];
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await screen.findByText(/Register — Thursday Morning/i);
+    fillFamily();
+    await acceptConsents(user);
+
+    const registerBtn = await screen.findByRole('button', {
+      name: /Register — \$252\.00/i,
+    });
+    await waitFor(() => expect(registerBtn).toBeEnabled());
+    await user.click(registerBtn);
+
+    expect(
+      await screen.findByText(/already signed up for this section/i)
+    ).toBeInTheDocument();
+    expect(calls['createMusicTogetherRegistration']).not.toHaveProperty(
+      'registerAgain'
+    );
+
+    await user.click(screen.getByRole('button', { name: /^Register again$/ }));
+    expect(
+      screen.queryByText(/already signed up for this section/i)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Paying now makes a second registration/i)
+    ).toBeInTheDocument();
+
+    await user.click(registerBtn);
+    expect(await screen.findByText(/You're registered!/i)).toBeInTheDocument();
+    expect(calls['createMusicTogetherRegistration']).toMatchObject({
+      registerAgain: true,
+    });
+  });
+
+  it('forgets Register again when the email changes', async () => {
+    registrationErrors = [MT_ALREADY_ENROLLED_MESSAGE];
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await screen.findByText(/Register — Thursday Morning/i);
+    fillFamily();
+    await acceptConsents(user);
+    const registerBtn = await screen.findByRole('button', {
+      name: /Register — \$252\.00/i,
+    });
+    await waitFor(() => expect(registerBtn).toBeEnabled());
+    await user.click(registerBtn);
+    await user.click(
+      await screen.findByRole('button', { name: /^Register again$/ })
+    );
+
+    setField(/^Email/i, 'other@example.com');
+    expect(
+      screen.queryByText(/Paying now makes a second registration/i)
+    ).not.toBeInTheDocument();
+    await user.click(registerBtn);
+    await screen.findByText(/You're registered!/i);
+    expect(calls['createMusicTogetherRegistration']).not.toHaveProperty(
+      'registerAgain'
+    );
+  });
+
+  it('offers no way past a payment that is still going through', async () => {
+    registrationErrors = [MT_SIGNUP_IN_PROGRESS_MESSAGE];
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await screen.findByText(/Register — Thursday Morning/i);
+    fillFamily();
+    await acceptConsents(user);
+    const registerBtn = await screen.findByRole('button', {
+      name: /Register — \$252\.00/i,
+    });
+    await waitFor(() => expect(registerBtn).toBeEnabled());
+    await user.click(registerBtn);
+
+    expect(await screen.findByText(/still going through/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /^Register again$/ })
+    ).not.toBeInTheDocument();
   });
 
   it('names the specific missing field(s) instead of a generic hint', async () => {

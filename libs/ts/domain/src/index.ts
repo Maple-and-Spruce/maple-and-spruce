@@ -31,6 +31,7 @@ export * from './lib/discount';
 export * from './lib/tax';
 export * from './lib/customer-facing-message';
 export * from './lib/repeat-registration';
+export * from './lib/music-together-repeat-signup';
 export * from './lib/class-waitlist';
 
 // Phase 4: Music Lessons

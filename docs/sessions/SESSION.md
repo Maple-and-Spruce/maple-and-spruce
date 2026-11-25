@@ -6,6 +6,22 @@
 
 ## Current Status
 
+### One Music Together signup per child per section (2026-11-23)
+
+- **Why:** the MT checkout had the class gap: payment idempotency keys are per registration doc
+  (`mtreg-<id>`), so a second press of pay, a reload or a second tab was a new registration and
+  a new charge, with no per-email check.
+- **Rule** (`findMtRepeatSignup`, `libs/ts/domain/src/lib/music-together-repeat-signup.ts`):
+  one parent enrolling a second child in the same section is real, so a **confirmed** signup only
+  blocks one that shares a child (same email case-insensitive, same child's name) unless the
+  request carries `registerAgain: true`. A **pending** signup under 15 minutes old blocks *any*
+  signup by that email, override or not (a retried form may fix a spelling and slip past the name
+  match). MT has no stale-hold reaper, so a pending one older than that is treated like confirmed.
+- **Server:** checked in `createMusicTogetherRegistration`'s capacity transaction, same snapshot
+  (no new index), before the capacity check so a repeat is told the truth rather than "full".
+- **Widget:** "already signed up" offers **Register again**; choosing it puts a warning by the pay
+  button and is dropped when the email or children change. "Still going through" offers nothing.
+
 ### One registration per email per class (2026-11-23)
 
 - **Why:** a customer registered and paid twice for the same class after a slow checkout
