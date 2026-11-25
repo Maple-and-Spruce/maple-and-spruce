@@ -617,6 +617,16 @@ describe('ClassForm', { timeout: 30_000 }, () => {
       );
       expect(screen.getByRole('button', { name: 'Seats' })).toBeDisabled();
     });
+
+    it('keeps hours editable once a private-hours class has bookings', () => {
+      render(
+        <ClassForm {...defaultProps} classItem={privateHoursClass} registrationCount={1} />
+      );
+      expect(screen.getByRole('button', { name: /add start time/i })).toBeInTheDocument();
+      expect(screen.getByText(/a booked hour can't be removed/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Cancel and re-issue the class/)).toBeNull();
+      expect(screen.getByRole('textbox', { name: /Price per group/ })).toBeDisabled();
+    });
   });
 
   describe('starting values when switching format', () => {
