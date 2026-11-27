@@ -1,7 +1,7 @@
 /**
- * Calendar entries for a class registration: the .ics attached to the
- * confirmation email and offered on the confirmation page, plus pre-filled
- * Google / Outlook / Microsoft 365 links.
+ * Calendar entries for a class registration: the .ics offered on the
+ * confirmation page, plus pre-filled Google / Outlook / Microsoft 365 links
+ * (the confirmation email carries the Google and Outlook ones).
  *
  * Pure and dependency-free so the Webflow widget and the Cloud Functions can
  * share it. (`@maple/ts/calendar` builds the subscription feeds, but it pulls

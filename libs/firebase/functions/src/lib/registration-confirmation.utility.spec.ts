@@ -66,7 +66,7 @@ function input(
 
 type Mail = {
   to: string;
-  message?: { attachments?: Array<Record<string, string>> };
+  message?: unknown;
   template: { name: string; data: Record<string, unknown> };
 };
 const mail = (id: string): Mail =>
@@ -78,7 +78,7 @@ beforeEach(() => {
 });
 
 describe('queueRegistrationConfirmation', () => {
-  it('writes the registrant confirmation under a fixed id, with the class .ics', async () => {
+  it('writes the registrant confirmation under a fixed id, with calendar links and no attachment', async () => {
     const result = await queueRegistrationConfirmation(input());
 
     expect(result).toEqual({ queued: 1 });
@@ -101,10 +101,14 @@ describe('queueRegistrationConfirmation', () => {
       whatToBring: 'An apron',
       attendees: [{ name: 'Robin Ashfield', email: 'robin@example.com' }],
     });
-    const [ics] = doc.message?.attachments ?? [];
-    expect(ics.filename).toBe('class.ics');
-    expect(ics.content).toContain('UID:MS-ABC234-1@');
-    expect(ics.content).toContain('UID:MS-ABC234-2@');
+    expect(doc.message).toBeUndefined();
+    const links = doc.template.data['calendarLinks'] as Array<
+      Record<string, string>
+    >;
+    expect(links.map((l) => l.label)).toEqual(['Session 1', 'Session 2']);
+    expect(links[0].google).toMatch(/^https:\/\/calendar\.google\.com\//);
+    expect(links[0].google).toContain('MS-ABC234');
+    expect(links[0].outlook).toMatch(/^https:\/\/outlook\.live\.com\//);
   });
 
   it('sends nothing the second time for the same key', async () => {
@@ -138,7 +142,8 @@ describe('queueRegistrationConfirmation', () => {
       registrantName: 'Robin Ashfield',
     });
     expect(attendee.template.data['amountPaid']).toBeUndefined();
-    expect(attendee.message?.attachments?.[0]?.filename).toBe('class.ics');
+    expect(attendee.message).toBeUndefined();
+    expect(attendee.template.data['calendarLinks']).toHaveLength(2);
   });
 
   it('greets "there" and leaves the roster nameless when the sale had no name', async () => {
@@ -208,8 +213,12 @@ describe('queueRegistrationConfirmation', () => {
       })
     );
     const doc = mail('registration-confirmation-reg-1');
-    const ics = doc.message?.attachments?.[0]?.content ?? '';
-    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(1);
+    const links = doc.template.data['calendarLinks'] as Array<
+      Record<string, string>
+    >;
+    expect(links).toHaveLength(1);
+    expect(links[0].label).toBe('Your class');
+    expect(links[0].google).toContain('20300521T220000Z');
   });
 
   it('names the free cancellation date and the cancel page for a web checkout', async () => {

@@ -553,7 +553,7 @@ describe('POS class sale (squareWebhook → processPosSale, emulator + Square mo
     );
 
     // 5. The buyer gets the same confirmation email a card checkout sends,
-    // with the class as an .ics.
+    // with calendar links and no .ics attachment.
     const confirmations = await pollUntil(
       () => listConfirmationsTo('hosted-buyer@example.com'),
       (docs) => docs.length > 0,
@@ -564,15 +564,17 @@ describe('POS class sale (squareWebhook → processPosSale, emulator + Square mo
     );
     const mail = confirmations[0].data as {
       template: { data: Record<string, unknown> };
-      message?: { attachments?: Array<Record<string, string>> };
+      message?: unknown;
     };
     expect(mail.template.data['confirmationNumber']).toBe(
       link.data?.confirmationNumber,
     );
     expect(mail.template.data['className']).toBe(CLASS_NAME);
-    const [ics] = mail.message?.attachments ?? [];
-    expect(ics?.filename).toBe('class.ics');
-    expect(ics?.content).toContain('BEGIN:VEVENT');
+    expect(mail.message).toBeUndefined();
+    const links = mail.template.data['calendarLinks'] as
+      | { google?: string }[]
+      | undefined;
+    expect(links?.[0]?.google).toMatch(/^https:\/\/calendar\.google\.com\//);
 
     // 6. Square retries the webhook, and the worker runs the sale again from
     // scratch (the request doc rewritten without `processedAt`). Still one.

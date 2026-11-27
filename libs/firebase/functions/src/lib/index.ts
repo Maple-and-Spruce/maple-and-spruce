@@ -142,10 +142,6 @@ export {
   type RegistrationConfirmationInput,
   type RegistrationConfirmationResult,
 } from './registration-confirmation.utility';
-export {
-  confirmationCalendarAttachments,
-  type MailAttachment,
-} from './calendar-attachment.utility';
 
 // Per-family calendar subscription utilities
 export {
