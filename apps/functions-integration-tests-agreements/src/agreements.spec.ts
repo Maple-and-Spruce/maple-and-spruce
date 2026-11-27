@@ -7,6 +7,7 @@ import {
   createTestUser,
   getFirestoreDoc,
   listFirestoreDocs,
+  listMail,
   setFirestoreDoc,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
@@ -114,7 +115,7 @@ describe('agreements router', () => {
       expect((await call(name, data, nonAdmin)).status, `${name} non-admin`).toBe(403);
     }
     expect(await listFirestoreDocs('agreementTemplates')).toHaveLength(0);
-    expect(await listFirestoreDocs('mail')).toHaveLength(0);
+    expect(await listMail()).toHaveLength(0);
   });
 
   it('creates, reads, and updates a template, bumping its version', async () => {
@@ -173,7 +174,7 @@ describe('agreements router', () => {
     const stored = await getFirestoreDoc('agreementRequests', request.id);
     expect(stored?.['emailSentAt']).toBeTruthy();
 
-    const mail = await listFirestoreDocs('mail');
+    const mail = await listMail();
     expect(mail).toHaveLength(1);
     const email = mail[0].data as { to: string; template: { name: string; data: Record<string, string> } };
     expect(email.to).toBe('signer@example.com');
@@ -190,7 +191,7 @@ describe('agreements router', () => {
       id: request.id,
     });
     expect(resent.status).toBe(200);
-    expect(await listFirestoreDocs('mail')).toHaveLength(2);
+    expect(await listMail()).toHaveLength(2);
   });
 
   it("links a request to an instructor and lists the instructor's requests", async () => {
